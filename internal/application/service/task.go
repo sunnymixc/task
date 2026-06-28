@@ -1,0 +1,338 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/task-management/task/internal/application/repository"
+	"github.com/task-management/task/internal/types"
+)
+
+// taskService implements types.TaskService
+type taskService struct {
+	taskRepo  types.TaskRepository
+	userRepo  types.UserRepository
+	tenantRepo types.TenantRepository
+}
+
+var (
+	// ErrTaskNotFound is returned when a task is not found
+	ErrTaskNotFound = errors.New("task not found")
+	// ErrInvalidStatusTransition is returned when a status transition is invalid
+	ErrInvalidStatusTransition = errors.New("invalid status transition")
+)
+
+// NewTaskService creates a new task service
+func NewTaskService() types.TaskService {
+	return &taskService{
+		taskRepo:  repository.NewTaskRepository(),
+		userRepo:  repository.NewUserRepository(),
+		tenantRepo: repository.NewTenantRepository(),
+	}
+}
+
+// CreateTask creates a new task
+func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskRequest) (*types.TaskResponse, error) {
+	// Get user ID from context (for now, we'll use a placeholder)
+	// In production, this would come from the JWT middleware
+	userID := getContextUserID(ctx)
+	if userID == "" {
+		return nil, errors.New("unauthorized")
+	}
+
+	// Get user's tenant ID
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+
+	// Validate assignee if provided
+	if req.AssigneeID != nil {
+		assignee, err := s.userRepo.GetUserByID(ctx, *req.AssigneeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get assignee: %w", err)
+		}
+		if assignee == nil {
+			return nil, errors.New("assignee not found")
+		}
+		// TODO: Check if assignee is a member of the same tenant
+	}
+
+	// Set default priority if not provided
+	priority := req.Priority
+	if priority == "" {
+		priority = types.TaskPriorityMedium
+	}
+
+	task := &types.Task{
+		ID:          uuid.New().String(),
+		TenantID:    user.TenantID,
+		Title:       req.Title,
+		Description: req.Description,
+		Status:      types.TaskStatusDraft,
+		Priority:    priority,
+		AssigneeID:  req.AssigneeID,
+		CreatorID:   userID,
+		DueDate:     req.DueDate,
+	}
+
+	if err := s.taskRepo.CreateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	// Reload with associations
+	task, err = s.taskRepo.GetTaskByID(ctx, task.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload task: %w", err)
+	}
+
+	return task.ToResponse(), nil
+}
+
+// GetTaskByID retrieves a task by ID
+func (s *taskService) GetTaskByID(ctx context.Context, id string) (*types.TaskResponse, error) {
+	task, err := s.taskRepo.GetTaskByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task: %w", err)
+	}
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+
+	// TODO: Verify tenant access
+
+	return task.ToResponse(), nil
+}
+
+// ListTasks lists tasks with pagination and filters
+func (s *taskService) ListTasks(ctx context.Context, req *types.ListTasksRequest) ([]*types.Task, int64, error) {
+	// Get user ID from context
+	userID := getContextUserID(ctx)
+	if userID == "" {
+		return nil, 0, errors.New("unauthorized")
+	}
+
+	// Get user's tenant ID
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, 0, errors.New("user not found")
+	}
+
+	// Set default pagination
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	offset := (page - 1) * pageSize
+
+	// Build filters
+	filters := types.TaskFilters{
+		Status:     req.Status,
+		AssigneeID: req.AssigneeID,
+		CreatorID:  req.CreatorID,
+		Priority:   req.Priority,
+	}
+
+	// If any filters are set, use FilterTasks, otherwise use GetTasksByTenantID
+	var tasks []*types.Task
+	var total int64
+
+	if filters.Status != nil || filters.AssigneeID != nil || filters.CreatorID != nil || filters.Priority != nil {
+		tasks, total, err = s.taskRepo.FilterTasks(ctx, user.TenantID, filters, offset, pageSize)
+	} else {
+		tasks, total, err = s.taskRepo.GetTasksByTenantID(ctx, user.TenantID, offset, pageSize)
+	}
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list tasks: %w", err)
+	}
+
+	return tasks, total, nil
+}
+
+// UpdateTask updates a task
+func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.UpdateTaskRequest) (*types.TaskResponse, error) {
+	task, err := s.taskRepo.GetTaskByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task: %w", err)
+	}
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+
+	// TODO: Verify tenant access
+
+	// Update fields if provided
+	if req.Title != nil {
+		task.Title = *req.Title
+	}
+	if req.Description != nil {
+		task.Description = *req.Description
+	}
+	if req.Priority != nil {
+		task.Priority = *req.Priority
+	}
+	if req.AssigneeID != nil {
+		// Validate assignee
+		if *req.AssigneeID != "" {
+			assignee, err := s.userRepo.GetUserByID(ctx, *req.AssigneeID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get assignee: %w", err)
+			}
+			if assignee == nil {
+				return nil, errors.New("assignee not found")
+			}
+		}
+		task.AssigneeID = req.AssigneeID
+	}
+	if req.DueDate != nil {
+		task.DueDate = req.DueDate
+	}
+
+	// Handle status update with validation
+	if req.Status != nil {
+		if !types.IsValidTransition(task.Status, *req.Status) {
+			return nil, fmt.Errorf("%w: cannot transition from %s to %s",
+				ErrInvalidStatusTransition, task.Status, *req.Status)
+		}
+		task.Status = *req.Status
+	}
+
+	if err := s.taskRepo.UpdateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	// Reload with associations
+	task, err = s.taskRepo.GetTaskByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload task: %w", err)
+	}
+
+	return task.ToResponse(), nil
+}
+
+// DeleteTask deletes a task
+func (s *taskService) DeleteTask(ctx context.Context, id string) error {
+	task, err := s.taskRepo.GetTaskByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get task: %w", err)
+	}
+	if task == nil {
+		return ErrTaskNotFound
+	}
+
+	// TODO: Verify tenant access and permissions
+
+	if err := s.taskRepo.DeleteTask(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateTaskStatus updates a task's status
+func (s *taskService) UpdateTaskStatus(ctx context.Context, id string, status types.TaskStatus) (*types.TaskResponse, error) {
+	task, err := s.taskRepo.GetTaskByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task: %w", err)
+	}
+	if task == nil {
+		return nil, ErrTaskNotFound
+	}
+
+	// Validate status transition
+	if !types.IsValidTransition(task.Status, status) {
+		return nil, fmt.Errorf("%w: cannot transition from %s to %s",
+			ErrInvalidStatusTransition, task.Status, status)
+	}
+
+	task.Status = status
+
+	if err := s.taskRepo.UpdateTask(ctx, task); err != nil {
+		return nil, fmt.Errorf("failed to update task status: %w", err)
+	}
+
+	// Reload with associations
+	task, err = s.taskRepo.GetTaskByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload task: %w", err)
+	}
+
+	return task.ToResponse(), nil
+}
+
+// SearchTasks searches tasks by query
+func (s *taskService) SearchTasks(ctx context.Context, req *types.SearchTasksRequest) ([]*types.Task, int64, error) {
+	// Get user ID from context
+	userID := getContextUserID(ctx)
+	if userID == "" {
+		return nil, 0, errors.New("unauthorized")
+	}
+
+	// Get user's tenant ID
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, 0, errors.New("user not found")
+	}
+
+	// Set default pagination
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	offset := (page - 1) * pageSize
+
+	tasks, total, err := s.taskRepo.SearchTasks(ctx, user.TenantID, req.Query, types.TaskFilters{}, offset, pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to search tasks: %w", err)
+	}
+
+	return tasks, total, nil
+}
+
+// Context key for user ID
+type contextKey string
+
+const userIDKey contextKey = "user_id"
+
+// getContextUserID gets the user ID from context
+func getContextUserID(ctx context.Context) string {
+	if userID, ok := ctx.Value(userIDKey).(string); ok {
+		return userID
+	}
+	return ""
+}
+
+// SetContextUserID sets the user ID in context (helper for middleware)
+func SetContextUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
+}
