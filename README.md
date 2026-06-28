@@ -89,7 +89,7 @@ psql -U postgres -d taskdb -f migrations/000001_init.up.sql
 go run cmd/server/main.go
 ```
 
-The server will start on `http://localhost:8080`
+The server will start on `http://localhost:5000`
 
 ### Using start.sh
 
