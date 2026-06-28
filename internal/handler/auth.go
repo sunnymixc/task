@@ -7,15 +7,16 @@ import (
 
 	"github.com/task-management/task/internal/application/service"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 )
 
 // AuthHandler handles authentication requests
 type AuthHandler struct {
-	userService types.UserService
+	userService interfaces.UserService
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(userService types.UserService) *AuthHandler {
+func NewAuthHandler(userService interfaces.UserService) *AuthHandler {
 	return &AuthHandler{
 		userService: userService,
 	}

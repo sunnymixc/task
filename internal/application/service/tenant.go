@@ -7,15 +7,16 @@ import (
 
 	"github.com/task-management/task/internal/application/repository"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 )
 
-// tenantService implements types.TenantService
+// tenantService implements interfaces.TenantService
 type tenantService struct {
-	repo types.TenantRepository
+	repo interfaces.TenantRepository
 }
 
 // NewTenantService creates a new tenant service
-func NewTenantService() types.TenantService {
+func NewTenantService() interfaces.TenantService {
 	return &tenantService{
 		repo: repository.NewTenantRepository(),
 	}
@@ -89,15 +90,15 @@ func (s *tenantService) ListTenants(ctx context.Context, page, pageSize int) ([]
 	return s.repo.ListTenants(ctx, offset, pageSize)
 }
 
-// tenantMemberService implements types.TenantMemberService
+// tenantMemberService implements interfaces.TenantMemberService
 type tenantMemberService struct {
-	repo       types.TenantMemberRepository
-	tenantRepo types.TenantRepository
-	userRepo   types.UserRepository
+	repo       interfaces.TenantMemberRepository
+	tenantRepo interfaces.TenantRepository
+	userRepo   interfaces.UserRepository
 }
 
 // NewTenantMemberService creates a new tenant member service
-func NewTenantMemberService() types.TenantMemberService {
+func NewTenantMemberService() interfaces.TenantMemberService {
 	return &tenantMemberService{
 		repo:       repository.NewTenantMemberRepository(),
 		tenantRepo: repository.NewTenantRepository(),

@@ -6,16 +6,17 @@ import (
 
 	"github.com/task-management/task/internal/database"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 	"gorm.io/gorm"
 )
 
-// tenantRepository implements types.TenantRepository
+// tenantRepository implements interfaces.TenantRepository
 type tenantRepository struct {
 	db *gorm.DB
 }
 
 // NewTenantRepository creates a new tenant repository
-func NewTenantRepository() types.TenantRepository {
+func NewTenantRepository() interfaces.TenantRepository {
 	return &tenantRepository{
 		db: database.GetDB(),
 	}
@@ -62,13 +63,13 @@ func (r *tenantRepository) ListTenants(ctx context.Context, offset, limit int) (
 	return tenants, total, err
 }
 
-// tenantMemberRepository implements types.TenantMemberRepository
+// tenantMemberRepository implements interfaces.TenantMemberRepository
 type tenantMemberRepository struct {
 	db *gorm.DB
 }
 
 // NewTenantMemberRepository creates a new tenant member repository
-func NewTenantMemberRepository() types.TenantMemberRepository {
+func NewTenantMemberRepository() interfaces.TenantMemberRepository {
 	return &tenantMemberRepository{
 		db: database.GetDB(),
 	}

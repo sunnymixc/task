@@ -13,13 +13,14 @@ import (
 	"github.com/task-management/task/internal/application/repository"
 	"github.com/task-management/task/internal/config"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 )
 
-// userService implements types.UserService
+// userService implements interfaces.UserService
 type userService struct {
-	userRepo       types.UserRepository
-	tenantRepo     types.TenantRepository
-	memberRepo     types.TenantMemberRepository
+	userRepo       interfaces.UserRepository
+	tenantRepo     interfaces.TenantRepository
+	memberRepo     interfaces.TenantMemberRepository
 	config         *config.Config
 }
 
@@ -41,7 +42,7 @@ type JWTClaims struct {
 }
 
 // NewUserService creates a new user service
-func NewUserService(cfg *config.Config) types.UserService {
+func NewUserService(cfg *config.Config) interfaces.UserService {
 	return &userService{
 		userRepo:   repository.NewUserRepository(),
 		tenantRepo: repository.NewTenantRepository(),

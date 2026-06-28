@@ -6,16 +6,17 @@ import (
 
 	"github.com/task-management/task/internal/database"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 	"gorm.io/gorm"
 )
 
-// taskRepository implements types.TaskRepository
+// taskRepository implements interfaces.TaskRepository
 type taskRepository struct {
 	db *gorm.DB
 }
 
 // NewTaskRepository creates a new task repository
-func NewTaskRepository() types.TaskRepository {
+func NewTaskRepository() interfaces.TaskRepository {
 	return &taskRepository{
 		db: database.GetDB(),
 	}

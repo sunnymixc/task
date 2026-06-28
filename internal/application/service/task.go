@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/task-management/task/internal/application/repository"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 )
 
-// taskService implements types.TaskService
+// taskService implements interfaces.TaskService
 type taskService struct {
-	taskRepo  types.TaskRepository
-	userRepo  types.UserRepository
-	tenantRepo types.TenantRepository
+	taskRepo  interfaces.TaskRepository
+	userRepo  interfaces.UserRepository
+	tenantRepo interfaces.TenantRepository
 }
 
 var (
@@ -27,7 +27,7 @@ var (
 )
 
 // NewTaskService creates a new task service
-func NewTaskService() types.TaskService {
+func NewTaskService() interfaces.TaskService {
 	return &taskService{
 		taskRepo:  repository.NewTaskRepository(),
 		userRepo:  repository.NewUserRepository(),

@@ -8,15 +8,16 @@ import (
 
 	"github.com/task-management/task/internal/application/service"
 	"github.com/task-management/task/internal/types"
+	"github.com/task-management/task/internal/types/interfaces"
 )
 
 // TaskHandler handles task requests
 type TaskHandler struct {
-	taskService types.TaskService
+	taskService interfaces.TaskService
 }
 
 // NewTaskHandler creates a new task handler
-func NewTaskHandler(taskService types.TaskService) *TaskHandler {
+func NewTaskHandler(taskService interfaces.TaskService) *TaskHandler {
 	return &TaskHandler{
 		taskService: taskService,
 	}
