@@ -80,10 +80,31 @@ psql -U postgres -d taskdb -f migrations/000001_init.up.sql
 
 6. Run the server:
 ```bash
+# Using start.sh (recommended)
+./start.sh build    # Build the binary
+./start.sh start    # Start the server
+./start.sh status   # Check server status
+
+# Or run directly
 go run cmd/server/main.go
 ```
 
 The server will start on `http://localhost:8080`
+
+### Using start.sh
+
+The `start.sh` script provides convenient commands for managing the server:
+
+```bash
+./start.sh start     # Start the server
+./start.sh stop      # Stop the server
+./start.sh restart   # Restart the server
+./start.sh status    # Show server status (PID, memory, logs)
+./start.sh build     # Build the binary
+./start.sh rebuild   # Stop, rebuild, and leave server stopped
+```
+
+Server logs are written to `logs/server.log`.
 
 ## API Documentation
 
