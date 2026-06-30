@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { TaskStatus } from '@/types'
 
 interface Props {
@@ -15,7 +16,7 @@ const statusConfig: Record<TaskStatus, { label: string; theme: 'default' | 'prim
   ended: { label: '已结束', theme: 'default' }
 }
 
-const config = statusConfig[props.status]
+const config = computed(() => statusConfig[props.status] ?? { label: props.status, theme: 'default' as const })
 </script>
 
 <template>

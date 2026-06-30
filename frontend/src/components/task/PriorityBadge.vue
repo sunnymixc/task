@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { TaskPriority } from '@/types'
 
 interface Props {
@@ -13,7 +14,7 @@ const priorityConfig: Record<TaskPriority, { label: string; theme: 'default' | '
   low: { label: '低', theme: 'success' }
 }
 
-const config = priorityConfig[props.priority]
+const config = computed(() => priorityConfig[props.priority] ?? { label: props.priority, theme: 'default' as const })
 </script>
 
 <template>
