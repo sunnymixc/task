@@ -1,6 +1,6 @@
 /**
  * 主题令牌（参考 WeKnora 前端）
- * 覆盖 TDesign 默认蓝色品牌为绿色，并统一侧边栏/容器/文字配色。
+ * 品牌色与应用图标保持一致（蓝色 #0052D9），并统一侧边栏/容器/文字配色。
  * 须在 tdesign-vue-next 样式之后引入。
  */
 :root,
@@ -11,22 +11,22 @@
     sans-serif;
   --td-font-family: var(--app-font-family);
 
-  /* 品牌色（绿色） */
-  --td-brand-color-1: #e9f8ec;
-  --td-brand-color-2: #09f479;
-  --td-brand-color-3: #08dd6e;
-  --td-brand-color-4: #07c05f;
-  --td-brand-color-5: #06b04d;
-  --td-brand-color-6: #049b38;
-  --td-brand-color-7: #038626;
-  --td-brand-color-8: #027218;
-  --td-brand-color-9: #015e0d;
-  --td-brand-color-10: #004b05;
-  --td-brand-color: var(--td-brand-color-4);
-  --td-brand-color-hover: var(--td-brand-color-3);
+  /* 品牌色（蓝色，与应用图标一致 #0052D9） */
+  --td-brand-color-1: #f2f3ff;
+  --td-brand-color-2: #d9e1ff;
+  --td-brand-color-3: #b5c7ff;
+  --td-brand-color-4: #8eabff;
+  --td-brand-color-5: #618dff;
+  --td-brand-color-6: #366ef4;
+  --td-brand-color-7: #0052d9;
+  --td-brand-color-8: #0034b5;
+  --td-brand-color-9: #001f97;
+  --td-brand-color-10: #001174;
+  --td-brand-color: var(--td-brand-color-7);
+  --td-brand-color-hover: var(--td-brand-color-6);
   --td-brand-color-focus: var(--td-brand-color-2);
-  --td-brand-color-active: var(--td-brand-color-5);
-  --td-brand-color-disabled: #8ce0af;
+  --td-brand-color-active: var(--td-brand-color-8);
+  --td-brand-color-disabled: var(--td-brand-color-3);
   --td-brand-color-light: var(--td-brand-color-1);
 
   /* 中性灰阶 */
