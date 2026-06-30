@@ -370,7 +370,7 @@ onMounted(() => {
   overflow: auto;
   background: var(--td-bg-color-container);
   border: 1px solid var(--td-component-stroke);
-  border-radius: 8px;
+  border-radius: var(--td-radius-default);
   padding: 16px;
   box-shadow: var(--td-shadow-1);
 }
