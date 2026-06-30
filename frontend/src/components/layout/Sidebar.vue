@@ -48,12 +48,12 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
         <span class="logo-text">TASK</span>
       </div>
       <div class="sidebar-toggle" @click="uiStore.toggleSidebar">
-        <t-icon name="menu-fold" />
+        <t-icon name="chevron-left" />
       </div>
     </div>
     <t-tooltip v-else content="展开侧边栏" placement="right">
       <div class="menu-item sidebar-toggle-collapsed" @click="uiStore.toggleSidebar">
-        <div class="menu-icon"><t-icon name="menu-unfold" /></div>
+        <div class="menu-icon"><t-icon name="chevron-right" /></div>
       </div>
     </t-tooltip>
 
