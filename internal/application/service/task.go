@@ -213,12 +213,8 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 		task.DueDate = req.DueDate
 	}
 
-	// Handle status update with validation
+	// Update status if provided (no transition restriction)
 	if req.Status != nil {
-		if !types.IsValidTransition(task.Status, *req.Status) {
-			return nil, fmt.Errorf("%w: cannot transition from %s to %s",
-				ErrInvalidStatusTransition, task.Status, *req.Status)
-		}
 		task.Status = *req.Status
 	}
 
@@ -262,12 +258,6 @@ func (s *taskService) UpdateTaskStatus(ctx context.Context, id string, status ty
 	}
 	if task == nil {
 		return nil, ErrTaskNotFound
-	}
-
-	// Validate status transition
-	if !types.IsValidTransition(task.Status, status) {
-		return nil, fmt.Errorf("%w: cannot transition from %s to %s",
-			ErrInvalidStatusTransition, task.Status, status)
 	}
 
 	task.Status = status
