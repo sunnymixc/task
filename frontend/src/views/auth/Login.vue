@@ -50,7 +50,7 @@ const goToRegister = () => {
 <template>
   <div class="login-container">
     <div class="login-box">
-      <h1 class="title">任务管理系统</h1>
+      <h1 class="title">TASK</h1>
       <p class="subtitle">登录您的账户</p>
 
       <t-form

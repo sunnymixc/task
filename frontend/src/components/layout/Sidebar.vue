@@ -45,7 +45,7 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
     <div v-if="!uiStore.sidebarCollapsed" class="logo-row">
       <div class="logo-box" @click="goHome">
         <t-icon name="task-checked" class="logo-icon" />
-        <span class="logo-text">任务管理</span>
+        <span class="logo-text">TASK</span>
       </div>
       <div class="sidebar-toggle" @click="uiStore.toggleSidebar">
         <t-icon name="menu-fold" />
