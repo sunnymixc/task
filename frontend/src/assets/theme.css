@@ -1,6 +1,6 @@
 /**
  * 主题令牌（参考 WeKnora 前端）
- * 品牌色与应用图标保持一致（蓝色 #0052D9），并统一侧边栏/容器/文字配色。
+ * 品牌色与应用图标保持一致（紫色 #a4579d），并统一侧边栏/容器/文字配色。
  * 须在 tdesign-vue-next 样式之后引入。
  */
 :root,
@@ -11,17 +11,17 @@
     sans-serif;
   --td-font-family: var(--app-font-family);
 
-  /* 品牌色（蓝色，与应用图标一致 #0052D9） */
-  --td-brand-color-1: #f2f3ff;
-  --td-brand-color-2: #d9e1ff;
-  --td-brand-color-3: #b5c7ff;
-  --td-brand-color-4: #8eabff;
-  --td-brand-color-5: #618dff;
-  --td-brand-color-6: #366ef4;
-  --td-brand-color-7: #0052d9;
-  --td-brand-color-8: #0034b5;
-  --td-brand-color-9: #001f97;
-  --td-brand-color-10: #001174;
+  /* 品牌色（紫色，与应用图标一致 #a4579d） */
+  --td-brand-color-1: #fbf2fa;
+  --td-brand-color-2: #f2dcf0;
+  --td-brand-color-3: #e3bce0;
+  --td-brand-color-4: #d098cb;
+  --td-brand-color-5: #bb77b5;
+  --td-brand-color-6: #af65a8;
+  --td-brand-color-7: #a4579d;
+  --td-brand-color-8: #884482;
+  --td-brand-color-9: #6b3366;
+  --td-brand-color-10: #51244d;
   --td-brand-color: var(--td-brand-color-7);
   --td-brand-color-hover: var(--td-brand-color-6);
   --td-brand-color-focus: var(--td-brand-color-2);
@@ -58,4 +58,9 @@
   --sidebar-inset-x: 14px;
   --sidebar-icon-size: 18px;
   --sidebar-icon-gap: 8px;
+
+  /* 阴影（全局削弱） */
+  --td-shadow-1: 0 0 2px 2px rgba(0, 0, 0, 0.025);
+  --td-shadow-2: 0 0 2px 2px rgba(0, 0, 0, 0.025);
+  --td-shadow-3: 0 0 2px 2px rgba(0, 0, 0, 0.025);
 }
