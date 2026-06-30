@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -10,6 +11,32 @@ import (
 	"github.com/task-management/task/internal/types"
 	"github.com/task-management/task/internal/types/interfaces"
 )
+
+// dueDateLayouts lists the date/time formats accepted from the client.
+// The date picker may send a full ISO 8601 timestamp or a date-only string.
+var dueDateLayouts = []string{
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04:05",
+	"2006-01-02",
+}
+
+// parseDueDate parses a date string into *time.Time, trying each supported layout.
+// Returns (nil, nil) for an empty string so callers can leave the field unchanged.
+func parseDueDate(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	var lastErr error
+	for _, layout := range dueDateLayouts {
+		if t, err := time.Parse(layout, s); err == nil {
+			return &t, nil
+		} else {
+			lastErr = err
+		}
+	}
+	return nil, lastErr
+}
 
 // TaskHandler handles task requests
 type TaskHandler struct {
@@ -86,9 +113,16 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	// Parse due date if provided
-	if req.DueDate != nil && *req.DueDate != "" {
-		// TODO: Parse ISO 8601 date string
-		// For simplicity, we're skipping this for now
+	if req.DueDate != nil {
+		dueDate, err := parseDueDate(*req.DueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Invalid due_date: " + err.Error(),
+			})
+			return
+		}
+		createReq.DueDate = dueDate
 	}
 
 	resp, err := h.taskService.CreateTask(c.Request.Context(), createReq)
@@ -250,8 +284,15 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 
 	// Parse due date if provided
 	if req.DueDate != nil {
-		// TODO: Parse ISO 8601 date string
-		// For simplicity, we're skipping this for now
+		dueDate, err := parseDueDate(*req.DueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Invalid due_date: " + err.Error(),
+			})
+			return
+		}
+		updateReq.DueDate = dueDate
 	}
 
 	resp, err := h.taskService.UpdateTask(c.Request.Context(), id, updateReq)

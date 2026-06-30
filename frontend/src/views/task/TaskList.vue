@@ -280,10 +280,10 @@ onMounted(() => {
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />
-            <t-button size="small" variant="base" @click="openEditDialog(row)">
+            <t-button size="small" theme="default" variant="outline" @click="openEditDialog(row)">
               编辑
             </t-button>
-            <t-button size="small" variant="base" theme="danger" @click="handleDeleteTask(row)">
+            <t-button size="small" theme="default" variant="outline" @click="handleDeleteTask(row)">
               删除
             </t-button>
           </t-space>

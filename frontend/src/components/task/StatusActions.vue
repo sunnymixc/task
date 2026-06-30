@@ -13,25 +13,25 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // Define available status transitions based on current status
-const statusActions: Record<TaskStatus, { label: string; value: TaskStatus; theme: 'default' | 'primary' | 'warning' | 'success' }[]> = {
+const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> = {
   draft: [
-    { label: '发布', value: 'published', theme: 'primary' },
-    { label: '开始', value: 'in_progress', theme: 'success' }
+    { label: '发布', value: 'published' },
+    { label: '开始', value: 'in_progress' }
   ],
   published: [
-    { label: '开始', value: 'in_progress', theme: 'success' },
-    { label: '结束', value: 'ended', theme: 'default' }
+    { label: '开始', value: 'in_progress' },
+    { label: '结束', value: 'ended' }
   ],
   in_progress: [
-    { label: '完成', value: 'completed', theme: 'success' },
-    { label: '暂停', value: 'published', theme: 'warning' }
+    { label: '完成', value: 'completed' },
+    { label: '暂停', value: 'published' }
   ],
   completed: [
-    { label: '重新开始', value: 'in_progress', theme: 'primary' },
-    { label: '结束', value: 'ended', theme: 'default' }
+    { label: '重新开始', value: 'in_progress' },
+    { label: '结束', value: 'ended' }
   ],
   ended: [
-    { label: '重新打开', value: 'published', theme: 'primary' }
+    { label: '重新打开', value: 'published' }
   ]
 }
 
@@ -48,7 +48,7 @@ const handleStatusChange = (status: TaskStatus) => {
       v-for="action in availableActions"
       :key="action.value"
       size="small"
-      :theme="action.theme"
+      theme="default"
       variant="outline"
       @click="handleStatusChange(action.value)"
     >
