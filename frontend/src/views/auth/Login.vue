@@ -122,15 +122,15 @@ const goToRegister = () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #fff 60%, var(--td-brand-color-1) 100%);
 }
 
 .login-box {
   width: 400px;
   padding: 40px;
   background: white;
-  border-radius: 8px;
-  box-shadow: 0 0 2px 2px rgba(0, 0, 0, 0.025);
+  border-radius: var(--td-radius-default);
+  border: 1px solid var(--td-gray-color-4);
 }
 
 .title {
