@@ -66,7 +66,7 @@
   --td-radius-extraLarge: 4px;
 
   /* 阴影（全局削弱） */
-  --td-shadow-1: 0 0 1px 1px rgba(0, 0, 0, 0.05);
-  --td-shadow-2: 0 0 1px 1px rgba(0, 0, 0, 0.05);
-  --td-shadow-3: 0 0 1px 1px rgba(0, 0, 0, 0.05);
+  --td-shadow-1: 0 0 1px 1px rgba(0, 0, 0, 0.1);
+  --td-shadow-2: 0 0 1px 1px rgba(0, 0, 0, 0.1);
+  --td-shadow-3: 0 0 1px 1px rgba(0, 0, 0, 0.1);
 }
