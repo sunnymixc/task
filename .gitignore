@@ -7,8 +7,13 @@ bin/
 *.dylib
 task
 
-# PID file
+# Runtime state files
+*.pid
 .pid
+*.sock
+*.seed
+*.tmp
+tmp/
 
 # Logs
 logs/
