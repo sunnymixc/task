@@ -13,6 +13,7 @@ const form = reactive<LoginRequest>({
   password: ''
 })
 
+const formRef = ref()
 const loading = ref(false)
 const showPassword = ref(false)
 
