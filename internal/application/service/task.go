@@ -71,12 +71,18 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		priority = types.TaskPriorityMedium
 	}
 
+	// Set default status if not provided
+	status := req.Status
+	if status == "" {
+		status = types.TaskStatusDraft
+	}
+
 	task := &types.Task{
 		ID:          uuid.New().String(),
 		TenantID:    user.TenantID,
 		Title:       req.Title,
 		Description: req.Description,
-		Status:      types.TaskStatusDraft,
+		Status:      status,
 		Priority:    priority,
 		AssigneeID:  req.AssigneeID,
 		CreatorID:   userID,

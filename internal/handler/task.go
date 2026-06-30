@@ -27,6 +27,7 @@ func NewTaskHandler(taskService interfaces.TaskService) *TaskHandler {
 type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
+	Status      string       `json:"status" binding:"omitempty,oneof=draft published in_progress completed ended"`
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
 	AssigneeID  *string      `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *string      `json:"due_date"` // ISO 8601 date string
@@ -77,6 +78,11 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	// Parse priority
 	if req.Priority != "" {
 		createReq.Priority = types.TaskPriority(req.Priority)
+	}
+
+	// Parse status
+	if req.Status != "" {
+		createReq.Status = types.TaskStatus(req.Status)
 	}
 
 	// Parse due date if provided

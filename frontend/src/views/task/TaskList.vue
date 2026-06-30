@@ -109,6 +109,7 @@ const clearSearch = () => {
 }
 
 // Open create dialog
+const createFormRef = ref<InstanceType<typeof TaskForm>>()
 const showCreateDialog = ref(false)
 const openCreateDialog = () => {
   showCreateDialog.value = true
@@ -122,6 +123,7 @@ const handleCreateTask = async (data: any) => {
 }
 
 // Open edit dialog
+const editFormRef = ref<InstanceType<typeof TaskForm>>()
 const editingTask = ref<Task | null>(null)
 const showEditDialog = ref(false)
 const openEditDialog = (task: Task) => {
@@ -304,10 +306,12 @@ onMounted(() => {
       header="新建任务"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
-      :confirm-btn="null"
-      :close-btn="null"
+      cancel-btn="取消"
+      confirm-btn="确定"
+      @confirm="createFormRef?.submit()"
+      @cancel="showCreateDialog = false"
     >
-      <TaskForm @submit="handleCreateTask" @cancel="showCreateDialog = false" />
+      <TaskForm ref="createFormRef" @submit="handleCreateTask" />
     </t-dialog>
 
     <!-- Edit Dialog -->
@@ -316,13 +320,15 @@ onMounted(() => {
       header="编辑任务"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
-      :confirm-btn="null"
-      :close-btn="null"
+      cancel-btn="取消"
+      confirm-btn="确定"
+      @confirm="editFormRef?.submit()"
+      @cancel="showEditDialog = false; editingTask = null"
     >
       <TaskForm
+        ref="editFormRef"
         :task="editingTask"
         @submit="handleUpdateTask"
-        @cancel="showEditDialog = false; editingTask = null"
       />
     </t-dialog>
   </div>

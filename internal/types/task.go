@@ -94,6 +94,7 @@ func (Task) TableName() string {
 type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
+	Status      TaskStatus   `json:"status" binding:"omitempty,oneof=draft published in_progress completed ended"`
 	Priority    TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	AssigneeID  *string      `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *time.Time   `json:"due_date"`

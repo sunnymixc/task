@@ -85,6 +85,7 @@ export interface UserInfo {
 export interface CreateTaskRequest {
   title: string
   description?: string
+  status?: TaskStatus
   priority?: TaskPriority
   assignee_id?: string
   due_date?: string
