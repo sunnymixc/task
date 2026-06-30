@@ -302,7 +302,8 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showCreateDialog"
       header="新建任务"
-      width="600"
+      width="min(92vw, 760px)"
+      dialog-class-name="task-form-dialog"
       :confirm-btn="null"
       :close-btn="null"
     >
@@ -313,7 +314,8 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showEditDialog"
       header="编辑任务"
-      width="600"
+      width="min(92vw, 760px)"
+      dialog-class-name="task-form-dialog"
       :confirm-btn="null"
       :close-btn="null"
     >
@@ -409,5 +411,13 @@ onMounted(() => {
 .empty-state p {
   margin: 16px 0;
   font-size: 14px;
+}
+</style>
+
+<style>
+/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见 */
+.task-form-dialog .t-dialog__body {
+  max-height: 72vh;
+  overflow-y: auto;
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
-import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority } from '@/types'
+import { ref, reactive, watch, computed, onMounted } from 'vue'
+import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority, TaskStatus } from '@/types'
 
 interface Props {
   task?: Task | null
@@ -17,13 +17,30 @@ const emit = defineEmits<Emits>()
 const formRef = ref()
 const loading = ref(false)
 
+// Edit mode when an existing task is passed in
+const isEdit = computed(() => !!props.task)
+
 const form = reactive({
   title: '',
   description: '',
   priority: 'medium' as TaskPriority,
+  status: 'draft' as TaskStatus,
   assignee_id: '',
   due_date: ''
 })
+
+// Status workflow for the steps component
+const statusSteps: { value: TaskStatus; title: string; content: string }[] = [
+  { value: 'draft', title: '草稿', content: '任务已创建，尚未发布' },
+  { value: 'published', title: '已发布', content: '任务已发布，等待处理' },
+  { value: 'in_progress', title: '进行中', content: '任务正在处理中' },
+  { value: 'completed', title: '已完成', content: '任务已完成' },
+  { value: 'ended', title: '已结束', content: '任务已结束归档' }
+]
+
+const handleStatusChange = (value: TaskStatus | string | number) => {
+  form.status = value as TaskStatus
+}
 
 const formRules = {
   title: [
@@ -47,6 +64,7 @@ watch(() => props.task, (task) => {
     form.title = task.title
     form.description = task.description || ''
     form.priority = task.priority
+    form.status = task.status
     form.assignee_id = task.assignee_id || ''
     // Format date string for date picker
     form.due_date = task.due_date ? new Date(task.due_date) : ''
@@ -59,6 +77,7 @@ watch(() => props.task, (task) => {
     form.title = ''
     form.description = ''
     form.priority = 'medium'
+    form.status = 'draft'
     form.assignee_id = ''
     form.due_date = ''
   }
@@ -73,6 +92,11 @@ const handleSubmit = async () => {
     title: form.title,
     description: form.description || undefined,
     priority: form.priority
+  }
+
+  // Status can only be modified when editing an existing task
+  if (isEdit.value) {
+    (data as UpdateTaskRequest).status = form.status
   }
 
   if (form.assignee_id) {
@@ -114,7 +138,7 @@ const handleCancel = () => {
         v-model="form.description"
         placeholder="请输入任务描述"
         :maxlength="5000"
-        :autosize="{ minRows: 3, maxRows: 6 }"
+        :autosize="{ minRows: 4, maxRows: 14 }"
         show-limit-number
       />
     </t-form-item>
@@ -125,6 +149,24 @@ const handleCancel = () => {
         <t-radio value="medium">中</t-radio>
         <t-radio value="low">低</t-radio>
       </t-radio-group>
+    </t-form-item>
+
+    <t-form-item v-if="isEdit" label="状态" name="status">
+      <div class="status-steps">
+        <t-steps
+          :current="form.status"
+          theme="dot"
+          @change="handleStatusChange"
+        >
+          <t-step-item
+            v-for="step in statusSteps"
+            :key="step.value"
+            :value="step.value"
+            :title="step.title"
+            :content="step.content"
+          />
+        </t-steps>
+      </div>
     </t-form-item>
 
     <t-form-item label="指派给" name="assignee_id">
@@ -160,5 +202,10 @@ const handleCancel = () => {
 <style scoped>
 .t-form-item {
   margin-bottom: 24px;
+}
+
+.status-steps {
+  width: 100%;
+  padding: 8px 0;
 }
 </style>
