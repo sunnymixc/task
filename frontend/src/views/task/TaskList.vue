@@ -48,9 +48,12 @@ const columns = [
   { colKey: 'title', title: '标题', width: 300 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
+  { colKey: 'due_date', title: '截止时间', width: 180 },
+  { colKey: 'assignee', title: '指派人', width: 120 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
-  { colKey: 'action', title: '操作', width: 180, fixed: 'right' }
+  { colKey: 'updated_at', title: '更新时间', width: 180 },
+  { colKey: 'action', title: '操作', width: 320, fixed: 'right' }
 ]
 
 // Fetch tasks
@@ -158,6 +161,35 @@ const handleDeleteTask = async (task: Task) => {
   })
 }
 
+// Copy text to clipboard (falls back for non-secure contexts, e.g. LAN http access)
+const copyToClipboard = async (text: string) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.opacity = '0'
+  document.body.appendChild(ta)
+  ta.select()
+  document.execCommand('copy')
+  document.body.removeChild(ta)
+}
+
+// Copy task title + description to clipboard (title/description separated by 2 newlines)
+const handleCopyTask = async (task: Task) => {
+  const text = task.description
+    ? `${task.title}\n\n${task.description}`
+    : task.title
+  try {
+    await copyToClipboard(text)
+    MessagePlugin.success('已复制到剪贴板')
+  } catch {
+    MessagePlugin.error('复制失败')
+  }
+}
+
 // Handle status update
 const handleStatusUpdate = async (taskId: string, status: TaskStatus) => {
   await taskStore.updateStatus(taskId, status)
@@ -261,6 +293,20 @@ onMounted(() => {
           <PriorityBadge :priority="row.priority" />
         </template>
 
+        <template #due_date="{ row }">
+          {{ row.due_date ? formatDate(row.due_date) : '-' }}
+        </template>
+
+        <template #assignee="{ row }">
+          <div v-if="row.assignee" class="creator-info">
+            <t-avatar :image="row.assignee?.avatar || ''" size="24">
+              {{ row.assignee?.username?.charAt(0) || 'U' }}
+            </t-avatar>
+            <span>{{ row.assignee?.username || '-' }}</span>
+          </div>
+          <span v-else>未分配</span>
+        </template>
+
         <template #creator="{ row }">
           <div class="creator-info">
             <t-avatar :image="row.creator?.avatar || ''" size="24">
@@ -274,16 +320,23 @@ onMounted(() => {
           {{ formatDate(row.created_at) }}
         </template>
 
+        <template #updated_at="{ row }">
+          {{ formatDate(row.updated_at) }}
+        </template>
+
         <template #action="{ row }">
           <t-space>
             <StatusActions
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />
-            <t-button size="small" theme="default" variant="outline" @click="openEditDialog(row)">
+            <t-button size="medium" theme="default" variant="outline" @click="handleCopyTask(row)">
+              拷贝
+            </t-button>
+            <t-button size="medium" theme="default" variant="outline" @click="openEditDialog(row)">
               编辑
             </t-button>
-            <t-button size="small" theme="default" variant="outline" @click="handleDeleteTask(row)">
+            <t-button size="medium" theme="default" variant="outline" @click="handleDeleteTask(row)">
               删除
             </t-button>
           </t-space>
