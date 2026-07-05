@@ -67,7 +67,7 @@ func Load() (*Config, error) {
 		},
 		Auth: &AuthConfig{
 			JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-this"),
-			JWTExpiration: getEnvAsInt("JWT_EXPIRATION", 15), // 15 minutes
+			JWTExpiration: getEnvAsInt("JWT_EXPIRATION", 1440), // 24 hours
 		},
 	}
 
