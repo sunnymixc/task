@@ -18,6 +18,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const formRef = ref()
+// tdesign Input 实例在运行时暴露 focus(),但当前版本未导出实例类型
+const titleInputRef = ref<{ focus?: () => void } | null>(null)
 const taskListStore = useTaskListStore()
 
 const form = reactive({
@@ -110,8 +112,11 @@ const handleSubmit = async () => {
   emit('submit', data)
 }
 
+// 弹窗打开后由父组件调用,聚焦标题输入框
+const focusTitle = () => titleInputRef.value?.focus?.()
+
 // Expose submit so the dialog footer can trigger validation + submit
-defineExpose({ submit: handleSubmit })
+defineExpose({ submit: handleSubmit, focusTitle })
 </script>
 
 <template>
@@ -124,6 +129,7 @@ defineExpose({ submit: handleSubmit })
   >
     <t-form-item label="标题" name="title">
       <t-input
+        ref="titleInputRef"
         v-model="form.title"
         placeholder="请输入任务标题"
         :maxlength="255"

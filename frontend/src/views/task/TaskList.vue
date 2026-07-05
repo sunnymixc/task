@@ -393,6 +393,7 @@ onMounted(() => {
       confirm-btn="确定"
       @confirm="createFormRef?.submit()"
       @cancel="showCreateDialog = false"
+      @opened="createFormRef?.focusTitle()"
     >
       <TaskForm ref="createFormRef" :default-task-list-id="taskListId" @submit="handleCreateTask" />
     </t-dialog>
@@ -407,6 +408,7 @@ onMounted(() => {
       confirm-btn="确定"
       @confirm="editFormRef?.submit()"
       @cancel="showEditDialog = false; editingTask = null"
+      @opened="editFormRef?.focusTitle()"
     >
       <TaskForm
         ref="editFormRef"
