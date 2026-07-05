@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { Task, TaskStatus } from '@/types'
 
 interface Props {
@@ -29,7 +30,7 @@ const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> 
   completed: []
 }
 
-const availableActions = statusActions[props.task.status] || []
+const availableActions = computed(() => statusActions[props.task.status] || [])
 
 const handleStatusChange = (status: TaskStatus) => {
   emit('status-change', status)

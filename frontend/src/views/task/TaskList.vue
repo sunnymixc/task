@@ -125,19 +125,19 @@ const handleUpdateTask = async (data: any) => {
 }
 
 // Handle delete task
-const handleDeleteTask = async (task: Task) => {
+const handleDeleteTask = (task: Task) => {
   const dialog = DialogPlugin.confirm({
     header: '确认删除',
     body: `确定要删除任务 "${task.title}" 吗？`,
     confirmBtn: '确定',
-    cancelBtn: '取消'
-  })
-
-  dialog.onConfirm(async () => {
-    const success = await taskStore.deleteTask(task.id)
-    if (success) {
-      fetchTasks()
-    }
+    cancelBtn: '取消',
+    onConfirm: async () => {
+      const success = await taskStore.deleteTask(task.id)
+      dialog.hide()
+      if (success) {
+        fetchTasks()
+      }
+    },
   })
 }
 
