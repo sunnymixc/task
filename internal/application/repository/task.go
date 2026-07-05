@@ -142,8 +142,8 @@ func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *g
 	if len(filters.Priority) > 0 {
 		db = db.Where("priority IN ?", filters.Priority)
 	}
-	if filters.TaskListID != nil {
-		db = db.Where("task_list_id = ?", *filters.TaskListID)
+	if len(filters.TaskListID) > 0 {
+		db = db.Where("task_list_id IN ?", filters.TaskListID)
 	}
 	return db
 }

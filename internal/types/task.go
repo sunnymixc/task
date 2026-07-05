@@ -117,7 +117,7 @@ type ListTasksRequest struct {
 	Status     []TaskStatus  `form:"status" binding:"omitempty,dive,oneof=draft pending running completed"`
 	CreatorID  *string       `form:"creator_id" binding:"omitempty,uuid"`
 	Priority   []TaskPriority `form:"priority" binding:"omitempty,dive,oneof=low medium high"`
-	TaskListID *string      `form:"task_list_id" binding:"omitempty,len=24,alpha"`
+	TaskListID []string     `form:"task_list_id" binding:"omitempty,dive,len=24,alpha"`
 	Page       int          `form:"page" binding:"min=1"`
 	PageSize   int          `form:"page_size" binding:"min=1,max=100"`
 }
@@ -134,7 +134,7 @@ type TaskFilters struct {
 	Status     []TaskStatus
 	CreatorID  *string
 	Priority   []TaskPriority
-	TaskListID *string
+	TaskListID []string
 }
 
 // TaskResponse represents the response for a task

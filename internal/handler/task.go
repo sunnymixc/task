@@ -208,8 +208,8 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	if creatorID := c.Query("creator_id"); creatorID != "" {
 		req.CreatorID = &creatorID
 	}
-	if taskListID := c.Query("task_list_id"); taskListID != "" {
-		req.TaskListID = &taskListID
+	if taskListIDs := c.QueryArray("task_list_id"); len(taskListIDs) > 0 {
+		req.TaskListID = taskListIDs
 	}
 	if priorities := c.QueryArray("priority"); len(priorities) > 0 {
 		for _, p := range priorities {

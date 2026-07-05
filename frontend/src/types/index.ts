@@ -108,7 +108,7 @@ export interface ListTasksRequest {
   status?: TaskStatus[]
   creator_id?: string
   priority?: TaskPriority[]
-  task_list_id?: string
+  task_list_id?: string[]
   page?: number
   page_size?: number
 }

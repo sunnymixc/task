@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/task'
+import { useTaskListStore } from '@/stores/taskList'
 import type { Task, TaskStatus } from '@/types'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
@@ -9,6 +10,7 @@ import PriorityBadge from '@/components/task/PriorityBadge.vue'
 import StatusActions from '@/components/task/StatusActions.vue'
 
 const taskStore = useTaskStore()
+const taskListStore = useTaskListStore()
 
 const tasks = computed(() => taskStore.tasks)
 const loading = computed(() => taskStore.loading)
@@ -16,6 +18,7 @@ const total = computed(() => taskStore.total)
 
 // Filter states
 const currentStatus = ref<TaskStatus[]>(['draft', 'pending', 'running'])
+const currentTaskLists = ref<string[]>([])
 const searchQuery = ref('')
 
 // Pagination
@@ -31,6 +34,14 @@ const statusOptions = [
   { label: '执行中', value: 'running' },
   { label: '已完成', value: 'completed' }
 ]
+
+// Task list filter options
+const taskListOptions = computed(() =>
+  taskListStore.lists.map(list => ({
+    label: list.is_default ? `${list.title}（默认）` : list.title,
+    value: list.id
+  }))
+)
 
 // Table columns
 const columns = [
@@ -56,11 +67,21 @@ const fetchTasks = async () => {
     params.status = currentStatus.value
   }
 
+  if (currentTaskLists.value.length) {
+    params.task_list_id = currentTaskLists.value
+  }
+
   await taskStore.fetchTasks(params)
 }
 
 // Handle status filter change
 const handleStatusChange = () => {
+  pagination.value.current = 1
+  fetchTasks()
+}
+
+// Handle task list filter change
+const handleTaskListChange = () => {
   pagination.value.current = 1
   fetchTasks()
 }
@@ -200,6 +221,7 @@ const onPageChange = (pageInfo: any) => {
 // On mounted
 onMounted(() => {
   fetchTasks()
+  taskListStore.fetchAllLists()
 })
 </script>
 
@@ -226,6 +248,16 @@ onMounted(() => {
           auto-width
           style="min-width: 120px"
           @change="handleStatusChange"
+        />
+        <t-select
+          v-model="currentTaskLists"
+          :options="taskListOptions"
+          placeholder="选择任务清单"
+          multiple
+          clearable
+          auto-width
+          style="min-width: 140px"
+          @change="handleTaskListChange"
         />
       </div>
       <div class="search-group">
