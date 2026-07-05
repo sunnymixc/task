@@ -8,6 +8,7 @@ import (
 	"github.com/task-management/task/internal/types"
 	"github.com/task-management/task/internal/types/interfaces"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // taskRepository implements interfaces.TaskRepository
@@ -66,9 +67,11 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 	return tasks, total, err
 }
 
-// UpdateTask updates a task
+// UpdateTask updates a task.
+// Omit associations: task 由 GetTaskByID 预加载了旧的 TaskList/Creator 等关联,
+// 若不忽略,GORM Save 会用旧关联的主键回写外键(如 task_list_id),覆盖服务层刚设置的新值。
 func (r *taskRepository) UpdateTask(ctx context.Context, task *types.Task) error {
-	return r.db.WithContext(ctx).Save(task).Error
+	return r.db.WithContext(ctx).Omit(clause.Associations).Save(task).Error
 }
 
 // DeleteTask soft deletes a task

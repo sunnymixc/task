@@ -98,11 +98,13 @@ const openCreateDialog = () => {
   showCreateDialog.value = true
 }
 
-// Handle create task
+// Handle create task（保存成功才关闭弹窗并刷新，失败保留弹窗与已填内容）
 const handleCreateTask = async (data: any) => {
-  await taskStore.createTask(data)
-  showCreateDialog.value = false
-  fetchTasks()
+  const created = await taskStore.createTask(data)
+  if (created) {
+    showCreateDialog.value = false
+    fetchTasks()
+  }
 }
 
 // Open edit dialog
@@ -114,10 +116,11 @@ const openEditDialog = (task: Task) => {
   showEditDialog.value = true
 }
 
-// Handle update task
+// Handle update task（保存成功才关闭弹窗并刷新，失败保留弹窗与已填内容）
 const handleUpdateTask = async (data: any) => {
-  if (editingTask.value) {
-    await taskStore.updateTask(editingTask.value.id, data)
+  if (!editingTask.value) return
+  const updated = await taskStore.updateTask(editingTask.value.id, data)
+  if (updated) {
     showEditDialog.value = false
     editingTask.value = null
     fetchTasks()
