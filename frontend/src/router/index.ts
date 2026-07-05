@@ -33,6 +33,13 @@ const routes: RouteRecordRaw[] = [
         name: 'TaskListManage',
         component: () => import('@/views/task-list/TaskListManage.vue'),
         meta: { title: '任务清单' }
+      },
+      {
+        path: 'task-lists/:listId/tasks',
+        name: 'TaskListTasks',
+        component: () => import('@/views/task/TaskList.vue'),
+        props: route => ({ taskListId: route.params.listId as string }),
+        meta: { title: '清单任务' }
       }
     ]
   },

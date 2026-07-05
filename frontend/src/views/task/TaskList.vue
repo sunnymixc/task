@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useTaskListStore } from '@/stores/taskList'
 import type { Task, TaskStatus } from '@/types'
@@ -9,8 +9,13 @@ import StatusBadge from '@/components/task/StatusBadge.vue'
 import PriorityBadge from '@/components/task/PriorityBadge.vue'
 import StatusActions from '@/components/task/StatusActions.vue'
 
+// 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
+const props = defineProps<{ taskListId?: string }>()
+
 const taskStore = useTaskStore()
 const taskListStore = useTaskListStore()
+
+const isListScoped = computed(() => !!props.taskListId)
 
 const tasks = computed(() => taskStore.tasks)
 const loading = computed(() => taskStore.loading)
@@ -37,24 +42,32 @@ const statusOptions = [
 
 // Task list filter options
 const taskListOptions = computed(() =>
-  taskListStore.lists.map(list => ({
+  taskListStore.allLists.map(list => ({
     label: list.is_default ? `${list.title}（默认）` : list.title,
     value: list.id
   }))
 )
 
-// Table columns
-const columns = [
+// 页头标题:清单作用域下显示清单名称
+const pageTitle = computed(() => {
+  if (props.taskListId) {
+    return taskListStore.allLists.find(l => l.id === props.taskListId)?.title || '任务清单'
+  }
+  return '任务列表'
+})
+
+// Table columns(清单作用域下省略任务清单列)
+const columns = computed(() => [
   { colKey: 'title', title: '标题', width: 300 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
-  { colKey: 'task_list', title: '任务清单', width: 140 },
+  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
   { colKey: 'due_date', title: '截止时间', width: 180 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
   { colKey: 'updated_at', title: '更新时间', width: 180 },
   { colKey: 'action', title: '操作', width: 320, fixed: 'right' }
-]
+])
 
 // Fetch tasks
 const fetchTasks = async () => {
@@ -67,7 +80,9 @@ const fetchTasks = async () => {
     params.status = currentStatus.value
   }
 
-  if (currentTaskLists.value.length) {
+  if (props.taskListId) {
+    params.task_list_id = [props.taskListId]
+  } else if (currentTaskLists.value.length) {
     params.task_list_id = currentTaskLists.value
   }
 
@@ -218,6 +233,14 @@ const onPageChange = (pageInfo: any) => {
   fetchTasks()
 }
 
+// 路由在 /tasks 与各清单子路由之间切换时复用同一组件实例,监听 prop 重置状态并刷新
+watch(() => props.taskListId, () => {
+  pagination.value.current = 1
+  currentTaskLists.value = []
+  searchQuery.value = ''
+  fetchTasks()
+})
+
 // On mounted
 onMounted(() => {
   fetchTasks()
@@ -229,7 +252,7 @@ onMounted(() => {
   <div class="task-list-container">
     <!-- Header -->
     <div class="page-header">
-      <div class="title">任务列表</div>
+      <div class="title">{{ pageTitle }}</div>
       <t-button theme="primary" @click="openCreateDialog">
         <template #icon><t-icon name="add" /></template>
         新建任务
@@ -250,6 +273,7 @@ onMounted(() => {
           @change="handleStatusChange"
         />
         <t-select
+          v-if="!isListScoped"
           v-model="currentTaskLists"
           :options="taskListOptions"
           placeholder="选择任务清单"
@@ -370,7 +394,7 @@ onMounted(() => {
       @confirm="createFormRef?.submit()"
       @cancel="showCreateDialog = false"
     >
-      <TaskForm ref="createFormRef" @submit="handleCreateTask" />
+      <TaskForm ref="createFormRef" :default-task-list-id="taskListId" @submit="handleCreateTask" />
     </t-dialog>
 
     <!-- Edit Dialog -->

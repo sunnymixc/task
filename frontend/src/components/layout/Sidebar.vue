@@ -1,26 +1,46 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { useTaskListStore } from '@/stores/taskList'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const uiStore = useUiStore()
+const taskListStore = useTaskListStore()
 
 interface MenuItem {
   title: string
   icon: string
   path: string
+  // exact 为 true 时仅精确匹配高亮(避免子菜单路由下父项同时高亮)
+  exact?: boolean
 }
 
 const menuItems: MenuItem[] = [
   { title: '任务列表', icon: 'view-list', path: '/tasks' },
-  { title: '任务清单', icon: 'bulletpoint', path: '/task-lists' }
+  { title: '任务清单', icon: 'bulletpoint', path: '/task-lists', exact: true }
 ]
 
-const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/')
+// 任务清单子菜单(每个清单一项)
+const taskListChildren = computed(() =>
+  taskListStore.allLists.map(list => ({
+    title: list.title,
+    path: `/task-lists/${list.id}/tasks`,
+    isDefault: list.is_default
+  }))
+)
+
+const isActive = (item: MenuItem) =>
+  item.exact
+    ? route.path === item.path
+    : route.path === item.path || route.path.startsWith(item.path + '/')
+
+onMounted(() => {
+  taskListStore.fetchAllLists()
+})
 
 const handleMenuClick = (path: string) => {
   if (route.path !== path) {
@@ -60,22 +80,36 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
 
     <!-- 中部菜单区 -->
     <div class="menu-top">
-      <t-tooltip
-        v-for="item in menuItems"
-        :key="item.path"
-        :content="item.title"
-        placement="right"
-        :disabled="!uiStore.sidebarCollapsed"
-      >
-        <div
-          class="menu-item"
-          :class="{ 'menu-item--active': isActive(item.path) }"
-          @click="handleMenuClick(item.path)"
+      <div v-for="item in menuItems" :key="item.path" class="menu-group">
+        <t-tooltip
+          :content="item.title"
+          placement="right"
+          :disabled="!uiStore.sidebarCollapsed"
         >
-          <div class="menu-icon"><t-icon :name="item.icon" /></div>
-          <span v-if="!uiStore.sidebarCollapsed" class="menu-title">{{ item.title }}</span>
-        </div>
-      </t-tooltip>
+          <div
+            class="menu-item"
+            :class="{ 'menu-item--active': isActive(item) }"
+            @click="handleMenuClick(item.path)"
+          >
+            <div class="menu-icon"><t-icon :name="item.icon" /></div>
+            <span v-if="!uiStore.sidebarCollapsed" class="menu-title">{{ item.title }}</span>
+          </div>
+        </t-tooltip>
+
+        <!-- 任务清单子菜单 -->
+        <template v-if="item.path === '/task-lists' && !uiStore.sidebarCollapsed">
+          <div
+            v-for="child in taskListChildren"
+            :key="child.path"
+            class="menu-item menu-item--sub"
+            :class="{ 'menu-item--active': route.path === child.path }"
+            @click="handleMenuClick(child.path)"
+          >
+            <span class="menu-title">{{ child.title }}</span>
+            <t-tag v-if="child.isDefault" size="small" variant="light" class="menu-sub-tag">默认</t-tag>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- 底部用户区 -->
@@ -236,6 +270,22 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 任务清单子菜单项 */
+.menu-item--sub {
+  height: 32px;
+  padding: 6px 10px 6px calc(var(--sidebar-inset-x) + var(--sidebar-icon-size) + var(--sidebar-icon-gap));
+}
+
+.menu-item--sub .menu-title {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.menu-sub-tag {
+  flex-shrink: 0;
+  margin-left: 6px;
 }
 
 .sidebar-toggle-collapsed {

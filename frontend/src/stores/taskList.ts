@@ -11,6 +11,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 
 export const useTaskListStore = defineStore('taskList', () => {
   const lists = ref<TaskList[]>([])
+  const allLists = ref<TaskList[]>([])
   const total = ref(0)
   const loading = ref(false)
   const currentPage = ref(1)
@@ -38,15 +39,14 @@ export const useTaskListStore = defineStore('taskList', () => {
     }
   }
 
-  // Fetch all task lists (for selectors/filters)
+  // Fetch all task lists (for selectors/filters/sidebar)
   const fetchAllLists = async (): Promise<TaskList[]> => {
     try {
       const response = await taskListAPI.list({ page: 1, page_size: 100 })
       if (response.success) {
-        lists.value = response.data || []
-        total.value = response.total || 0
+        allLists.value = response.data || []
       }
-      return lists.value
+      return allLists.value
     } catch (error) {
       console.error('Failed to fetch task lists:', error)
       return []
@@ -59,6 +59,7 @@ export const useTaskListStore = defineStore('taskList', () => {
     try {
       const list = await taskListAPI.create(data)
       lists.value.unshift(list)
+      allLists.value.unshift(list)
       total.value += 1
       MessagePlugin.success('任务清单创建成功')
       return list
@@ -80,6 +81,10 @@ export const useTaskListStore = defineStore('taskList', () => {
       if (index !== -1) {
         lists.value[index] = updated
       }
+      const allIndex = allLists.value.findIndex(l => l.id === id)
+      if (allIndex !== -1) {
+        allLists.value[allIndex] = updated
+      }
       MessagePlugin.success('任务清单更新成功')
       return updated
     } catch (error) {
@@ -97,6 +102,7 @@ export const useTaskListStore = defineStore('taskList', () => {
     try {
       await taskListAPI.delete(id)
       lists.value = lists.value.filter(l => l.id !== id)
+      allLists.value = allLists.value.filter(l => l.id !== id)
       total.value -= 1
       MessagePlugin.success('任务清单删除成功')
       return true
@@ -118,6 +124,7 @@ export const useTaskListStore = defineStore('taskList', () => {
   // Reset state
   const reset = () => {
     lists.value = []
+    allLists.value = []
     total.value = 0
     currentPage.value = 1
     loading.value = false
@@ -125,6 +132,7 @@ export const useTaskListStore = defineStore('taskList', () => {
 
   return {
     lists,
+    allLists,
     total,
     loading,
     currentPage,

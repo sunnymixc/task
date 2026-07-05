@@ -5,6 +5,8 @@ import { useTaskListStore } from '@/stores/taskList'
 
 interface Props {
   task?: Task | null
+  // 新建模式下的默认清单(如清单作用域页面传入当前清单),优先于默认清单
+  defaultTaskListId?: string
 }
 
 interface Emits {
@@ -29,20 +31,17 @@ const form = reactive({
 
 // 清单选项(默认清单置顶,后端已按 is_default DESC 排序)
 const taskListOptions = computed(() =>
-  taskListStore.lists.map(list => ({
+  taskListStore.allLists.map(list => ({
     label: list.is_default ? `${list.title}（默认）` : list.title,
     value: list.id
   }))
 )
 
-// 加载清单选项;新建模式下预选默认清单
+// 加载清单选项;新建模式下预选传入的默认清单或全局默认清单
 onMounted(async () => {
   const lists = await taskListStore.fetchAllLists()
   if (!props.task && !form.task_list_id) {
-    const defaultList = lists.find(l => l.is_default)
-    if (defaultList) {
-      form.task_list_id = defaultList.id
-    }
+    form.task_list_id = props.defaultTaskListId || lists.find(l => l.is_default)?.id || ''
   }
 })
 
@@ -84,7 +83,7 @@ watch(() => props.task, (task) => {
     form.description = ''
     form.priority = 'medium'
     form.status = 'draft'
-    form.task_list_id = taskListStore.lists.find(l => l.is_default)?.id || ''
+    form.task_list_id = props.defaultTaskListId || taskListStore.allLists.find(l => l.is_default)?.id || ''
     form.due_date = ''
   }
   formRef.value?.reset()
