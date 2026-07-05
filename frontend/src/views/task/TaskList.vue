@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useTaskStore } from '@/stores/task'
-import type { Task, TaskStatus, TaskPriority } from '@/types'
+import type { Task, TaskStatus } from '@/types'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
 import StatusBadge from '@/components/task/StatusBadge.vue'
@@ -16,7 +16,6 @@ const total = computed(() => taskStore.total)
 
 // Filter states
 const currentStatus = ref<TaskStatus[]>(['draft', 'pending', 'running'])
-const currentPriority = ref<TaskPriority[]>([])
 const searchQuery = ref('')
 
 // Pagination
@@ -31,13 +30,6 @@ const statusOptions = [
   { label: '待执行', value: 'pending' },
   { label: '执行中', value: 'running' },
   { label: '已完成', value: 'completed' }
-]
-
-// Priority filter options
-const priorityOptions = [
-  { label: '高', value: 'high' },
-  { label: '中', value: 'medium' },
-  { label: '低', value: 'low' }
 ]
 
 // Table columns
@@ -63,21 +55,12 @@ const fetchTasks = async () => {
   if (currentStatus.value.length) {
     params.status = currentStatus.value
   }
-  if (currentPriority.value.length) {
-    params.priority = currentPriority.value
-  }
 
   await taskStore.fetchTasks(params)
 }
 
 // Handle status filter change
 const handleStatusChange = () => {
-  pagination.value.current = 1
-  fetchTasks()
-}
-
-// Handle priority filter change
-const handlePriorityChange = () => {
   pagination.value.current = 1
   fetchTasks()
 }
@@ -240,16 +223,6 @@ onMounted(() => {
           auto-width
           style="min-width: 120px"
           @change="handleStatusChange"
-        />
-        <t-select
-          v-model="currentPriority"
-          :options="priorityOptions"
-          placeholder="选择优先级"
-          multiple
-          clearable
-          :min-collapsed-num="1"
-          style="min-width: 100px"
-          @change="handlePriorityChange"
         />
       </div>
       <div class="search-group">
@@ -426,7 +399,13 @@ onMounted(() => {
 
 .filter-group {
   display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 12px;
+}
+
+.filter-group > * {
+  flex: 0 0 auto;
 }
 
 .table-container {
