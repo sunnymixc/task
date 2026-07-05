@@ -161,7 +161,7 @@ func (s *taskService) ListTasks(ctx context.Context, req *types.ListTasksRequest
 	var tasks []*types.Task
 	var total int64
 
-	if filters.Status != nil || filters.AssigneeID != nil || filters.CreatorID != nil || filters.Priority != nil {
+	if len(filters.Status) > 0 || filters.AssigneeID != nil || filters.CreatorID != nil || len(filters.Priority) > 0 {
 		tasks, total, err = s.taskRepo.FilterTasks(ctx, user.TenantID, filters, offset, pageSize)
 	} else {
 		tasks, total, err = s.taskRepo.GetTasksByTenantID(ctx, user.TenantID, offset, pageSize)

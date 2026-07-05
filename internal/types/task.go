@@ -117,10 +117,10 @@ type UpdateTaskStatusRequest struct {
 
 // ListTasksRequest 列出任务请求
 type ListTasksRequest struct {
-	Status     *TaskStatus  `form:"status" binding:"omitempty,oneof=draft published in_progress completed ended"`
-	AssigneeID *string      `form:"assignee_id" binding:"omitempty,uuid"`
-	CreatorID  *string      `form:"creator_id" binding:"omitempty,uuid"`
-	Priority   *TaskPriority `form:"priority" binding:"omitempty,oneof=low medium high"`
+	Status     []TaskStatus  `form:"status" binding:"omitempty,dive,oneof=draft published in_progress completed ended"`
+	AssigneeID *string       `form:"assignee_id" binding:"omitempty,uuid"`
+	CreatorID  *string       `form:"creator_id" binding:"omitempty,uuid"`
+	Priority   []TaskPriority `form:"priority" binding:"omitempty,dive,oneof=low medium high"`
 	Page       int          `form:"page" binding:"min=1"`
 	PageSize   int          `form:"page_size" binding:"min=1,max=100"`
 }
@@ -134,10 +134,10 @@ type SearchTasksRequest struct {
 
 // TaskFilters represents filters for querying tasks
 type TaskFilters struct {
-	Status     *TaskStatus
+	Status     []TaskStatus
 	AssigneeID *string
 	CreatorID  *string
-	Priority   *TaskPriority
+	Priority   []TaskPriority
 }
 
 // TaskResponse represents the response for a task

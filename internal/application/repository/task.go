@@ -130,8 +130,8 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 
 // applyFilters applies filters to the query
 func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *gorm.DB {
-	if filters.Status != nil {
-		db = db.Where("status = ?", *filters.Status)
+	if len(filters.Status) > 0 {
+		db = db.Where("status IN ?", filters.Status)
 	}
 	if filters.AssigneeID != nil {
 		db = db.Where("assignee_id = ?", *filters.AssigneeID)
@@ -139,8 +139,8 @@ func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *g
 	if filters.CreatorID != nil {
 		db = db.Where("creator_id = ?", *filters.CreatorID)
 	}
-	if filters.Priority != nil {
-		db = db.Where("priority = ?", *filters.Priority)
+	if len(filters.Priority) > 0 {
+		db = db.Where("priority IN ?", filters.Priority)
 	}
 	return db
 }

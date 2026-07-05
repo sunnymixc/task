@@ -15,8 +15,8 @@ const loading = computed(() => taskStore.loading)
 const total = computed(() => taskStore.total)
 
 // Filter states
-const currentStatus = ref<TaskStatus | 'all'>('all')
-const currentPriority = ref<TaskPriority | 'all'>('all')
+const currentStatus = ref<TaskStatus[]>([])
+const currentPriority = ref<TaskPriority[]>([])
 const searchQuery = ref('')
 
 // Pagination
@@ -27,7 +27,6 @@ const pagination = ref({
 
 // Status filter options
 const statusOptions = [
-  { label: '全部', value: 'all' },
   { label: '草稿', value: 'draft' },
   { label: '待执行', value: 'published' },
   { label: '执行中', value: 'in_progress' },
@@ -37,7 +36,6 @@ const statusOptions = [
 
 // Priority filter options
 const priorityOptions = [
-  { label: '全部', value: 'all' },
   { label: '高', value: 'high' },
   { label: '中', value: 'medium' },
   { label: '低', value: 'low' }
@@ -63,10 +61,10 @@ const fetchTasks = async () => {
     page_size: pagination.value.pageSize
   }
 
-  if (currentStatus.value !== 'all') {
+  if (currentStatus.value.length) {
     params.status = currentStatus.value
   }
-  if (currentPriority.value !== 'all') {
+  if (currentPriority.value.length) {
     params.priority = currentPriority.value
   }
 
@@ -238,14 +236,20 @@ onMounted(() => {
           v-model="currentStatus"
           :options="statusOptions"
           placeholder="选择状态"
-          style="width: 120px"
+          multiple
+          clearable
+          :min-collapsed-num="1"
+          style="min-width: 120px"
           @change="handleStatusChange"
         />
         <t-select
           v-model="currentPriority"
           :options="priorityOptions"
           placeholder="选择优先级"
-          style="width: 100px"
+          multiple
+          clearable
+          :min-collapsed-num="1"
+          style="min-width: 100px"
           @change="handlePriorityChange"
         />
       </div>

@@ -105,10 +105,10 @@ export interface UpdateTaskStatusRequest {
 }
 
 export interface ListTasksRequest {
-  status?: TaskStatus
+  status?: TaskStatus[]
   assignee_id?: string
   creator_id?: string
-  priority?: TaskPriority
+  priority?: TaskPriority[]
   page?: number
   page_size?: number
 }

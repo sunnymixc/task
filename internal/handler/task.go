@@ -194,9 +194,10 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	req := &types.ListTasksRequest{}
 
 	// Parse query parameters
-	if status := c.Query("status"); status != "" {
-		s := types.TaskStatus(status)
-		req.Status = &s
+	if statuses := c.QueryArray("status"); len(statuses) > 0 {
+		for _, s := range statuses {
+			req.Status = append(req.Status, types.TaskStatus(s))
+		}
 	}
 	if assigneeID := c.Query("assignee_id"); assigneeID != "" {
 		req.AssigneeID = &assigneeID
@@ -204,9 +205,10 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	if creatorID := c.Query("creator_id"); creatorID != "" {
 		req.CreatorID = &creatorID
 	}
-	if priority := c.Query("priority"); priority != "" {
-		p := types.TaskPriority(priority)
-		req.Priority = &p
+	if priorities := c.QueryArray("priority"); len(priorities) > 0 {
+		for _, p := range priorities {
+			req.Priority = append(req.Priority, types.TaskPriority(p))
+		}
 	}
 
 	// Parse pagination

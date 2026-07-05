@@ -15,7 +15,9 @@ export const taskAPI = {
     return request({
       url: '/v1/tasks',
       method: 'GET',
-      params
+      params,
+      // 数组参数序列化为重复同名参数(status=a&status=b),与后端 gin QueryArray 对齐
+      paramsSerializer: { indexes: null }
     })
   },
 
