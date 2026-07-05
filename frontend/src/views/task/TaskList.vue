@@ -286,7 +286,7 @@ onMounted(() => {
       >
         <template #title="{ row }">
           <div class="task-title">{{ row.title }}</div>
-          <div class="task-desc">{{ row.description || '-' }}</div>
+          <div v-if="row.description" class="task-desc">{{ row.description }}</div>
         </template>
 
         <template #status="{ row }">
