@@ -54,7 +54,7 @@ func NewTaskHandler(taskService interfaces.TaskService) *TaskHandler {
 type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
-	Status      string       `json:"status" binding:"omitempty,oneof=draft published in_progress completed"`
+	Status      string       `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
 	AssigneeID  *string      `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *string      `json:"due_date"` // ISO 8601 date string
@@ -64,7 +64,7 @@ type CreateTaskRequest struct {
 type UpdateTaskRequest struct {
 	Title       *string  `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string  `json:"description" binding:"omitempty,max=5000"`
-	Status      *string  `json:"status" binding:"omitempty,oneof=draft published in_progress completed"`
+	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
 	AssigneeID  *string  `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *string  `json:"due_date"`
@@ -72,7 +72,7 @@ type UpdateTaskRequest struct {
 
 // UpdateTaskStatusRequest represents the update task status request body
 type UpdateTaskStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=draft published in_progress completed"`
+	Status string `json:"status" binding:"required,oneof=draft pending running completed"`
 }
 
 // CreateTask creates a new task

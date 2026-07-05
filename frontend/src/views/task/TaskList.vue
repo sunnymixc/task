@@ -28,8 +28,8 @@ const pagination = ref({
 // Status filter options
 const statusOptions = [
   { label: '草稿', value: 'draft' },
-  { label: '待执行', value: 'published' },
-  { label: '执行中', value: 'in_progress' },
+  { label: '待执行', value: 'pending' },
+  { label: '执行中', value: 'running' },
   { label: '已完成', value: 'completed' }
 ]
 

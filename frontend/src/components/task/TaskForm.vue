@@ -29,8 +29,8 @@ const form = reactive({
 // Status workflow for the steps component
 const statusSteps: { value: TaskStatus; title: string; content: string }[] = [
   { value: 'draft', title: '草稿', content: '任务已创建，尚未发布' },
-  { value: 'published', title: '待执行', content: '任务待执行，等待处理' },
-  { value: 'in_progress', title: '执行中', content: '任务执行中' },
+  { value: 'pending', title: '待执行', content: '任务待执行，等待处理' },
+  { value: 'running', title: '执行中', content: '任务执行中' },
   { value: 'completed', title: '已完成', content: '任务已完成' }
 ]
 
