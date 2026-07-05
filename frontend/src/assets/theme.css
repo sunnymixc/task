@@ -59,12 +59,12 @@
   --sidebar-icon-size: 18px;
   --sidebar-icon-gap: 8px;
 
-  /* 圆角（全局统一 2px） */
-  --td-radius-small: 2px;
-  --td-radius-default: 2px;
-  --td-radius-medium: 2px;
-  --td-radius-large: 2px;
-  --td-radius-extraLarge: 2px;
+  /* 圆角（全局统一 1px） */
+  --td-radius-small: 1px;
+  --td-radius-default: 1px;
+  --td-radius-medium: 1px;
+  --td-radius-large: 1px;
+  --td-radius-extraLarge: 1px;
 
   /* 阴影（全局削弱） */
   --td-shadow-1: 0 0 1px 1px rgba(0, 0, 0, 0.1);
