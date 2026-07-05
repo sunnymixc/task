@@ -57,6 +57,12 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
+		// 非 API 路径(静态资源、SPA 路由)不需要鉴权
+		if !strings.HasPrefix(c.Request.URL.Path, "/api") {
+			c.Next()
+			return
+		}
+
 		// Check if this is a no-auth API
 		if isNoAuthAPI(c.Request.URL.Path, c.Request.Method) {
 			c.Next()
