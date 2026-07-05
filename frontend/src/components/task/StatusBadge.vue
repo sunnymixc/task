@@ -10,8 +10,8 @@ const props = defineProps<Props>()
 
 const statusConfig: Record<TaskStatus, { label: string; theme: 'default' | 'primary' | 'warning' | 'success' | 'error' }> = {
   draft: { label: '草稿', theme: 'default' },
-  published: { label: '待执行', theme: 'primary' },
-  in_progress: { label: '执行中', theme: 'warning' },
+  published: { label: '待执行', theme: 'warning' },
+  in_progress: { label: '执行中', theme: 'primary' },
   completed: { label: '已完成', theme: 'success' }
 }
 
