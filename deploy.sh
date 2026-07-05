@@ -3,7 +3,7 @@
 # Task Management System - Deploy Script
 # Builds the frontend into static assets, embeds them into the Go binary,
 # and runs the result as a single unified app.
-# Usage: ./deploy.sh {build|start|stop|restart|status}
+# Usage: ./deploy.sh {build|start|stop|restart|deploy|status}
 
 set -e
 
@@ -238,6 +238,13 @@ restart_app() {
     start_app
 }
 
+# Deploy: rebuild everything, then restart the app
+deploy_app() {
+    log_info "Deploying $PROJECT_NAME..."
+    build_app || return 1
+    restart_app
+}
+
 # Show app status
 show_status() {
     echo ""
@@ -282,13 +289,14 @@ show_status() {
 # Show usage
 show_usage() {
     cat << EOF
-Usage: $0 {build|start|stop|restart|status}
+Usage: $0 {build|start|stop|restart|deploy|status}
 
 Commands:
   build    Build frontend static assets, embed them, then build the Go binary
   start    Start the unified app (does NOT auto-build; run 'build' first)
   stop     Stop the unified app
   restart  Restart the unified app (reuses the existing binary)
+  deploy   Rebuild everything then restart (= build + restart)
   status   Show app status
 
 The unified app serves both the SPA and the API from a single process
@@ -302,7 +310,7 @@ Examples:
   $0 build           # Build frontend + backend into one binary
   $0 start           # Start the unified app on port $APP_PORT
   DEPLOY_PORT=8080 $0 start
-  $0 build && $0 restart   # Deploy a new version
+  $0 deploy          # Build a new version and restart
 
 EOF
 }
@@ -323,6 +331,9 @@ main() {
             ;;
         restart)
             restart_app
+            ;;
+        deploy)
+            deploy_app
             ;;
         status)
             show_status
