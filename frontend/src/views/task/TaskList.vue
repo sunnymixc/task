@@ -432,9 +432,9 @@ onMounted(() => {
   overflow: auto;
   position: relative;
   background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
+  border: 0;
   border-radius: var(--td-radius-default);
-  padding: 16px;
+  padding: 0;
 }
 
 .task-title {
