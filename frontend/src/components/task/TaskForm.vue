@@ -23,7 +23,7 @@ const taskListStore = useTaskListStore()
 const form = reactive({
   title: '',
   description: '',
-  priority: 'medium' as TaskPriority,
+  priority: 'high' as TaskPriority,
   status: 'draft' as TaskStatus,
   task_list_id: '',
   due_date: '' as string | Date
@@ -81,7 +81,7 @@ watch(() => props.task, (task) => {
   if (!task) {
     form.title = ''
     form.description = ''
-    form.priority = 'medium'
+    form.priority = 'high'
     form.status = 'draft'
     form.task_list_id = props.defaultTaskListId || taskListStore.allLists.find(l => l.is_default)?.id || ''
     form.due_date = ''

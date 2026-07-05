@@ -58,7 +58,7 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 	// Set default priority if not provided
 	priority := req.Priority
 	if priority == "" {
-		priority = types.TaskPriorityMedium
+		priority = types.TaskPriorityHigh
 	}
 
 	// Set default status if not provided
