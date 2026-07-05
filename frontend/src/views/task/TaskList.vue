@@ -271,6 +271,7 @@ onMounted(() => {
         :data="tasks"
         :columns="columns"
         :loading="loading"
+        :header-affixed-top="{ container: '.table-container' }"
         :pagination="{
           current: pagination.current,
           pageSize: pagination.pageSize,
@@ -429,6 +430,7 @@ onMounted(() => {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  position: relative;
   background: var(--td-bg-color-container);
   border: 1px solid var(--td-component-stroke);
   border-radius: var(--td-radius-default);
