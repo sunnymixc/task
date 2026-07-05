@@ -64,6 +64,40 @@ get_pid() {
     fi
 }
 
+# Find the PID of whatever is listening on the app port (empty if none).
+# Fallback for when the PID file is missing/stale but the app is still running.
+get_port_pid() {
+    local pid=""
+    if command -v lsof > /dev/null 2>&1; then
+        pid=$(lsof -ti "tcp:$APP_PORT" -sTCP:LISTEN 2>/dev/null | head -1)
+    fi
+    if [ -z "$pid" ] && command -v ss > /dev/null 2>&1; then
+        pid=$(ss -tlnp 2>/dev/null | awk -v p=":$APP_PORT" '$4 ~ p"$"' \
+            | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2)
+    fi
+    echo "$pid"
+}
+
+# Kill a PID gracefully (SIGTERM, wait up to 10s, then SIGKILL)
+kill_pid_gracefully() {
+    local pid="$1"
+    kill "$pid" 2>/dev/null || true
+
+    local count=0
+    while ps -p "$pid" > /dev/null 2>&1 && [ $count -lt 10 ]; do
+        sleep 1
+        count=$((count + 1))
+    done
+
+    if ps -p "$pid" > /dev/null 2>&1; then
+        log_warn "Force killing PID $pid..."
+        kill -9 "$pid" 2>/dev/null || true
+        sleep 1
+    fi
+
+    ! ps -p "$pid" > /dev/null 2>&1
+}
+
 # Build the frontend into static assets
 build_frontend() {
     log_info "Building frontend..."
@@ -149,6 +183,14 @@ start_app() {
         return 1
     fi
 
+    # Fail fast if the port is already taken (e.g. an orphan instance)
+    local port_pid=$(get_port_pid)
+    if [ -n "$port_pid" ]; then
+        local port_cmd=$(ps -p "$port_pid" -o comm= 2>/dev/null | tr -d ' ')
+        log_error "Port $APP_PORT is already in use by '$port_cmd' (PID: $port_pid). Run '$0 stop' first."
+        return 1
+    fi
+
     log_info "Starting $PROJECT_NAME..."
 
     ensure_dirs
@@ -194,6 +236,24 @@ start_app() {
 # Stop the unified app
 stop_app() {
     if ! is_running; then
+        # PID file is missing/stale — check for an orphan process still holding the port
+        local orphan=$(get_port_pid)
+        if [ -n "$orphan" ]; then
+            local orphan_cmd=$(ps -p "$orphan" -o comm= 2>/dev/null | tr -d ' ')
+            if [ "$orphan_cmd" = "$BINARY_NAME" ]; then
+                log_warn "No PID file, but $BINARY_NAME (PID: $orphan) is still holding port $APP_PORT; stopping it..."
+                if kill_pid_gracefully "$orphan"; then
+                    log_info "App stopped"
+                    return 0
+                else
+                    log_error "Failed to stop orphan process (PID: $orphan)"
+                    return 1
+                fi
+            else
+                log_warn "Port $APP_PORT is held by unrelated process '$orphan_cmd' (PID: $orphan); not touching it"
+                return 0
+            fi
+        fi
         log_warn "App is not running"
         return 0
     fi
@@ -201,33 +261,15 @@ stop_app() {
     local pid=$(get_pid)
     log_info "Stopping app (PID: $pid)..."
 
-    # Send SIGTERM
-    kill "$pid" 2>/dev/null || true
-
-    # Wait for graceful shutdown (max 10 seconds)
-    local count=0
-    while is_running && [ $count -lt 10 ]; do
-        sleep 1
-        count=$((count + 1))
-    done
-
-    # Force kill if still running
-    if is_running; then
-        log_warn "Force killing app..."
-        kill -9 "$pid" 2>/dev/null || true
-        sleep 1
+    if ! kill_pid_gracefully "$pid"; then
+        log_error "Failed to stop app"
+        return 1
     fi
 
     # Clean up PID file
     rm -f "$PID_FILE"
-
-    if is_running; then
-        log_error "Failed to stop app"
-        return 1
-    else
-        log_info "App stopped"
-        return 0
-    fi
+    log_info "App stopped"
+    return 0
 }
 
 # Restart the unified app (reuses the existing binary; run 'build' to rebuild)
