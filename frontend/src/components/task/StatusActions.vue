@@ -19,19 +19,14 @@ const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> 
     { label: '开始', value: 'in_progress' }
   ],
   published: [
-    { label: '开始', value: 'in_progress' },
-    { label: '结束', value: 'ended' }
+    { label: '开始', value: 'in_progress' }
   ],
   in_progress: [
     { label: '完成', value: 'completed' },
     { label: '暂停', value: 'published' }
   ],
   completed: [
-    { label: '重新开始', value: 'in_progress' },
-    { label: '结束', value: 'ended' }
-  ],
-  ended: [
-    { label: '重新打开', value: 'published' }
+    { label: '重新开始', value: 'in_progress' }
   ]
 }
 

@@ -30,8 +30,7 @@ const statusOptions = [
   { label: '草稿', value: 'draft' },
   { label: '待执行', value: 'published' },
   { label: '执行中', value: 'in_progress' },
-  { label: '已完成', value: 'completed' },
-  { label: '已结束', value: 'ended' }
+  { label: '已完成', value: 'completed' }
 ]
 
 // Priority filter options

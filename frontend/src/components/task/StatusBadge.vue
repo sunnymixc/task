@@ -12,8 +12,7 @@ const statusConfig: Record<TaskStatus, { label: string; theme: 'default' | 'prim
   draft: { label: '草稿', theme: 'default' },
   published: { label: '待执行', theme: 'primary' },
   in_progress: { label: '执行中', theme: 'warning' },
-  completed: { label: '已完成', theme: 'success' },
-  ended: { label: '已结束', theme: 'default' }
+  completed: { label: '已完成', theme: 'success' }
 }
 
 const config = computed(() => statusConfig[props.status] ?? { label: props.status, theme: 'default' as const })
