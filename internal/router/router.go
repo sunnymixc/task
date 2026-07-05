@@ -13,10 +13,12 @@ func Setup(cfg *config.Config) *gin.Engine {
 	// Create services
 	userService := service.NewUserService(cfg)
 	taskService := service.NewTaskService()
+	taskListService := service.NewTaskListService()
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(userService)
 	taskHandler := handler.NewTaskHandler(taskService)
+	taskListHandler := handler.NewTaskListHandler(taskListService)
 
 	// Create router
 	r := gin.Default()
@@ -54,6 +56,16 @@ func Setup(cfg *config.Config) *gin.Engine {
 			tasks.PUT("/:id", taskHandler.UpdateTask)
 			tasks.DELETE("/:id", taskHandler.DeleteTask)
 			tasks.PATCH("/:id/status", taskHandler.UpdateTaskStatus)
+		}
+
+		// Task list routes
+		taskLists := v1.Group("/task-lists")
+		{
+			taskLists.GET("", taskListHandler.ListTaskLists)
+			taskLists.POST("", taskListHandler.CreateTaskList)
+			taskLists.GET("/:id", taskListHandler.GetTaskList)
+			taskLists.PUT("/:id", taskListHandler.UpdateTaskList)
+			taskLists.DELETE("/:id", taskListHandler.DeleteTaskList)
 		}
 	}
 

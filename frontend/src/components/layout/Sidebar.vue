@@ -16,7 +16,8 @@ interface MenuItem {
 }
 
 const menuItems: MenuItem[] = [
-  { title: '任务列表', icon: 'view-list', path: '/tasks' }
+  { title: '任务列表', icon: 'view-list', path: '/tasks' },
+  { title: '任务清单', icon: 'bulletpoint', path: '/task-lists' }
 ]
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/')

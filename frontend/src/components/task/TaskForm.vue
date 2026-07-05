@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority, TaskStatus } from '@/types'
+import { useTaskListStore } from '@/stores/taskList'
 
 interface Props {
   task?: Task | null
@@ -15,14 +16,34 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const formRef = ref()
-const loading = ref(false)
+const taskListStore = useTaskListStore()
 
 const form = reactive({
   title: '',
   description: '',
   priority: 'medium' as TaskPriority,
   status: 'draft' as TaskStatus,
-  due_date: ''
+  task_list_id: '',
+  due_date: '' as string | Date
+})
+
+// 清单选项(默认清单置顶,后端已按 is_default DESC 排序)
+const taskListOptions = computed(() =>
+  taskListStore.lists.map(list => ({
+    label: list.is_default ? `${list.title}（默认）` : list.title,
+    value: list.id
+  }))
+)
+
+// 加载清单选项;新建模式下预选默认清单
+onMounted(async () => {
+  const lists = await taskListStore.fetchAllLists()
+  if (!props.task && !form.task_list_id) {
+    const defaultList = lists.find(l => l.is_default)
+    if (defaultList) {
+      form.task_list_id = defaultList.id
+    }
+  }
 })
 
 // Status workflow for the steps component
@@ -43,12 +64,6 @@ const formRules = {
   ]
 }
 
-const priorityOptions = [
-  { label: '高', value: 'high' },
-  { label: '中', value: 'medium' },
-  { label: '低', value: 'low' }
-]
-
 // Watch for task changes (edit mode)
 watch(() => props.task, (task) => {
   if (task) {
@@ -56,6 +71,7 @@ watch(() => props.task, (task) => {
     form.description = task.description || ''
     form.priority = task.priority
     form.status = task.status
+    form.task_list_id = task.task_list_id || ''
     // Format date string for date picker
     form.due_date = task.due_date ? new Date(task.due_date) : ''
   }
@@ -68,6 +84,7 @@ watch(() => props.task, (task) => {
     form.description = ''
     form.priority = 'medium'
     form.status = 'draft'
+    form.task_list_id = taskListStore.lists.find(l => l.is_default)?.id || ''
     form.due_date = ''
   }
   formRef.value?.reset()
@@ -81,7 +98,8 @@ const handleSubmit = async () => {
     title: form.title,
     description: form.description || undefined,
     status: form.status,
-    priority: form.priority
+    priority: form.priority,
+    task_list_id: form.task_list_id || undefined
   }
 
   if (form.due_date) {
@@ -91,10 +109,6 @@ const handleSubmit = async () => {
   }
 
   emit('submit', data)
-}
-
-const handleCancel = () => {
-  emit('cancel')
 }
 
 // Expose submit so the dialog footer can trigger validation + submit
@@ -125,6 +139,14 @@ defineExpose({ submit: handleSubmit })
         :maxlength="5000"
         :autosize="{ minRows: 4, maxRows: 14 }"
         show-limit-number
+      />
+    </t-form-item>
+
+    <t-form-item label="任务清单" name="task_list_id">
+      <t-select
+        v-model="form.task_list_id"
+        :options="taskListOptions"
+        placeholder="请选择任务清单"
       />
     </t-form-item>
 

@@ -4,12 +4,9 @@ import { taskAPI } from '@/api/task'
 import type {
   CreateTaskRequest,
   ListTasksRequest,
-  SearchTasksRequest,
   Task,
   UpdateTaskRequest,
-  UpdateTaskStatusRequest,
-  TaskStatus,
-  TaskPriority
+  TaskStatus
 } from '@/types'
 import { MessagePlugin } from 'tdesign-vue-next'
 

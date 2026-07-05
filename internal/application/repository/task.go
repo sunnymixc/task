@@ -33,6 +33,7 @@ func (r *taskRepository) GetTaskByID(ctx context.Context, id string) (*types.Tas
 	err := r.db.WithContext(ctx).
 		Preload("Creator").
 		Preload("Tenant").
+		Preload("TaskList").
 		Where("id = ?", id).
 		First(&task).Error
 	if err != nil {
@@ -56,6 +57,7 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 	}
 
 	err := query.Preload("Creator").
+		Preload("TaskList").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -93,6 +95,7 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 	}
 
 	err := db.Preload("Creator").
+		Preload("TaskList").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -116,6 +119,7 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 	}
 
 	err := db.Preload("Creator").
+		Preload("TaskList").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -135,5 +139,16 @@ func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *g
 	if len(filters.Priority) > 0 {
 		db = db.Where("priority IN ?", filters.Priority)
 	}
+	if filters.TaskListID != nil {
+		db = db.Where("task_list_id = ?", *filters.TaskListID)
+	}
 	return db
+}
+
+// MoveTasksToList reassigns all tasks in a list to another list (within a tenant)
+func (r *taskRepository) MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error {
+	return r.db.WithContext(ctx).
+		Model(&types.Task{}).
+		Where("tenant_id = ? AND task_list_id = ?", tenantID, fromListID).
+		Update("task_list_id", toListID).Error
 }

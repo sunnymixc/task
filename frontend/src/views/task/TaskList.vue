@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import type { Task, TaskStatus } from '@/types'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
@@ -37,6 +37,7 @@ const columns = [
   { colKey: 'title', title: '标题', width: 300 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
+  { colKey: 'task_list', title: '任务清单', width: 140 },
   { colKey: 'due_date', title: '截止时间', width: 180 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
@@ -267,6 +268,10 @@ onMounted(() => {
 
         <template #priority="{ row }">
           <PriorityBadge :priority="row.priority" />
+        </template>
+
+        <template #task_list="{ row }">
+          {{ row.task_list?.title || '-' }}
         </template>
 
         <template #due_date="{ row }">

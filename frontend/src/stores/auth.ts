@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { authAPI } from '@/api/auth'
-import type { LoginRequest, LoginResponse, RegisterRequest, User } from '@/types'
+import type { LoginRequest, RegisterRequest, User } from '@/types'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 export const useAuthStore = defineStore('auth', () => {

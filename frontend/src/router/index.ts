@@ -27,6 +27,12 @@ const routes: RouteRecordRaw[] = [
         name: 'TaskList',
         component: () => import('@/views/task/TaskList.vue'),
         meta: { title: '任务列表' }
+      },
+      {
+        path: 'task-lists',
+        name: 'TaskListManage',
+        component: () => import('@/views/task-list/TaskListManage.vue'),
+        meta: { title: '任务清单' }
       }
     ]
   },
@@ -43,7 +49,7 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   authStore.init()
 

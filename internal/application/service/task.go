@@ -14,9 +14,10 @@ import (
 
 // taskService implements interfaces.TaskService
 type taskService struct {
-	taskRepo  interfaces.TaskRepository
-	userRepo  interfaces.UserRepository
-	tenantRepo interfaces.TenantRepository
+	taskRepo     interfaces.TaskRepository
+	userRepo     interfaces.UserRepository
+	tenantRepo   interfaces.TenantRepository
+	taskListRepo interfaces.TaskListRepository
 }
 
 var (
@@ -29,9 +30,10 @@ var (
 // NewTaskService creates a new task service
 func NewTaskService() interfaces.TaskService {
 	return &taskService{
-		taskRepo:  repository.NewTaskRepository(),
-		userRepo:  repository.NewUserRepository(),
-		tenantRepo: repository.NewTenantRepository(),
+		taskRepo:     repository.NewTaskRepository(),
+		userRepo:     repository.NewUserRepository(),
+		tenantRepo:   repository.NewTenantRepository(),
+		taskListRepo: repository.NewTaskListRepository(),
 	}
 }
 
@@ -65,6 +67,24 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		status = types.TaskStatusDraft
 	}
 
+	// Resolve the task list: validate the given one, or fall back to the tenant's default
+	taskListID := req.TaskListID
+	if taskListID != "" {
+		list, err := s.taskListRepo.GetTaskListByID(ctx, taskListID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task list: %w", err)
+		}
+		if list == nil || list.TenantID != user.TenantID {
+			return nil, ErrTaskListNotFound
+		}
+	} else {
+		defaultList, err := getOrCreateDefaultTaskList(ctx, s.taskListRepo, user.TenantID, userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve default task list: %w", err)
+		}
+		taskListID = defaultList.ID
+	}
+
 	task := &types.Task{
 		ID:          uuid.New().String(),
 		TenantID:    user.TenantID,
@@ -73,6 +93,7 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		Status:      status,
 		Priority:    priority,
 		CreatorID:   userID,
+		TaskListID:  taskListID,
 		DueDate:     req.DueDate,
 	}
 
@@ -141,13 +162,14 @@ func (s *taskService) ListTasks(ctx context.Context, req *types.ListTasksRequest
 		Status:     req.Status,
 		CreatorID:  req.CreatorID,
 		Priority:   req.Priority,
+		TaskListID: req.TaskListID,
 	}
 
 	// If any filters are set, use FilterTasks, otherwise use GetTasksByTenantID
 	var tasks []*types.Task
 	var total int64
 
-	if len(filters.Status) > 0 || filters.CreatorID != nil || len(filters.Priority) > 0 {
+	if len(filters.Status) > 0 || filters.CreatorID != nil || len(filters.Priority) > 0 || filters.TaskListID != nil {
 		tasks, total, err = s.taskRepo.FilterTasks(ctx, user.TenantID, filters, offset, pageSize)
 	} else {
 		tasks, total, err = s.taskRepo.GetTasksByTenantID(ctx, user.TenantID, offset, pageSize)
@@ -184,6 +206,17 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 	}
 	if req.DueDate != nil {
 		task.DueDate = req.DueDate
+	}
+	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
+		// Validate the target list exists and belongs to the task's tenant
+		list, err := s.taskListRepo.GetTaskListByID(ctx, *req.TaskListID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task list: %w", err)
+		}
+		if list == nil || list.TenantID != task.TenantID {
+			return nil, ErrTaskListNotFound
+		}
+		task.TaskListID = *req.TaskListID
 	}
 
 	// Update status if provided (no transition restriction)

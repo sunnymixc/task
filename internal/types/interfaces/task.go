@@ -15,6 +15,7 @@ type TaskRepository interface {
 	DeleteTask(ctx context.Context, id string) error
 	SearchTasks(ctx context.Context, tenantID uint64, query string, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)
 	FilterTasks(ctx context.Context, tenantID uint64, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)
+	MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error
 }
 
 // TaskService defines the interface for task business logic

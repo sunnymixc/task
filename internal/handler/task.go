@@ -56,6 +56,7 @@ type CreateTaskRequest struct {
 	Description string       `json:"description" binding:"max=5000"`
 	Status      string       `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *string      `json:"due_date"` // ISO 8601 date string
 }
 
@@ -65,6 +66,7 @@ type UpdateTaskRequest struct {
 	Description *string  `json:"description" binding:"omitempty,max=5000"`
 	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID  *string  `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *string  `json:"due_date"`
 }
 
@@ -97,6 +99,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	createReq := &types.CreateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
+		TaskListID:  req.TaskListID,
 	}
 
 	// Parse priority
@@ -124,6 +127,13 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 
 	resp, err := h.taskService.CreateTask(c.Request.Context(), createReq)
 	if err != nil {
+		if err == service.ErrTaskListNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "指定的任务清单不存在",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Failed to create task: " + err.Error(),
@@ -198,6 +208,9 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	if creatorID := c.Query("creator_id"); creatorID != "" {
 		req.CreatorID = &creatorID
 	}
+	if taskListID := c.Query("task_list_id"); taskListID != "" {
+		req.TaskListID = &taskListID
+	}
 	if priorities := c.QueryArray("priority"); len(priorities) > 0 {
 		for _, p := range priorities {
 			req.Priority = append(req.Priority, types.TaskPriority(p))
@@ -262,6 +275,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	updateReq := &types.UpdateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
+		TaskListID:  req.TaskListID,
 	}
 
 	// Parse status if provided
@@ -302,6 +316,13 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"message": err.Error(),
+			})
+			return
+		}
+		if err == service.ErrTaskListNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "指定的任务清单不存在",
 			})
 			return
 		}
