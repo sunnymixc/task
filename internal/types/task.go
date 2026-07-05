@@ -65,8 +65,6 @@ type Task struct {
 	Status TaskStatus `json:"status" gorm:"type:varchar(20);not null;default:'draft'"`
 	// Priority of the task
 	Priority TaskPriority `json:"priority" gorm:"type:varchar(20);default:'medium'"`
-	// ID of the user assigned to this task (nullable)
-	AssigneeID *string `json:"assignee_id" gorm:"type:varchar(36)"`
 	// ID of the user who created this task
 	CreatorID string `json:"creator_id" gorm:"type:varchar(36);not null"`
 	// Due date for the task (nullable)
@@ -77,7 +75,6 @@ type Task struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 
 	// Associations (not stored in DB)
-	Assignee *User   `json:"assignee,omitempty" gorm:"foreignKey:AssigneeID"`
 	Creator  *User   `json:"creator,omitempty" gorm:"foreignKey:CreatorID"`
 	Tenant   *Tenant `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
 }
@@ -93,7 +90,6 @@ type CreateTaskRequest struct {
 	Description string       `json:"description" binding:"max=5000"`
 	Status      TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
-	AssigneeID  *string      `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *time.Time   `json:"due_date"`
 }
 
@@ -103,7 +99,6 @@ type UpdateTaskRequest struct {
 	Description *string       `json:"description" binding:"omitempty,max=5000"`
 	Status      *TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    *TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
-	AssigneeID  *string       `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *time.Time    `json:"due_date"`
 }
 
@@ -115,7 +110,6 @@ type UpdateTaskStatusRequest struct {
 // ListTasksRequest 列出任务请求
 type ListTasksRequest struct {
 	Status     []TaskStatus  `form:"status" binding:"omitempty,dive,oneof=draft pending running completed"`
-	AssigneeID *string       `form:"assignee_id" binding:"omitempty,uuid"`
 	CreatorID  *string       `form:"creator_id" binding:"omitempty,uuid"`
 	Priority   []TaskPriority `form:"priority" binding:"omitempty,dive,oneof=low medium high"`
 	Page       int          `form:"page" binding:"min=1"`
@@ -132,7 +126,6 @@ type SearchTasksRequest struct {
 // TaskFilters represents filters for querying tasks
 type TaskFilters struct {
 	Status     []TaskStatus
-	AssigneeID *string
 	CreatorID  *string
 	Priority   []TaskPriority
 }
@@ -145,14 +138,12 @@ type TaskResponse struct {
 	Description string       `json:"description"`
 	Status      TaskStatus   `json:"status"`
 	Priority    TaskPriority `json:"priority"`
-	AssigneeID  *string      `json:"assignee_id"`
 	CreatorID   string       `json:"creator_id"`
 	DueDate     *time.Time   `json:"due_date"`
 	CreatedAt   time.Time    `json:"created_at"`
 	UpdatedAt   time.Time    `json:"updated_at"`
 
 	// Nested objects
-	Assignee *UserInfo `json:"assignee,omitempty"`
 	Creator  *UserInfo `json:"creator,omitempty"`
 }
 
@@ -173,20 +164,10 @@ func (t *Task) ToResponse() *TaskResponse {
 		Description: t.Description,
 		Status:      t.Status,
 		Priority:    t.Priority,
-		AssigneeID:  t.AssigneeID,
 		CreatorID:   t.CreatorID,
 		DueDate:     t.DueDate,
 		CreatedAt:   t.CreatedAt,
 		UpdatedAt:   t.UpdatedAt,
-	}
-
-	if t.Assignee != nil {
-		resp.Assignee = &UserInfo{
-			ID:       t.Assignee.ID,
-			Username: t.Assignee.Username,
-			Email:    t.Assignee.Email,
-			Avatar:   t.Assignee.Avatar,
-		}
 	}
 
 	if t.Creator != nil {

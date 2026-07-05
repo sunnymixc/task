@@ -38,7 +38,6 @@ const columns = [
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
   { colKey: 'due_date', title: '截止时间', width: 180 },
-  { colKey: 'assignee', title: '指派人', width: 120 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
   { colKey: 'updated_at', title: '更新时间', width: 180 },
@@ -272,16 +271,6 @@ onMounted(() => {
 
         <template #due_date="{ row }">
           {{ row.due_date ? formatDate(row.due_date) : '-' }}
-        </template>
-
-        <template #assignee="{ row }">
-          <div v-if="row.assignee" class="creator-info">
-            <t-avatar :image="row.assignee?.avatar || ''" size="24">
-              {{ row.assignee?.username?.charAt(0) || 'U' }}
-            </t-avatar>
-            <span>{{ row.assignee?.username || '-' }}</span>
-          </div>
-          <span v-else>未分配</span>
         </template>
 
         <template #creator="{ row }">

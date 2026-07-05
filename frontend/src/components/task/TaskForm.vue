@@ -22,7 +22,6 @@ const form = reactive({
   description: '',
   priority: 'medium' as TaskPriority,
   status: 'draft' as TaskStatus,
-  assignee_id: '',
   due_date: ''
 })
 
@@ -57,7 +56,6 @@ watch(() => props.task, (task) => {
     form.description = task.description || ''
     form.priority = task.priority
     form.status = task.status
-    form.assignee_id = task.assignee_id || ''
     // Format date string for date picker
     form.due_date = task.due_date ? new Date(task.due_date) : ''
   }
@@ -70,7 +68,6 @@ watch(() => props.task, (task) => {
     form.description = ''
     form.priority = 'medium'
     form.status = 'draft'
-    form.assignee_id = ''
     form.due_date = ''
   }
   formRef.value?.reset()
@@ -87,9 +84,6 @@ const handleSubmit = async () => {
     priority: form.priority
   }
 
-  if (form.assignee_id) {
-    data.assignee_id = form.assignee_id
-  }
   if (form.due_date) {
     // Convert Date to ISO string
     const dateValue = form.due_date instanceof Date ? form.due_date.toISOString() : form.due_date
@@ -152,14 +146,6 @@ defineExpose({ submit: handleSubmit })
           {{ step.title }}
         </t-radio>
       </t-radio-group>
-    </t-form-item>
-
-    <t-form-item label="指派给" name="assignee_id">
-      <t-input
-        v-model="form.assignee_id"
-        placeholder="请输入用户ID"
-        clearable
-      />
     </t-form-item>
 
     <t-form-item label="截止日期" name="due_date">

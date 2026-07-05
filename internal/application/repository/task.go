@@ -31,7 +31,6 @@ func (r *taskRepository) CreateTask(ctx context.Context, task *types.Task) error
 func (r *taskRepository) GetTaskByID(ctx context.Context, id string) (*types.Task, error) {
 	var task types.Task
 	err := r.db.WithContext(ctx).
-		Preload("Assignee").
 		Preload("Creator").
 		Preload("Tenant").
 		Where("id = ?", id).
@@ -56,8 +55,7 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 		return nil, 0, err
 	}
 
-	err := query.Preload("Assignee").
-		Preload("Creator").
+	err := query.Preload("Creator").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -94,8 +92,7 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 		return nil, 0, err
 	}
 
-	err := db.Preload("Assignee").
-		Preload("Creator").
+	err := db.Preload("Creator").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -118,8 +115,7 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 		return nil, 0, err
 	}
 
-	err := db.Preload("Assignee").
-		Preload("Creator").
+	err := db.Preload("Creator").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -132,9 +128,6 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *gorm.DB {
 	if len(filters.Status) > 0 {
 		db = db.Where("status IN ?", filters.Status)
-	}
-	if filters.AssigneeID != nil {
-		db = db.Where("assignee_id = ?", *filters.AssigneeID)
 	}
 	if filters.CreatorID != nil {
 		db = db.Where("creator_id = ?", *filters.CreatorID)

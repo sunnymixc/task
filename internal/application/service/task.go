@@ -53,18 +53,6 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		return nil, errors.New("user not found")
 	}
 
-	// Validate assignee if provided
-	if req.AssigneeID != nil {
-		assignee, err := s.userRepo.GetUserByID(ctx, *req.AssigneeID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get assignee: %w", err)
-		}
-		if assignee == nil {
-			return nil, errors.New("assignee not found")
-		}
-		// TODO: Check if assignee is a member of the same tenant
-	}
-
 	// Set default priority if not provided
 	priority := req.Priority
 	if priority == "" {
@@ -84,7 +72,6 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		Description: req.Description,
 		Status:      status,
 		Priority:    priority,
-		AssigneeID:  req.AssigneeID,
 		CreatorID:   userID,
 		DueDate:     req.DueDate,
 	}
@@ -152,7 +139,6 @@ func (s *taskService) ListTasks(ctx context.Context, req *types.ListTasksRequest
 	// Build filters
 	filters := types.TaskFilters{
 		Status:     req.Status,
-		AssigneeID: req.AssigneeID,
 		CreatorID:  req.CreatorID,
 		Priority:   req.Priority,
 	}
@@ -161,7 +147,7 @@ func (s *taskService) ListTasks(ctx context.Context, req *types.ListTasksRequest
 	var tasks []*types.Task
 	var total int64
 
-	if len(filters.Status) > 0 || filters.AssigneeID != nil || filters.CreatorID != nil || len(filters.Priority) > 0 {
+	if len(filters.Status) > 0 || filters.CreatorID != nil || len(filters.Priority) > 0 {
 		tasks, total, err = s.taskRepo.FilterTasks(ctx, user.TenantID, filters, offset, pageSize)
 	} else {
 		tasks, total, err = s.taskRepo.GetTasksByTenantID(ctx, user.TenantID, offset, pageSize)
@@ -195,19 +181,6 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 	}
 	if req.Priority != nil {
 		task.Priority = *req.Priority
-	}
-	if req.AssigneeID != nil {
-		// Validate assignee
-		if *req.AssigneeID != "" {
-			assignee, err := s.userRepo.GetUserByID(ctx, *req.AssigneeID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get assignee: %w", err)
-			}
-			if assignee == nil {
-				return nil, errors.New("assignee not found")
-			}
-		}
-		task.AssigneeID = req.AssigneeID
 	}
 	if req.DueDate != nil {
 		task.DueDate = req.DueDate

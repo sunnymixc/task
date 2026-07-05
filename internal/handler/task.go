@@ -56,7 +56,6 @@ type CreateTaskRequest struct {
 	Description string       `json:"description" binding:"max=5000"`
 	Status      string       `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
-	AssigneeID  *string      `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *string      `json:"due_date"` // ISO 8601 date string
 }
 
@@ -66,7 +65,6 @@ type UpdateTaskRequest struct {
 	Description *string  `json:"description" binding:"omitempty,max=5000"`
 	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
-	AssigneeID  *string  `json:"assignee_id" binding:"omitempty,uuid"`
 	DueDate     *string  `json:"due_date"`
 }
 
@@ -99,7 +97,6 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	createReq := &types.CreateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
-		AssigneeID:  req.AssigneeID,
 	}
 
 	// Parse priority
@@ -183,7 +180,6 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param status query string false "Filter by status"
-// @Param assignee_id query string false "Filter by assignee ID"
 // @Param creator_id query string false "Filter by creator ID"
 // @Param priority query string false "Filter by priority"
 // @Param page query int false "Page number" default(1)
@@ -198,9 +194,6 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 		for _, s := range statuses {
 			req.Status = append(req.Status, types.TaskStatus(s))
 		}
-	}
-	if assigneeID := c.Query("assignee_id"); assigneeID != "" {
-		req.AssigneeID = &assigneeID
 	}
 	if creatorID := c.Query("creator_id"); creatorID != "" {
 		req.CreatorID = &creatorID
@@ -269,7 +262,6 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	updateReq := &types.UpdateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
-		AssigneeID:  req.AssigneeID,
 	}
 
 	// Parse status if provided

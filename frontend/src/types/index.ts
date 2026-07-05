@@ -66,12 +66,10 @@ export interface Task {
   description: string
   status: TaskStatus
   priority: TaskPriority
-  assignee_id?: string | null
   creator_id: string
   due_date?: string | null
   created_at: string
   updated_at: string
-  assignee?: UserInfo
   creator?: UserInfo
 }
 
@@ -87,7 +85,6 @@ export interface CreateTaskRequest {
   description?: string
   status?: TaskStatus
   priority?: TaskPriority
-  assignee_id?: string
   due_date?: string
 }
 
@@ -96,7 +93,6 @@ export interface UpdateTaskRequest {
   description?: string
   status?: TaskStatus
   priority?: TaskPriority
-  assignee_id?: string
   due_date?: string
 }
 
@@ -106,7 +102,6 @@ export interface UpdateTaskStatusRequest {
 
 export interface ListTasksRequest {
   status?: TaskStatus[]
-  assignee_id?: string
   creator_id?: string
   priority?: TaskPriority[]
   page?: number
