@@ -15,7 +15,7 @@ const loading = computed(() => taskStore.loading)
 const total = computed(() => taskStore.total)
 
 // Filter states
-const currentStatus = ref<TaskStatus[]>([])
+const currentStatus = ref<TaskStatus[]>(['draft', 'pending', 'running'])
 const currentPriority = ref<TaskPriority[]>([])
 const searchQuery = ref('')
 
@@ -237,7 +237,7 @@ onMounted(() => {
           placeholder="选择状态"
           multiple
           clearable
-          :min-collapsed-num="1"
+          auto-width
           style="min-width: 120px"
           @change="handleStatusChange"
         />
