@@ -47,7 +47,7 @@ const handleStatusChange = (status: TaskStatus) => {
     <t-button
       v-for="action in availableActions"
       :key="action.value"
-      size="small"
+      size="medium"
       theme="default"
       variant="outline"
       @click="handleStatusChange(action.value)"

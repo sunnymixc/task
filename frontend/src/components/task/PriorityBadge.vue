@@ -8,8 +8,8 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const priorityConfig: Record<TaskPriority, { label: string; theme: 'default' | 'primary' | 'warning' | 'success' | 'error' }> = {
-  high: { label: '高', theme: 'error' },
+const priorityConfig: Record<TaskPriority, { label: string; theme: 'default' | 'primary' | 'warning' | 'success' | 'danger' }> = {
+  high: { label: '高', theme: 'danger' },
   medium: { label: '中', theme: 'warning' },
   low: { label: '低', theme: 'success' }
 }
