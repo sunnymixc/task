@@ -15,19 +15,18 @@ const emit = defineEmits<Emits>()
 // Define available status transitions based on current status
 const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> = {
   draft: [
-    { label: '发布', value: 'pending' },
-    { label: '开始', value: 'running' }
+    { label: '确认', value: 'pending' },
+    { label: '执行', value: 'running' }
   ],
   pending: [
-    { label: '开始', value: 'running' }
+    { label: '执行', value: 'running' },
+    { label: '完成', value: 'completed' }
   ],
   running: [
-    { label: '完成', value: 'completed' },
-    { label: '暂停', value: 'pending' }
+    { label: '暂停', value: 'pending' },
+    { label: '完成', value: 'completed' }
   ],
-  completed: [
-    { label: '重新开始', value: 'running' }
-  ]
+  completed: []
 }
 
 const availableActions = statusActions[props.task.status] || []
