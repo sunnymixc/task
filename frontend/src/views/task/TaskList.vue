@@ -29,8 +29,8 @@ const pagination = ref({
 const statusOptions = [
   { label: '全部', value: 'all' },
   { label: '草稿', value: 'draft' },
-  { label: '已发布', value: 'published' },
-  { label: '进行中', value: 'in_progress' },
+  { label: '待执行', value: 'published' },
+  { label: '执行中', value: 'in_progress' },
   { label: '已完成', value: 'completed' },
   { label: '已结束', value: 'ended' }
 ]
@@ -444,10 +444,8 @@ onMounted(() => {
 .task-desc {
   font-size: 12px;
   color: var(--td-text-color-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 280px;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .creator-info {
