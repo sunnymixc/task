@@ -12,7 +12,7 @@ export default defineConfig({
   },
   server: {
     port: 5000,
-    allowedHosts: ['task.sunnymix.com'],
+    allowedHosts: ['task.sunnymix.com', 'task-dev.sunnymix.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:5001',
