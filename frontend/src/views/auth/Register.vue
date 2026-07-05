@@ -145,7 +145,7 @@ const goToLogin = () => {
   width: 400px;
   padding: 40px;
   background: white;
-  border-radius: 8px;
+  border-radius: var(--td-radius-default);
   box-shadow: 0 0 2px 2px rgba(0, 0, 0, 0.025);
 }
 

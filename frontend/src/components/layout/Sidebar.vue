@@ -163,7 +163,7 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: 4px;
+  border-radius: var(--td-radius-default);
   cursor: pointer;
   color: var(--td-text-color-secondary);
   transition: background-color 0.2s ease;
@@ -189,7 +189,7 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
   height: 38px;
   padding: 8px 10px 8px var(--sidebar-inset-x);
   margin-bottom: 2px;
-  border-radius: 4px;
+  border-radius: var(--td-radius-default);
   cursor: pointer;
   color: var(--td-text-color-primary);
   transition: background-color 0.2s ease;
@@ -256,7 +256,7 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
   gap: 8px;
   height: 44px;
   padding: 0 8px 0 var(--sidebar-inset-x);
-  border-radius: 4px;
+  border-radius: var(--td-radius-default);
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
