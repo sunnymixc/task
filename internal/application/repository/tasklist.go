@@ -55,7 +55,7 @@ func (r *taskListRepository) GetTaskListsByTenantID(ctx context.Context, tenantI
 	}
 
 	err := query.Preload("Creator").
-		Order("is_default DESC, created_at DESC").
+		Order("is_default DESC, sort_order ASC, created_at ASC").
 		Offset(offset).
 		Limit(limit).
 		Find(&lists).Error
@@ -76,6 +76,17 @@ func (r *taskListRepository) GetDefaultTaskList(ctx context.Context, tenantID ui
 		return nil, err
 	}
 	return &list, nil
+}
+
+// GetMaxSortOrder returns the max sort_order among the tenant's task lists (0 if none)
+func (r *taskListRepository) GetMaxSortOrder(ctx context.Context, tenantID uint64) (int, error) {
+	var max int
+	err := r.db.WithContext(ctx).
+		Model(&types.TaskList{}).
+		Where("tenant_id = ?", tenantID).
+		Select("COALESCE(MAX(sort_order), 0)").
+		Scan(&max).Error
+	return max, err
 }
 
 // UpdateTaskList updates a task list

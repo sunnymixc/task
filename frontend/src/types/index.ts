@@ -168,6 +168,8 @@ export interface TaskList {
   title: string
   description: string
   is_default: boolean
+  // 序号(1-1000),列表按序号升序;默认清单恒排最先
+  sort_order: number
   creator_id: string
   created_at: string
   updated_at: string
@@ -184,11 +186,14 @@ export interface TaskListInfo {
 export interface CreateTaskListRequest {
   title: string
   description?: string
+  // 不传则后端自动取当前租户最大序号+1
+  sort_order?: number
 }
 
 export interface UpdateTaskListRequest {
   title?: string
   description?: string
+  sort_order?: number
 }
 
 export interface ListTaskListsRequest {

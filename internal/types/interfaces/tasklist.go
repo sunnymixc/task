@@ -12,6 +12,7 @@ type TaskListRepository interface {
 	GetTaskListByID(ctx context.Context, id string) (*types.TaskList, error)
 	GetTaskListsByTenantID(ctx context.Context, tenantID uint64, offset, limit int) ([]*types.TaskList, int64, error)
 	GetDefaultTaskList(ctx context.Context, tenantID uint64) (*types.TaskList, error)
+	GetMaxSortOrder(ctx context.Context, tenantID uint64) (int, error)
 	UpdateTaskList(ctx context.Context, list *types.TaskList) error
 	DeleteTaskList(ctx context.Context, id string) error
 }

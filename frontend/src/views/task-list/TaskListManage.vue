@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useTaskListStore } from '@/stores/taskList'
 import type { TaskList } from '@/types'
 import { DialogPlugin } from 'tdesign-vue-next'
+import type { PrimaryTableCol } from 'tdesign-vue-next'
 import TaskListForm from '@/components/task-list/TaskListForm.vue'
 
 const taskListStore = useTaskListStore()
@@ -18,7 +19,8 @@ const pagination = ref({
 })
 
 // Table columns
-const columns = [
+const columns: PrimaryTableCol[] = [
+  { colKey: 'sort_order', title: '序号', width: 80 },
   { colKey: 'id', title: 'ID', width: 240 },
   { colKey: 'title', title: '标题', width: 220 },
   { colKey: 'description', title: '描述', width: 300 },
@@ -171,7 +173,7 @@ onMounted(() => {
         </template>
 
         <template #action="{ row }">
-          <t-space size="small">
+          <t-space size="medium">
             <t-link theme="primary" hover="color" @click="openEditDialog(row)">
               编辑
             </t-link>

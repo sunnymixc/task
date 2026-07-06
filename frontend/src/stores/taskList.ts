@@ -9,6 +9,14 @@ import type {
 } from '@/types'
 import { MessagePlugin } from 'tdesign-vue-next'
 
+// 与后端排序保持一致:默认清单最先,其余按序号升序,同序号按创建时间先后
+const sortTaskLists = (items: TaskList[]): TaskList[] =>
+  items.sort((a, b) => {
+    if (a.is_default !== b.is_default) return a.is_default ? -1 : 1
+    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
+    return a.created_at.localeCompare(b.created_at)
+  })
+
 export const useTaskListStore = defineStore('taskList', () => {
   const lists = ref<TaskList[]>([])
   const allLists = ref<TaskList[]>([])
@@ -58,8 +66,10 @@ export const useTaskListStore = defineStore('taskList', () => {
     loading.value = true
     try {
       const list = await taskListAPI.create(data)
-      lists.value.unshift(list)
-      allLists.value.unshift(list)
+      lists.value.push(list)
+      allLists.value.push(list)
+      sortTaskLists(lists.value)
+      sortTaskLists(allLists.value)
       total.value += 1
       MessagePlugin.success('任务清单创建成功')
       return list
@@ -85,6 +95,8 @@ export const useTaskListStore = defineStore('taskList', () => {
       if (allIndex !== -1) {
         allLists.value[allIndex] = updated
       }
+      sortTaskLists(lists.value)
+      sortTaskLists(allLists.value)
       MessagePlugin.success('任务清单更新成功')
       return updated
     } catch (error) {

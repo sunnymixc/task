@@ -62,12 +62,26 @@ func (s *taskListService) CreateTaskList(ctx context.Context, req *types.CreateT
 		return nil, fmt.Errorf("failed to generate task list ID: %w", err)
 	}
 
+	// 未提供序号时自动取当前租户最大序号+1（封顶 1000）
+	sortOrder := req.SortOrder
+	if sortOrder == 0 {
+		maxOrder, err := s.taskListRepo.GetMaxSortOrder(ctx, user.TenantID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get max sort order: %w", err)
+		}
+		sortOrder = maxOrder + 1
+		if sortOrder > 1000 {
+			sortOrder = 1000
+		}
+	}
+
 	list := &types.TaskList{
 		ID:          id,
 		TenantID:    user.TenantID,
 		Title:       req.Title,
 		Description: req.Description,
 		IsDefault:   false,
+		SortOrder:   sortOrder,
 		CreatorID:   user.ID,
 	}
 
@@ -152,6 +166,9 @@ func (s *taskListService) UpdateTaskList(ctx context.Context, id string, req *ty
 	if req.Description != nil {
 		list.Description = *req.Description
 	}
+	if req.SortOrder != nil {
+		list.SortOrder = *req.SortOrder
+	}
 
 	if err := s.taskListRepo.UpdateTaskList(ctx, list); err != nil {
 		return nil, fmt.Errorf("failed to update task list: %w", err)
@@ -222,6 +239,7 @@ func getOrCreateDefaultTaskList(ctx context.Context, repo interfaces.TaskListRep
 		Title:       "默认",
 		Description: "系统默认任务清单",
 		IsDefault:   true,
+		SortOrder:   1,
 		CreatorID:   creatorID,
 	}
 
