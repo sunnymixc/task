@@ -135,6 +135,8 @@ onMounted(() => {
           showPageSize: false
         }"
         row-key="id"
+        hover
+        active-row-type="single"
         @page-change="onPageChange"
       >
         <template #id="{ row }">
