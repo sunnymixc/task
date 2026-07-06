@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/task'
 import { useTaskListStore } from '@/stores/taskList'
+import { useTaskFilterStore } from '@/stores/taskFilter'
 import type { Task, TaskStatus } from '@/types'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
@@ -14,15 +15,18 @@ const props = defineProps<{ taskListId?: string }>()
 
 const taskStore = useTaskStore()
 const taskListStore = useTaskListStore()
+const taskFilterStore = useTaskFilterStore()
 
 const isListScoped = computed(() => !!props.taskListId)
+// 状态筛选缓存的作用域:清单 id,全局任务视图用 'all'
+const filterScopeKey = computed(() => props.taskListId ?? 'all')
 
 const tasks = computed(() => taskStore.tasks)
 const loading = computed(() => taskStore.loading)
 const total = computed(() => taskStore.total)
 
-// Filter states
-const currentStatus = ref<TaskStatus[]>(['draft', 'pending', 'running'])
+// Filter states(状态筛选初始值从缓存恢复,覆盖刷新/直达路由场景)
+const currentStatus = ref<TaskStatus[]>(taskFilterStore.getStatusFilter(props.taskListId ?? 'all'))
 const currentTaskLists = ref<string[]>([])
 const searchQuery = ref('')
 
@@ -91,6 +95,14 @@ const fetchTasks = async () => {
 
 // Handle status filter change
 const handleStatusChange = () => {
+  taskFilterStore.setStatusFilter(filterScopeKey.value, currentStatus.value)
+  pagination.value.current = 1
+  fetchTasks()
+}
+
+// 重置:仅恢复状态筛选为默认值(不动清单多选与搜索框),并刷新列表
+const handleResetFilter = () => {
+  currentStatus.value = taskFilterStore.resetStatusFilter(filterScopeKey.value)
   pagination.value.current = 1
   fetchTasks()
 }
@@ -254,6 +266,7 @@ watch(() => props.taskListId, () => {
   pagination.value.current = 1
   currentTaskLists.value = []
   searchQuery.value = ''
+  currentStatus.value = taskFilterStore.getStatusFilter(filterScopeKey.value)
   fetchTasks()
 })
 
@@ -299,6 +312,7 @@ onMounted(() => {
           style="min-width: 140px"
           @change="handleTaskListChange"
         />
+        <t-button theme="default" variant="outline" @click="handleResetFilter">重置</t-button>
       </div>
       <div class="search-group">
         <t-input
