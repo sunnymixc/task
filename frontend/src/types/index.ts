@@ -168,7 +168,7 @@ export interface TaskList {
   title: string
   description: string
   is_default: boolean
-  // 序号(1-1000),列表按序号升序;默认清单恒排最先
+  // 序号(1-10000000),列表按序号升序;默认清单恒排最先
   sort_order: number
   creator_id: string
   created_at: string

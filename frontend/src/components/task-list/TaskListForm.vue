@@ -35,8 +35,8 @@ const formRules: FormRules = {
     {
       validator: (val: unknown) =>
         val === undefined || val === null ||
-        (Number.isInteger(val) && (val as number) >= 1 && (val as number) <= 1000),
-      message: '序号应为1-1000的整数'
+        (Number.isInteger(val) && (val as number) >= 1 && (val as number) <= 10000000),
+      message: '序号应为1-10000000的整数'
     }
   ]
 }
@@ -92,7 +92,7 @@ defineExpose({ submit: handleSubmit })
         v-model="form.sort_order"
         theme="normal"
         :min="1"
-        :max="1000"
+        :max="10000000"
         :allow-input-over-limit="false"
         placeholder="留空自动排在最后"
         style="width: 100%"

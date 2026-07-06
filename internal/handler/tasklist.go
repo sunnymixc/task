@@ -27,15 +27,15 @@ func NewTaskListHandler(taskListService interfaces.TaskListService) *TaskListHan
 type CreateTaskListRequest struct {
 	Title       string `json:"title" binding:"required,min=1,max=255"`
 	Description string `json:"description" binding:"max=5000"`
-	// 序号（1-1000），不填则自动取当前租户最大序号+1
-	SortOrder int `json:"sort_order" binding:"omitempty,min=1,max=1000"`
+	// 序号（1-10000000），不填则自动取当前租户最大序号+1
+	SortOrder int `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
 
 // UpdateTaskListRequest represents the update task list request body
 type UpdateTaskListRequest struct {
 	Title       *string `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string `json:"description" binding:"omitempty,max=5000"`
-	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=1,max=1000"`
+	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
 
 // CreateTaskList creates a new task list

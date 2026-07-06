@@ -18,7 +18,7 @@ type TaskList struct {
 	Description string `json:"description" gorm:"type:text"`
 	// Whether this is the tenant's default list (不可删除)
 	IsDefault bool `json:"is_default" gorm:"not null;default:false"`
-	// 序号（1-1000），列表按序号升序排列；默认清单恒排最先，不参与序号排序
+	// 序号（1-10000000），列表按序号升序排列；默认清单恒排最先，不参与序号排序
 	SortOrder int `json:"sort_order" gorm:"not null;default:1"`
 	// ID of the user who created this task list
 	CreatorID string `json:"creator_id" gorm:"type:varchar(36);not null"`
@@ -42,14 +42,14 @@ type CreateTaskListRequest struct {
 	Title       string `json:"title" binding:"required,min=1,max=255"`
 	Description string `json:"description" binding:"max=5000"`
 	// 序号，0 表示未提供，自动取当前租户最大序号+1
-	SortOrder int `json:"sort_order" binding:"omitempty,min=1,max=1000"`
+	SortOrder int `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
 
 // UpdateTaskListRequest 更新任务清单请求
 type UpdateTaskListRequest struct {
 	Title       *string `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string `json:"description" binding:"omitempty,max=5000"`
-	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=1,max=1000"`
+	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
 
 // ListTaskListsRequest 列出任务清单请求

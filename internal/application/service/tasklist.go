@@ -62,7 +62,7 @@ func (s *taskListService) CreateTaskList(ctx context.Context, req *types.CreateT
 		return nil, fmt.Errorf("failed to generate task list ID: %w", err)
 	}
 
-	// 未提供序号时自动取当前租户最大序号+1（封顶 1000）
+	// 未提供序号时自动取当前租户最大序号+1（封顶 10000000）
 	sortOrder := req.SortOrder
 	if sortOrder == 0 {
 		maxOrder, err := s.taskListRepo.GetMaxSortOrder(ctx, user.TenantID)
@@ -70,8 +70,8 @@ func (s *taskListService) CreateTaskList(ctx context.Context, req *types.CreateT
 			return nil, fmt.Errorf("failed to get max sort order: %w", err)
 		}
 		sortOrder = maxOrder + 1
-		if sortOrder > 1000 {
-			sortOrder = 1000
+		if sortOrder > 10000000 {
+			sortOrder = 10000000
 		}
 	}
 
