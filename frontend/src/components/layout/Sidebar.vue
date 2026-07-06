@@ -54,6 +54,13 @@ const handleLogout = () => {
 }
 
 const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() || 'U')
+
+// 用户信息弹框与侧边栏菜单同宽(折叠时保持默认自适应宽度)
+const userDropdownPopupProps = {
+  overlayClassName: 'sidebar-user-dropdown',
+  overlayInnerStyle: (trigger: HTMLElement): Record<string, string> =>
+    uiStore.sidebarCollapsed ? {} : { width: `${trigger.offsetWidth}px` }
+}
 </script>
 
 <template>
@@ -110,7 +117,7 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
 
     <!-- 底部用户区 -->
     <div class="menu-bottom">
-      <t-dropdown placement="top-left" trigger="click">
+      <t-dropdown placement="top-left" trigger="click" :popup-props="userDropdownPopupProps">
         <div class="user-box" :class="{ 'user-box--collapsed': uiStore.sidebarCollapsed }">
           <t-avatar :image="authStore.user?.avatar || ''" size="32px">
             {{ avatarText }}
@@ -335,5 +342,17 @@ const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() |
   font-size: 12px;
   color: var(--td-text-color-secondary);
   padding: 4px 8px;
+}
+</style>
+
+<!-- 弹框 teleport 到 body,scoped 样式作用不到 -->
+<style>
+.sidebar-user-dropdown .t-dropdown__menu {
+  width: 100%;
+}
+
+.sidebar-user-dropdown .t-dropdown__item {
+  width: 100%;
+  max-width: none !important;
 }
 </style>
