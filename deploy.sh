@@ -102,13 +102,19 @@ kill_pid_gracefully() {
 build_frontend() {
     log_info "Building frontend..."
 
-    # Check if node_modules exists, install if not
-    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+    # Install deps only when package-lock.json changed (or node_modules missing)
+    local hash_file="$FRONTEND_DIR/node_modules/.package-lock.hash"
+    local lock_hash
+    lock_hash=$(sha256sum "$FRONTEND_DIR/package-lock.json" | awk '{print $1}')
+    if [ -f "$hash_file" ] && [ "$(cat "$hash_file")" = "$lock_hash" ]; then
+        log_info "Frontend dependencies up-to-date, skipping install"
+    else
         log_info "Installing frontend dependencies..."
-        (cd "$FRONTEND_DIR" && npm install) || {
+        (cd "$FRONTEND_DIR" && npm ci) || {
             log_error "Frontend dependencies installation failed"
             return 1
         }
+        echo "$lock_hash" > "$hash_file"
     fi
 
     (cd "$FRONTEND_DIR" && npm run build) || {
