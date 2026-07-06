@@ -48,7 +48,7 @@ const handleStatusChange = (status: TaskStatus) => {
 </script>
 
 <template>
-  <t-space v-if="availableActions.length" size="small">
+  <t-space v-if="availableActions.length" size="medium">
     <t-link
       v-for="action in availableActions"
       :key="action.value"
