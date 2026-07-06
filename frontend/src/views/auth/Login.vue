@@ -3,6 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import type { LoginRequest } from '@/types'
+import type { FormRules } from 'tdesign-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,7 +18,7 @@ const formRef = ref()
 const loading = ref(false)
 const showPassword = ref(false)
 
-const formRules = {
+const formRules: FormRules = {
   email: [
     { required: true, message: '请输入邮箱' },
     { email: true, message: '请输入正确的邮箱格式' }
@@ -64,7 +65,6 @@ const goToRegister = () => {
           <t-input
             v-model="form.email"
             placeholder="请输入邮箱"
-            type="email"
             clearable
             size="large"
           >
