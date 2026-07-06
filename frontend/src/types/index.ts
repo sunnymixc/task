@@ -73,6 +73,35 @@ export interface Task {
   updated_at: string
   creator?: UserInfo
   task_list?: TaskListInfo
+  links?: TaskLink[]
+}
+
+// 任务链接
+export type TaskLinkType = 'url' | 'task'
+
+// 链接目标任务的精简信息(列表接口返回完整 Task、详情接口返回精简对象,按交集定义)
+export interface TaskLinkTargetInfo {
+  id: string
+  title: string
+  status: TaskStatus
+}
+
+export interface TaskLink {
+  id: number
+  link_type: TaskLinkType
+  title: string
+  url?: string
+  target_task_id?: string
+  // 目标任务被删除时为 null/缺省
+  target_task?: TaskLinkTargetInfo | null
+}
+
+// 提交任务时的链接输入
+export interface TaskLinkInput {
+  link_type: TaskLinkType
+  title?: string
+  url?: string
+  target_task_id?: string
 }
 
 export interface UserInfo {
@@ -89,6 +118,7 @@ export interface CreateTaskRequest {
   priority?: TaskPriority
   task_list_id?: string
   due_date?: string
+  links?: TaskLinkInput[]
 }
 
 export interface UpdateTaskRequest {
@@ -98,6 +128,8 @@ export interface UpdateTaskRequest {
   priority?: TaskPriority
   task_list_id?: string
   due_date?: string
+  // 缺省表示不修改链接;空数组表示清空;非空表示整体替换
+  links?: TaskLinkInput[]
 }
 
 export interface UpdateTaskStatusRequest {

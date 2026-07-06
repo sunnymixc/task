@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -25,6 +26,10 @@ var (
 	ErrTaskNotFound = errors.New("task not found")
 	// ErrInvalidStatusTransition is returned when a status transition is invalid
 	ErrInvalidStatusTransition = errors.New("invalid status transition")
+	// ErrLinkTargetTaskNotFound is returned when a task link's target task does not exist in the caller's tenant
+	ErrLinkTargetTaskNotFound = errors.New("链接的目标任务不存在")
+	// ErrInvalidTaskLink is returned when a task link input is malformed
+	ErrInvalidTaskLink = errors.New("无效的任务链接")
 )
 
 // NewTaskService creates a new task service
@@ -85,8 +90,16 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		taskListID = defaultList.ID
 	}
 
+	taskID := uuid.New().String()
+
+	// 先校验链接（含目标任务同租户校验），再落库，避免部分写入
+	links, err := s.validateAndBuildLinks(ctx, user.TenantID, taskID, req.Links)
+	if err != nil {
+		return nil, err
+	}
+
 	task := &types.Task{
-		ID:          uuid.New().String(),
+		ID:          taskID,
 		TenantID:    user.TenantID,
 		Title:       req.Title,
 		Description: req.Description,
@@ -101,6 +114,12 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
+	if len(links) > 0 {
+		if err := s.taskRepo.ReplaceTaskLinks(ctx, taskID, links); err != nil {
+			return nil, fmt.Errorf("failed to create task links: %w", err)
+		}
+	}
+
 	// Reload with associations
 	task, err = s.taskRepo.GetTaskByID(ctx, task.ID)
 	if err != nil {
@@ -108,6 +127,49 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 	}
 
 	return task.ToResponse(), nil
+}
+
+// validateAndBuildLinks 校验链接输入并构造 TaskLink 实体，position 按输入顺序。
+// task 类型链接强制校验目标任务存在且与当前任务同租户，并禁止链接自身。
+func (s *taskService) validateAndBuildLinks(ctx context.Context, tenantID uint64, taskID string, inputs []types.TaskLinkInput) ([]*types.TaskLink, error) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
+	links := make([]*types.TaskLink, 0, len(inputs))
+	for i, in := range inputs {
+		link := &types.TaskLink{
+			TaskID:   taskID,
+			LinkType: in.LinkType,
+			Position: i,
+		}
+		switch in.LinkType {
+		case types.TaskLinkTypeURL:
+			title := strings.TrimSpace(in.Title)
+			if title == "" || (!strings.HasPrefix(in.URL, "http://") && !strings.HasPrefix(in.URL, "https://")) {
+				return nil, ErrInvalidTaskLink
+			}
+			link.Title = title
+			link.URL = in.URL
+		case types.TaskLinkTypeTask:
+			if in.TargetTaskID == "" || in.TargetTaskID == taskID {
+				return nil, ErrInvalidTaskLink
+			}
+			target, err := s.taskRepo.GetTaskByID(ctx, in.TargetTaskID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get link target task: %w", err)
+			}
+			if target == nil || target.TenantID != tenantID {
+				return nil, ErrLinkTargetTaskNotFound
+			}
+			// 不挂 TargetTask 关联，避免 Create 时级联写目标任务
+			link.TargetTaskID = in.TargetTaskID
+		default:
+			return nil, ErrInvalidTaskLink
+		}
+		links = append(links, link)
+	}
+	return links, nil
 }
 
 // GetTaskByID retrieves a task by ID
@@ -224,8 +286,23 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 		task.Status = *req.Status
 	}
 
+	// Links: nil 表示不修改；空数组表示清空；非空整体替换。校验放在落库前。
+	var newLinks []*types.TaskLink
+	if req.Links != nil {
+		newLinks, err = s.validateAndBuildLinks(ctx, task.TenantID, task.ID, *req.Links)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if err := s.taskRepo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	if req.Links != nil {
+		if err := s.taskRepo.ReplaceTaskLinks(ctx, task.ID, newLinks); err != nil {
+			return nil, fmt.Errorf("failed to replace task links: %w", err)
+		}
 	}
 
 	// Reload with associations
@@ -249,6 +326,7 @@ func (s *taskService) DeleteTask(ctx context.Context, id string) error {
 
 	// TODO: Verify tenant access and permissions
 
+	// 任务是软删，task_links 物理行有意保留：links 只经 task 查询，不存在泄漏路径
 	if err := s.taskRepo.DeleteTask(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}

@@ -58,6 +58,7 @@ type CreateTaskRequest struct {
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *string      `json:"due_date"` // ISO 8601 date string
+	Links       []types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskRequest represents the update task request body
@@ -68,6 +69,8 @@ type UpdateTaskRequest struct {
 	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  *string  `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *string  `json:"due_date"`
+	// Links 为 null 表示不修改；空数组表示清空；非空表示整体替换
+	Links *[]types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskStatusRequest represents the update task status request body
@@ -100,6 +103,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		Title:       req.Title,
 		Description: req.Description,
 		TaskListID:  req.TaskListID,
+		Links:       req.Links,
 	}
 
 	// Parse priority
@@ -131,6 +135,20 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"message": "指定的任务清单不存在",
+			})
+			return
+		}
+		if err == service.ErrLinkTargetTaskNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接的目标任务不存在",
+			})
+			return
+		}
+		if err == service.ErrInvalidTaskLink {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接格式不正确",
 			})
 			return
 		}
@@ -276,6 +294,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		Title:       req.Title,
 		Description: req.Description,
 		TaskListID:  req.TaskListID,
+		Links:       req.Links,
 	}
 
 	// Parse status if provided
@@ -323,6 +342,20 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"message": "指定的任务清单不存在",
+			})
+			return
+		}
+		if err == service.ErrLinkTargetTaskNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接的目标任务不存在",
+			})
+			return
+		}
+		if err == service.ErrInvalidTaskLink {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接格式不正确",
 			})
 			return
 		}

@@ -23,9 +23,15 @@ func NewTaskRepository() interfaces.TaskRepository {
 	}
 }
 
-// CreateTask creates a new task
+// orderLinks 链接按录入顺序返回
+func orderLinks(db *gorm.DB) *gorm.DB {
+	return db.Order("position ASC, id ASC")
+}
+
+// CreateTask creates a new task.
+// Omit associations: 防止 task 上挂载的关联(如 Links)被 GORM 级联插入。
 func (r *taskRepository) CreateTask(ctx context.Context, task *types.Task) error {
-	return r.db.WithContext(ctx).Create(task).Error
+	return r.db.WithContext(ctx).Omit(clause.Associations).Create(task).Error
 }
 
 // GetTaskByID retrieves a task by ID
@@ -35,6 +41,8 @@ func (r *taskRepository) GetTaskByID(ctx context.Context, id string) (*types.Tas
 		Preload("Creator").
 		Preload("Tenant").
 		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
 		Where("id = ?", id).
 		First(&task).Error
 	if err != nil {
@@ -59,6 +67,8 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 
 	err := query.Preload("Creator").
 		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -99,6 +109,8 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 
 	err := db.Preload("Creator").
 		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -123,6 +135,8 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 
 	err := db.Preload("Creator").
 		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
 		Order("created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -146,6 +160,19 @@ func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *g
 		db = db.Where("task_list_id IN ?", filters.TaskListID)
 	}
 	return db
+}
+
+// ReplaceTaskLinks 在单事务内整体替换某任务的链接（物理删除旧行后重插）
+func (r *taskRepository) ReplaceTaskLinks(ctx context.Context, taskID string, links []*types.TaskLink) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("task_id = ?", taskID).Delete(&types.TaskLink{}).Error; err != nil {
+			return err
+		}
+		if len(links) == 0 {
+			return nil
+		}
+		return tx.Omit(clause.Associations).Create(&links).Error
+	})
 }
 
 // MoveTasksToList reassigns all tasks in a list to another list (within a tenant)

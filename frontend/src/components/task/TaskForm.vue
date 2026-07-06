@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority, TaskStatus } from '@/types'
+import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority, TaskStatus, TaskLinkType, TaskLinkInput } from '@/types'
+import type { FormRules } from 'tdesign-vue-next'
+import { MessagePlugin } from 'tdesign-vue-next'
 import { useTaskListStore } from '@/stores/taskList'
+import { taskAPI } from '@/api/task'
 
 interface Props {
   task?: Task | null
@@ -47,6 +50,60 @@ onMounted(async () => {
   }
 })
 
+// 链接行(独立于 form,不进 t-form rules)
+interface LinkRow {
+  link_type: TaskLinkType
+  title: string
+  url: string
+  target_task_id: string
+  // 行级远程搜索选项与加载态
+  targetOptions: { label: string; value: string }[]
+  searching: boolean
+}
+
+const links = ref<LinkRow[]>([])
+
+const addLink = () => {
+  links.value.push({ link_type: 'url', title: '', url: '', target_task_id: '', targetOptions: [], searching: false })
+}
+
+const removeLink = (index: number) => {
+  links.value.splice(index, 1)
+}
+
+// 任务链接远程搜索(防抖 300ms),排除当前编辑的任务自身
+let linkSearchTimer: ReturnType<typeof setTimeout> | null = null
+const onTaskSearch = (row: LinkRow, keyword: string) => {
+  if (linkSearchTimer) clearTimeout(linkSearchTimer)
+  if (!keyword.trim()) return
+  linkSearchTimer = setTimeout(async () => {
+    row.searching = true
+    try {
+      const res = await taskAPI.search({ q: keyword.trim(), page_size: 20 })
+      row.targetOptions = (res.data || [])
+        .filter(t => t.id !== props.task?.id)
+        .map(t => ({ label: t.title, value: t.id }))
+    } finally {
+      row.searching = false
+    }
+  }, 300)
+}
+
+// 编辑模式回填链接行;丢弃目标任务已被删除的行(原样提交会被后端拒绝)
+const fillLinks = (task: Task) => {
+  links.value = (task.links ?? [])
+    .filter(l => l.link_type === 'url' || l.target_task)
+    .map(l => ({
+      link_type: l.link_type,
+      title: l.title || '',
+      url: l.url || '',
+      target_task_id: l.target_task_id || '',
+      // 用已知目标任务标题播种选项,否则 select 显示裸 id
+      targetOptions: l.target_task ? [{ label: l.target_task.title, value: l.target_task_id! }] : [],
+      searching: false
+    }))
+}
+
 // Status workflow for the steps component
 const statusSteps: { value: TaskStatus; title: string; content: string }[] = [
   { value: 'draft', title: '草稿', content: '任务已创建，尚未发布' },
@@ -55,7 +112,7 @@ const statusSteps: { value: TaskStatus; title: string; content: string }[] = [
   { value: 'completed', title: '已完成', content: '任务已完成' }
 ]
 
-const formRules = {
+const formRules: FormRules = {
   title: [
     { required: true, message: '请输入任务标题' },
     { min: 1, max: 255, message: '标题长度应为1-255个字符', type: 'warning' }
@@ -75,6 +132,7 @@ watch(() => props.task, (task) => {
     form.task_list_id = task.task_list_id || ''
     // Format date string for date picker
     form.due_date = task.due_date ? new Date(task.due_date) : ''
+    fillLinks(task)
   }
 }, { immediate: true })
 
@@ -87,6 +145,7 @@ watch(() => props.task, (task) => {
     form.status = 'draft'
     form.task_list_id = props.defaultTaskListId || taskListStore.allLists.find(l => l.is_default)?.id || ''
     form.due_date = ''
+    links.value = []
   }
   formRef.value?.reset()
 }, { immediate: false })
@@ -95,12 +154,33 @@ const handleSubmit = async () => {
   const valid = await formRef.value?.validate()
   if (valid !== true) return
 
+  // 校验并组装链接:跳过完全空行,非法行阻断提交
+  const linkInputs: TaskLinkInput[] = []
+  for (let i = 0; i < links.value.length; i++) {
+    const row = links.value[i]
+    if (row.link_type === 'url') {
+      const title = row.title.trim()
+      const url = row.url.trim()
+      if (!title && !url) continue
+      if (!title || !/^https?:\/\//.test(url)) {
+        MessagePlugin.error(`链接 ${i + 1} 格式不正确：标题不能为空，URL 需以 http:// 或 https:// 开头`)
+        return
+      }
+      linkInputs.push({ link_type: 'url', title, url })
+    } else {
+      if (!row.target_task_id) continue
+      linkInputs.push({ link_type: 'task', target_task_id: row.target_task_id })
+    }
+  }
+
   const data: CreateTaskRequest | UpdateTaskRequest = {
     title: form.title,
     description: form.description || undefined,
     status: form.status,
     priority: form.priority,
-    task_list_id: form.task_list_id || undefined
+    task_list_id: form.task_list_id || undefined,
+    // 编辑模式无条件携带:空数组即清空(后端 nil=不动/[]=清空 语义)
+    links: linkInputs
   }
 
   if (form.due_date) {
@@ -184,11 +264,76 @@ defineExpose({ submit: handleSubmit, focusTitle })
       />
     </t-form-item>
 
+    <t-form-item label="链接">
+      <div class="link-rows">
+        <div v-for="(row, i) in links" :key="i" class="link-row">
+          <t-select
+            v-model="row.link_type"
+            :options="[
+              { label: 'URL', value: 'url' },
+              { label: '任务', value: 'task' }
+            ]"
+            class="link-type-select"
+          />
+          <template v-if="row.link_type === 'url'">
+            <t-input v-model="row.title" placeholder="链接标题" class="link-title-input" />
+            <t-input v-model="row.url" placeholder="https://..." class="link-flex" />
+          </template>
+          <t-select
+            v-else
+            v-model="row.target_task_id"
+            :options="row.targetOptions"
+            filterable
+            :loading="row.searching"
+            :filter="() => true"
+            placeholder="输入关键词搜索任务"
+            class="link-flex"
+            @search="(kw: string) => onTaskSearch(row, kw)"
+          />
+          <t-button theme="danger" variant="text" shape="square" @click="removeLink(i)">
+            <t-icon name="delete" />
+          </t-button>
+        </div>
+        <t-button theme="default" variant="dashed" @click="addLink">
+          <template #icon><t-icon name="add" /></template>
+          添加链接
+        </t-button>
+      </div>
+    </t-form-item>
+
   </t-form>
 </template>
 
 <style scoped>
 .t-form-item {
   margin-bottom: 24px;
+}
+
+.link-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.link-type-select {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.link-title-input {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.link-flex {
+  flex: 1;
+  min-width: 0;
 }
 </style>

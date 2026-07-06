@@ -5,10 +5,12 @@ import { useTaskListStore } from '@/stores/taskList'
 import { useTaskFilterStore } from '@/stores/taskFilter'
 import type { Task, TaskStatus } from '@/types'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
+import type { PrimaryTableCol } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
 import StatusBadge from '@/components/task/StatusBadge.vue'
 import PriorityBadge from '@/components/task/PriorityBadge.vue'
 import StatusActions, { hasStatusActions } from '@/components/task/StatusActions.vue'
+import TaskLinkList from '@/components/task/TaskLinkList.vue'
 
 // 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
 const props = defineProps<{ taskListId?: string }>()
@@ -61,11 +63,12 @@ const pageTitle = computed(() => {
 })
 
 // Table columns(清单作用域下省略任务清单列)
-const columns = computed(() => [
+const columns = computed<PrimaryTableCol[]>(() => [
   { colKey: 'title', title: '标题和描述', width: 420, minWidth: 300 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
   ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
+  { colKey: 'links', title: '链接', width: 200 },
   { colKey: 'due_date', title: '截止时间', width: 180 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
@@ -364,6 +367,10 @@ onMounted(() => {
           {{ row.task_list?.title || '-' }}
         </template>
 
+        <template #links="{ row }">
+          <TaskLinkList :links="row.links" />
+        </template>
+
         <template #due_date="{ row }">
           {{ row.due_date ? formatDate(row.due_date) : '-' }}
         </template>
@@ -386,7 +393,7 @@ onMounted(() => {
         </template>
 
         <template #action="{ row }">
-          <t-space size="small">
+          <t-space size="medium">
             <StatusActions
               v-if="hasStatusActions(row.status)"
               :task="row"

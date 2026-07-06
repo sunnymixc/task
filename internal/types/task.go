@@ -77,9 +77,10 @@ type Task struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 
 	// Associations (not stored in DB)
-	Creator  *User     `json:"creator,omitempty" gorm:"foreignKey:CreatorID"`
-	Tenant   *Tenant   `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
-	TaskList *TaskList `json:"task_list,omitempty" gorm:"foreignKey:TaskListID"`
+	Creator  *User      `json:"creator,omitempty" gorm:"foreignKey:CreatorID"`
+	Tenant   *Tenant    `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
+	TaskList *TaskList  `json:"task_list,omitempty" gorm:"foreignKey:TaskListID"`
+	Links    []TaskLink `json:"links,omitempty" gorm:"foreignKey:TaskID"`
 }
 
 // TableName specifies the table name for Task model
@@ -95,6 +96,7 @@ type CreateTaskRequest struct {
 	Priority    TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *time.Time   `json:"due_date"`
+	Links       []TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskRequest 更新任务请求
@@ -105,6 +107,8 @@ type UpdateTaskRequest struct {
 	Priority    *TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  *string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *time.Time    `json:"due_date"`
+	// Links 为 nil 表示不修改链接；空数组表示清空；非空表示整体替换
+	Links *[]TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskStatusRequest 更新任务状态请求
@@ -152,8 +156,9 @@ type TaskResponse struct {
 	UpdatedAt   time.Time    `json:"updated_at"`
 
 	// Nested objects
-	Creator  *UserInfo     `json:"creator,omitempty"`
-	TaskList *TaskListInfo `json:"task_list,omitempty"`
+	Creator  *UserInfo      `json:"creator,omitempty"`
+	TaskList *TaskListInfo  `json:"task_list,omitempty"`
+	Links    []TaskLinkInfo `json:"links"`
 }
 
 // UserInfo represents a simplified user info
@@ -195,6 +200,24 @@ func (t *Task) ToResponse() *TaskResponse {
 			Title:     t.TaskList.Title,
 			IsDefault: t.TaskList.IsDefault,
 		}
+	}
+
+	for _, l := range t.Links {
+		info := TaskLinkInfo{
+			ID:           l.ID,
+			LinkType:     l.LinkType,
+			Title:        l.Title,
+			URL:          l.URL,
+			TargetTaskID: l.TargetTaskID,
+		}
+		if l.TargetTask != nil {
+			info.TargetTask = &LinkedTaskInfo{
+				ID:     l.TargetTask.ID,
+				Title:  l.TargetTask.Title,
+				Status: l.TargetTask.Status,
+			}
+		}
+		resp.Links = append(resp.Links, info)
 	}
 
 	return resp
