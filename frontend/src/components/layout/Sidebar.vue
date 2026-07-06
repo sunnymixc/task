@@ -15,13 +15,11 @@ interface MenuItem {
   title: string
   icon: string
   path: string
-  // exact 为 true 时仅精确匹配高亮(避免子菜单路由下父项同时高亮)
-  exact?: boolean
 }
 
 const menuItems: MenuItem[] = [
   { title: '任务列表', icon: 'view-list', path: '/tasks' },
-  { title: '任务清单', icon: 'bulletpoint', path: '/task-lists', exact: true }
+  { title: '任务清单', icon: 'bulletpoint', path: '/task-lists' }
 ]
 
 // 任务清单子菜单(每个清单一项)
@@ -34,9 +32,7 @@ const taskListChildren = computed(() =>
 )
 
 const isActive = (item: MenuItem) =>
-  item.exact
-    ? route.path === item.path
-    : route.path === item.path || route.path.startsWith(item.path + '/')
+  route.path === item.path || route.path.startsWith(item.path + '/')
 
 onMounted(() => {
   taskListStore.fetchAllLists()
