@@ -62,7 +62,7 @@ const pageTitle = computed(() => {
 
 // Table columns(清单作用域下省略任务清单列)
 const columns = computed(() => [
-  { colKey: 'title', title: '标题', width: 420, minWidth: 300 },
+  { colKey: 'title', title: '标题和描述', width: 420, minWidth: 300 },
   { colKey: 'status', title: '状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
   ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
