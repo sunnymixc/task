@@ -504,7 +504,7 @@ onMounted(() => {
 .task-desc {
   font-size: 12px;
   color: var(--td-text-color-secondary);
-  white-space: normal;
+  white-space: pre-line;
   word-break: break-word;
 }
 
