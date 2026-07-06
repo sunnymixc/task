@@ -331,7 +331,6 @@ onMounted(() => {
         }"
         row-key="id"
         hover
-        active-row-type="single"
         @page-change="onPageChange"
       >
         <template #title="{ row }">
