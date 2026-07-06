@@ -66,7 +66,7 @@ const columns = computed(() => [
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
   { colKey: 'updated_at', title: '更新时间', width: 180 },
-  { colKey: 'action', title: '操作', width: 480, fixed: 'right' }
+  { colKey: 'action', title: '操作', width: 280, fixed: 'right' }
 ])
 
 // Fetch tasks
@@ -378,18 +378,18 @@ onMounted(() => {
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />
-            <t-button size="medium" theme="default" variant="outline" @click="handleCopyTask(row)">
+            <t-link theme="primary" hover="color" @click="handleCopyTask(row)">
               拷贝
-            </t-button>
-            <t-button size="medium" theme="default" variant="outline" @click="handleDuplicateTask(row)">
+            </t-link>
+            <t-link theme="primary" hover="color" @click="handleDuplicateTask(row)">
               复制
-            </t-button>
-            <t-button size="medium" theme="default" variant="outline" @click="openEditDialog(row)">
+            </t-link>
+            <t-link theme="primary" hover="color" @click="openEditDialog(row)">
               编辑
-            </t-button>
-            <t-button size="medium" theme="default" variant="outline" @click="handleDeleteTask(row)">
+            </t-link>
+            <t-link theme="danger" hover="color" @click="handleDeleteTask(row)">
               删除
-            </t-button>
+            </t-link>
           </t-space>
         </template>
       </t-table>

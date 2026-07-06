@@ -39,15 +39,14 @@ const handleStatusChange = (status: TaskStatus) => {
 
 <template>
   <t-space size="small">
-    <t-button
+    <t-link
       v-for="action in availableActions"
       :key="action.value"
-      size="medium"
-      theme="default"
-      variant="outline"
+      theme="primary"
+      hover="color"
       @click="handleStatusChange(action.value)"
     >
       {{ action.label }}
-    </t-button>
+    </t-link>
   </t-space>
 </template>

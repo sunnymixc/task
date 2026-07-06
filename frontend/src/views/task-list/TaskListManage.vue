@@ -25,7 +25,7 @@ const columns = [
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
   { colKey: 'updated_at', title: '更新时间', width: 180 },
-  { colKey: 'action', title: '操作', width: 160, fixed: 'right' }
+  { colKey: 'action', title: '操作', width: 120, fixed: 'right' }
 ]
 
 // Fetch task lists
@@ -173,18 +173,17 @@ onMounted(() => {
 
         <template #action="{ row }">
           <t-space>
-            <t-button size="medium" theme="default" variant="outline" @click="openEditDialog(row)">
+            <t-link theme="primary" hover="color" @click="openEditDialog(row)">
               编辑
-            </t-button>
-            <t-button
+            </t-link>
+            <t-link
               v-if="!row.is_default"
-              size="medium"
-              theme="default"
-              variant="outline"
+              theme="danger"
+              hover="color"
               @click="handleDeleteList(row)"
             >
               删除
-            </t-button>
+            </t-link>
           </t-space>
         </template>
       </t-table>
