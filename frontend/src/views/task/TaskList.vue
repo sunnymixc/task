@@ -66,7 +66,7 @@ const columns = computed(() => [
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
   { colKey: 'updated_at', title: '更新时间', width: 180 },
-  { colKey: 'action', title: '操作', width: 320, fixed: 'right' }
+  { colKey: 'action', title: '操作', width: 480, fixed: 'right' }
 ])
 
 // Fetch tasks
@@ -209,6 +209,22 @@ const handleCopyTask = async (task: Task) => {
   }
 }
 
+// 复制任务：以原任务内容创建副本（标题加“-副本”，状态重置为草稿），成功后刷新列表并打开副本编辑弹窗
+const handleDuplicateTask = async (task: Task) => {
+  const created = await taskStore.createTask({
+    title: `${task.title}-副本`,
+    description: task.description || undefined,
+    status: 'draft',
+    priority: task.priority,
+    task_list_id: task.task_list_id || undefined,
+    due_date: task.due_date || undefined,
+  })
+  if (created) {
+    await fetchTasks()
+    openEditDialog(created)
+  }
+}
+
 // Handle status update
 const handleStatusUpdate = async (taskId: string, status: TaskStatus) => {
   await taskStore.updateStatus(taskId, status)
@@ -314,6 +330,8 @@ onMounted(() => {
           showPageSize: false
         }"
         row-key="id"
+        hover
+        active-row-type="single"
         @page-change="onPageChange"
       >
         <template #title="{ row }">
@@ -362,6 +380,9 @@ onMounted(() => {
             />
             <t-button size="medium" theme="default" variant="outline" @click="handleCopyTask(row)">
               拷贝
+            </t-button>
+            <t-button size="medium" theme="default" variant="outline" @click="handleDuplicateTask(row)">
+              复制
             </t-button>
             <t-button size="medium" theme="default" variant="outline" @click="openEditDialog(row)">
               编辑
