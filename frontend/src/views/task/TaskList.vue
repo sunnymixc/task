@@ -7,7 +7,7 @@ import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
 import StatusBadge from '@/components/task/StatusBadge.vue'
 import PriorityBadge from '@/components/task/PriorityBadge.vue'
-import StatusActions from '@/components/task/StatusActions.vue'
+import StatusActions, { hasStatusActions } from '@/components/task/StatusActions.vue'
 
 // 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
 const props = defineProps<{ taskListId?: string }>()
@@ -372,8 +372,9 @@ onMounted(() => {
         </template>
 
         <template #action="{ row }">
-          <t-space>
+          <t-space size="small">
             <StatusActions
+              v-if="hasStatusActions(row.status)"
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />

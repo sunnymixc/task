@@ -171,7 +171,7 @@ onMounted(() => {
         </template>
 
         <template #action="{ row }">
-          <t-space>
+          <t-space size="small">
             <t-link theme="primary" hover="color" @click="openEditDialog(row)">
               编辑
             </t-link>
