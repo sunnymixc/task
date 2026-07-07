@@ -56,7 +56,21 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
+/* 固定视口布局（#app 100vh + 内部滚动），body 层面不允许出现页面滚动条 */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* t-dialog：header/body/footer 统一增加内边距，避免内部控件的 focus 阴影被 overflow 截断 */
+.t-dialog .t-dialog__header,
+.t-dialog .t-dialog__body,
+.t-dialog .t-dialog__footer {
+  padding: var(--td-comp-paddingTB-l) var(--td-comp-paddingLR-xs);
 }
 </style>

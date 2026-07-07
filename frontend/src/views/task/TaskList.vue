@@ -408,7 +408,7 @@ onMounted(() => {
             <t-link theme="primary" hover="color" @click="openEditDialog(row)">
               编辑
             </t-link>
-            <t-link theme="danger" hover="color" @click="handleDeleteTask(row)">
+            <t-link theme="primary" hover="color" @click="handleDeleteTask(row)">
               删除
             </t-link>
           </t-space>
