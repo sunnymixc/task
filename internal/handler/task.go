@@ -54,6 +54,7 @@ func NewTaskHandler(taskService interfaces.TaskService) *TaskHandler {
 type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
+	Result      string       `json:"result"`
 	Status      string       `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
@@ -65,6 +66,7 @@ type CreateTaskRequest struct {
 type UpdateTaskRequest struct {
 	Title       *string  `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string  `json:"description" binding:"omitempty,max=5000"`
+	Result      *string  `json:"result"`
 	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  *string  `json:"task_list_id" binding:"omitempty,len=24,alpha"`
@@ -102,6 +104,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	createReq := &types.CreateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
+		Result:      req.Result,
 		TaskListID:  req.TaskListID,
 		Links:       req.Links,
 	}
@@ -293,6 +296,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	updateReq := &types.UpdateTaskRequest{
 		Title:       req.Title,
 		Description: req.Description,
+		Result:      req.Result,
 		TaskListID:  req.TaskListID,
 		Links:       req.Links,
 	}

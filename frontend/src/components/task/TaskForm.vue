@@ -29,6 +29,7 @@ const taskListStore = useTaskListStore()
 const form = reactive({
   title: '',
   description: '',
+  result: '',
   priority: 'high' as TaskPriority,
   status: 'draft' as TaskStatus,
   task_list_id: '',
@@ -128,6 +129,7 @@ watch(() => props.task, (task) => {
   if (task) {
     form.title = task.title
     form.description = task.description || ''
+    form.result = task.result || ''
     form.priority = task.priority
     form.status = task.status
     form.task_list_id = task.task_list_id || ''
@@ -142,6 +144,7 @@ watch(() => props.task, (task) => {
   if (!task) {
     form.title = ''
     form.description = ''
+    form.result = ''
     form.priority = 'high'
     form.status = 'draft'
     form.task_list_id = props.defaultTaskListId || taskListStore.allLists.find(l => l.is_default)?.id || ''
@@ -177,6 +180,7 @@ const handleSubmit = async (keepOpen = false) => {
   const data: CreateTaskRequest | UpdateTaskRequest = {
     title: form.title,
     description: form.description || undefined,
+    result: form.result || undefined,
     status: form.status,
     priority: form.priority,
     task_list_id: form.task_list_id || undefined,
@@ -226,6 +230,14 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
         :maxlength="5000"
         :autosize="{ minRows: 4, maxRows: 14 }"
         show-limit-number
+      />
+    </t-form-item>
+
+    <t-form-item label="结果" name="result">
+      <t-textarea
+        v-model="form.result"
+        placeholder="请输入任务结果"
+        :autosize="{ minRows: 4, maxRows: 14 }"
       />
     </t-form-item>
 

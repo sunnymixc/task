@@ -96,9 +96,9 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 
 	db := r.db.WithContext(ctx).Model(&types.Task{}).Where("tenant_id = ?", tenantID)
 
-	// Add search conditions for title and description
+	// Add search conditions for title, description and result
 	searchPattern := "%" + query + "%"
-	db = db.Where("title ILIKE ? OR description ILIKE ?", searchPattern, searchPattern)
+	db = db.Where("title ILIKE ? OR description ILIKE ? OR result ILIKE ?", searchPattern, searchPattern, searchPattern)
 
 	// Apply additional filters
 	db = r.applyFilters(db, filters)

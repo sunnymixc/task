@@ -101,6 +101,11 @@ const formatDate = (dateStr: string) => {
           </div>
 
           <div class="section">
+            <div class="section-title">结果</div>
+            <div class="description">{{ task.result || '-' }}</div>
+          </div>
+
+          <div class="section">
             <div class="section-title">链接</div>
             <TaskLinkList :links="task.links" />
           </div>

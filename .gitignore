@@ -40,3 +40,7 @@ vendor/
 # Embedded frontend build (synced by deploy.sh)
 internal/web/dist/*
 !internal/web/dist/.gitkeep
+
+# AI Task
+plan.md
+result.md

@@ -64,6 +64,7 @@ export interface Task {
   tenant_id: number
   title: string
   description: string
+  result: string
   status: TaskStatus
   priority: TaskPriority
   creator_id: string
@@ -114,6 +115,7 @@ export interface UserInfo {
 export interface CreateTaskRequest {
   title: string
   description?: string
+  result?: string
   status?: TaskStatus
   priority?: TaskPriority
   task_list_id?: string
@@ -124,6 +126,7 @@ export interface CreateTaskRequest {
 export interface UpdateTaskRequest {
   title?: string
   description?: string
+  result?: string
   status?: TaskStatus
   priority?: TaskPriority
   task_list_id?: string

@@ -77,6 +77,8 @@ type Task struct {
 	Title string `json:"title" gorm:"type:varchar(255);not null"`
 	// Description of the task
 	Description string `json:"description" gorm:"type:text"`
+	// Result of the task (大文本，无字符上限)
+	Result string `json:"result" gorm:"type:text"`
 	// Current status of the task
 	Status TaskStatus `json:"status" gorm:"type:varchar(20);not null;default:'draft'"`
 	// Priority of the task
@@ -116,6 +118,7 @@ func (t *Task) BeforeSave(tx *gorm.DB) error {
 type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
+	Result      string       `json:"result"`
 	Status      TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
@@ -127,6 +130,7 @@ type CreateTaskRequest struct {
 type UpdateTaskRequest struct {
 	Title       *string       `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string       `json:"description" binding:"omitempty,max=5000"`
+	Result      *string       `json:"result"`
 	Status      *TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending running completed"`
 	Priority    *TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  *string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
@@ -171,6 +175,7 @@ type TaskResponse struct {
 	TenantID    uint64       `json:"tenant_id"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
+	Result      string       `json:"result"`
 	Status      TaskStatus   `json:"status"`
 	Priority    TaskPriority `json:"priority"`
 	CreatorID   string       `json:"creator_id"`
@@ -200,6 +205,7 @@ func (t *Task) ToResponse() *TaskResponse {
 		TenantID:    t.TenantID,
 		Title:       t.Title,
 		Description: t.Description,
+		Result:      t.Result,
 		Status:      t.Status,
 		Priority:    t.Priority,
 		CreatorID:   t.CreatorID,

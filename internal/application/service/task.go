@@ -103,6 +103,7 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		TenantID:    user.TenantID,
 		Title:       req.Title,
 		Description: req.Description,
+		Result:      req.Result,
 		Status:      status,
 		Priority:    priority,
 		CreatorID:   userID,
@@ -262,6 +263,9 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 	}
 	if req.Description != nil {
 		task.Description = *req.Description
+	}
+	if req.Result != nil {
+		task.Result = *req.Result
 	}
 	if req.Priority != nil {
 		task.Priority = *req.Priority
