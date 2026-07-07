@@ -37,6 +37,22 @@ var ValidStatusTransitions = map[TaskStatus][]TaskStatus{
 	TaskStatusCompleted: {},
 }
 
+// statusPriorities 状态排序优先级，数值越小排序越靠前（与 000008 迁移中的 CASE 保持一致）
+var statusPriorities = map[TaskStatus]int{
+	TaskStatusRunning:   1,
+	TaskStatusPending:   2,
+	TaskStatusDraft:     3,
+	TaskStatusCompleted: 4,
+}
+
+// SortPriority returns the sort priority for the status (unknown statuses fall back to draft's)
+func (s TaskStatus) SortPriority() int {
+	if p, ok := statusPriorities[s]; ok {
+		return p
+	}
+	return statusPriorities[TaskStatusDraft]
+}
+
 // IsValidTransition checks if a status transition from current to new is valid
 func IsValidTransition(current, new TaskStatus) bool {
 	allowed, ok := ValidStatusTransitions[current]
@@ -65,6 +81,8 @@ type Task struct {
 	Status TaskStatus `json:"status" gorm:"type:varchar(20);not null;default:'draft'"`
 	// Priority of the task
 	Priority TaskPriority `json:"priority" gorm:"type:varchar(20);default:'medium'"`
+	// Status sort priority derived from Status (internal, kept in sync by BeforeSave)
+	StatusPriority int `json:"-" gorm:"type:integer;not null;default:3;index"`
 	// ID of the user who created this task
 	CreatorID string `json:"creator_id" gorm:"type:varchar(36);not null"`
 	// ID of the task list this task belongs to (每个任务只属于一个清单)
@@ -86,6 +104,12 @@ type Task struct {
 // TableName specifies the table name for Task model
 func (Task) TableName() string {
 	return "tasks"
+}
+
+// BeforeSave 保存前由 Status 派生 StatusPriority（Create/Save 均触发，保证两者不脱节）
+func (t *Task) BeforeSave(tx *gorm.DB) error {
+	t.StatusPriority = t.Status.SortPriority()
+	return nil
 }
 
 // CreateTaskRequest 创建任务请求
