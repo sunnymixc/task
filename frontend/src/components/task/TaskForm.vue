@@ -13,7 +13,8 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'submit', data: CreateTaskRequest | UpdateTaskRequest): void
+  // keepOpen: 仅保存入库,父组件不关闭弹窗
+  (e: 'submit', data: CreateTaskRequest | UpdateTaskRequest, keepOpen?: boolean): void
   (e: 'cancel'): void
 }
 
@@ -150,7 +151,7 @@ watch(() => props.task, (task) => {
   formRef.value?.reset()
 }, { immediate: false })
 
-const handleSubmit = async () => {
+const handleSubmit = async (keepOpen = false) => {
   const valid = await formRef.value?.validate()
   if (valid !== true) return
 
@@ -189,14 +190,15 @@ const handleSubmit = async () => {
     data.due_date = dateValue
   }
 
-  emit('submit', data)
+  emit('submit', data, keepOpen)
 }
 
 // 弹窗打开后由父组件调用,聚焦标题输入框
 const focusTitle = () => titleInputRef.value?.focus?.()
 
-// Expose submit so the dialog footer can trigger validation + submit
-defineExpose({ submit: handleSubmit, focusTitle })
+// Expose submit/save so the dialog footer can trigger validation + submit
+// save: 仅保存入库,不关闭弹窗
+defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true), focusTitle })
 </script>
 
 <template>
@@ -205,7 +207,7 @@ defineExpose({ submit: handleSubmit, focusTitle })
     :data="form"
     :rules="formRules"
     label-width="80px"
-    @submit="handleSubmit"
+    @submit="() => handleSubmit()"
   >
     <t-form-item label="标题" name="title">
       <t-input

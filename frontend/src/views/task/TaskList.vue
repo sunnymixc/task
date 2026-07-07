@@ -145,16 +145,24 @@ const clearSearch = () => {
 // Open create dialog
 const createFormRef = ref<InstanceType<typeof TaskForm>>()
 const showCreateDialog = ref(false)
+// "保存"(不关窗)后记住已入库的任务,后续保存/确定改走更新,避免重复建单
+const createdTask = ref<Task | null>(null)
 const openCreateDialog = () => {
+  createdTask.value = null
   showCreateDialog.value = true
 }
 
-// Handle create task（保存成功才关闭弹窗并刷新，失败保留弹窗与已填内容）
-const handleCreateTask = async (data: any) => {
-  const created = await taskStore.createTask(data)
-  if (created) {
+// Handle create task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
+const handleCreateTask = async (data: any, keepOpen = false) => {
+  const saved = createdTask.value
+    ? await taskStore.updateTask(createdTask.value.id, data)
+    : await taskStore.createTask(data)
+  if (!saved) return
+  createdTask.value = saved
+  fetchTasks()
+  if (!keepOpen) {
     showCreateDialog.value = false
-    fetchTasks()
+    createdTask.value = null
   }
 }
 
@@ -167,14 +175,15 @@ const openEditDialog = (task: Task) => {
   showEditDialog.value = true
 }
 
-// Handle update task（保存成功才关闭弹窗并刷新，失败保留弹窗与已填内容）
-const handleUpdateTask = async (data: any) => {
+// Handle update task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
+const handleUpdateTask = async (data: any, keepOpen = false) => {
   if (!editingTask.value) return
   const updated = await taskStore.updateTask(editingTask.value.id, data)
-  if (updated) {
+  if (!updated) return
+  fetchTasks()
+  if (!keepOpen) {
     showEditDialog.value = false
     editingTask.value = null
-    fetchTasks()
   }
 }
 
@@ -431,13 +440,14 @@ onMounted(() => {
       header="新建任务"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
-      cancel-btn="取消"
-      confirm-btn="确定"
-      @confirm="createFormRef?.submit()"
-      @cancel="showCreateDialog = false"
       @opened="createFormRef?.focusTitle()"
     >
       <TaskForm ref="createFormRef" :default-task-list-id="taskListId" @submit="handleCreateTask" />
+      <template #footer>
+        <t-button theme="default" @click="showCreateDialog = false">取消</t-button>
+        <t-button theme="primary" variant="outline" @click="createFormRef?.save()">保存</t-button>
+        <t-button theme="primary" @click="createFormRef?.submit()">确定</t-button>
+      </template>
     </t-dialog>
 
     <!-- Edit Dialog -->
@@ -446,10 +456,6 @@ onMounted(() => {
       header="编辑任务"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
-      cancel-btn="取消"
-      confirm-btn="确定"
-      @confirm="editFormRef?.submit()"
-      @cancel="showEditDialog = false; editingTask = null"
       @opened="editFormRef?.focusTitle()"
     >
       <TaskForm
@@ -457,6 +463,11 @@ onMounted(() => {
         :task="editingTask"
         @submit="handleUpdateTask"
       />
+      <template #footer>
+        <t-button theme="default" @click="showEditDialog = false; editingTask = null">取消</t-button>
+        <t-button theme="primary" variant="outline" @click="editFormRef?.save()">保存</t-button>
+        <t-button theme="primary" @click="editFormRef?.submit()">确定</t-button>
+      </template>
     </t-dialog>
   </div>
 </template>
