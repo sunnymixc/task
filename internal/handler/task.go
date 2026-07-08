@@ -52,25 +52,33 @@ func NewTaskHandler(taskService interfaces.TaskService) *TaskHandler {
 
 // CreateTaskRequest represents the create task request body
 type CreateTaskRequest struct {
-	Title       string       `json:"title" binding:"required,min=1,max=255"`
-	Description string       `json:"description" binding:"max=5000"`
-	Result      string       `json:"result"`
-	Status      string       `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
-	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate     *string      `json:"due_date"` // ISO 8601 date string
-	Links       []types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
+	Title           string                `json:"title" binding:"required,min=1,max=255"`
+	Description     string                `json:"description" binding:"max=5000"`
+	Result          string                `json:"result"`
+	Status          string                `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
+	ExecutionStatus string                `json:"execution_status" binding:"omitempty,oneof=unplanned planning planned working completed"`
+	ExecutionPlan   string                `json:"execution_plan"`
+	ExecutionLog    string                `json:"execution_log"`
+	ExecutionResult string                `json:"execution_result"`
+	Priority        string                `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID      string                `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate         *string               `json:"due_date"` // ISO 8601 date string
+	Links           []types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskRequest represents the update task request body
 type UpdateTaskRequest struct {
-	Title       *string  `json:"title" binding:"omitempty,min=1,max=255"`
-	Description *string  `json:"description" binding:"omitempty,max=5000"`
-	Result      *string  `json:"result"`
-	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
-	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID  *string  `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate     *string  `json:"due_date"`
+	Title           *string `json:"title" binding:"omitempty,min=1,max=255"`
+	Description     *string `json:"description" binding:"omitempty,max=5000"`
+	Result          *string `json:"result"`
+	Status          *string `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
+	ExecutionStatus *string `json:"execution_status" binding:"omitempty,oneof=unplanned planning planned working completed"`
+	ExecutionPlan   *string `json:"execution_plan"`
+	ExecutionLog    *string `json:"execution_log"`
+	ExecutionResult *string `json:"execution_result"`
+	Priority        *string `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID      *string `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate         *string `json:"due_date"`
 	// Links 为 null 表示不修改；空数组表示清空；非空表示整体替换
 	Links *[]types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
@@ -102,11 +110,14 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	createReq := &types.CreateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		Result:      req.Result,
-		TaskListID:  req.TaskListID,
-		Links:       req.Links,
+		Title:           req.Title,
+		Description:     req.Description,
+		Result:          req.Result,
+		ExecutionPlan:   req.ExecutionPlan,
+		ExecutionLog:    req.ExecutionLog,
+		ExecutionResult: req.ExecutionResult,
+		TaskListID:      req.TaskListID,
+		Links:           req.Links,
 	}
 
 	// Parse priority
@@ -117,6 +128,11 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	// Parse status
 	if req.Status != "" {
 		createReq.Status = types.TaskStatus(req.Status)
+	}
+
+	// Parse execution status
+	if req.ExecutionStatus != "" {
+		createReq.ExecutionStatus = types.TaskExecutionStatus(req.ExecutionStatus)
 	}
 
 	// Parse due date if provided
@@ -254,10 +270,10 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    tasks,
-		"total":   total,
-		"page":    page,
+		"success":   true,
+		"data":      tasks,
+		"total":     total,
+		"page":      page,
 		"page_size": pageSize,
 	})
 }
@@ -294,17 +310,26 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	updateReq := &types.UpdateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		Result:      req.Result,
-		TaskListID:  req.TaskListID,
-		Links:       req.Links,
+		Title:           req.Title,
+		Description:     req.Description,
+		Result:          req.Result,
+		ExecutionPlan:   req.ExecutionPlan,
+		ExecutionLog:    req.ExecutionLog,
+		ExecutionResult: req.ExecutionResult,
+		TaskListID:      req.TaskListID,
+		Links:           req.Links,
 	}
 
 	// Parse status if provided
 	if req.Status != nil {
 		s := types.TaskStatus(*req.Status)
 		updateReq.Status = &s
+	}
+
+	// Parse execution status if provided
+	if req.ExecutionStatus != nil {
+		es := types.TaskExecutionStatus(*req.ExecutionStatus)
+		updateReq.ExecutionStatus = &es
 	}
 
 	// Parse priority if provided
@@ -509,11 +534,11 @@ func (h *TaskHandler) SearchTasks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    tasks,
-		"total":   total,
-		"page":    page,
+		"success":   true,
+		"data":      tasks,
+		"total":     total,
+		"page":      page,
 		"page_size": pageSize,
-		"query":   query,
+		"query":     query,
 	})
 }

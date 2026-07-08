@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority, TaskStatus, TaskLinkType, TaskLinkInput } from '@/types'
+import type { Task, CreateTaskRequest, UpdateTaskRequest, TaskPriority, TaskStatus, TaskExecutionStatus, TaskLinkType, TaskLinkInput } from '@/types'
 import type { FormRules } from 'tdesign-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useTaskListStore } from '@/stores/taskList'
@@ -32,6 +32,10 @@ const form = reactive({
   result: '',
   priority: 'high' as TaskPriority,
   status: 'draft' as TaskStatus,
+  execution_status: 'unplanned' as TaskExecutionStatus,
+  execution_plan: '',
+  execution_log: '',
+  execution_result: '',
   task_list_id: '',
   due_date: '' as string | Date
 })
@@ -114,6 +118,15 @@ const statusSteps: { value: TaskStatus; title: string; content: string }[] = [
   { value: 'completed', title: '已完成', content: '任务已完成' }
 ]
 
+// 执行状态选项(任务执行过程的细化管理)
+const executionStatusOptions: { value: TaskExecutionStatus; label: string }[] = [
+  { value: 'unplanned', label: '未计划' },
+  { value: 'planning', label: '计划中' },
+  { value: 'planned', label: '已计划' },
+  { value: 'working', label: '工作中' },
+  { value: 'completed', label: '已完成' }
+]
+
 const formRules: FormRules = {
   title: [
     { required: true, message: '请输入任务标题' },
@@ -132,6 +145,10 @@ watch(() => props.task, (task) => {
     form.result = task.result || ''
     form.priority = task.priority
     form.status = task.status
+    form.execution_status = task.execution_status || 'unplanned'
+    form.execution_plan = task.execution_plan || ''
+    form.execution_log = task.execution_log || ''
+    form.execution_result = task.execution_result || ''
     form.task_list_id = task.task_list_id || ''
     // Format date string for date picker
     form.due_date = task.due_date ? new Date(task.due_date) : ''
@@ -147,6 +164,10 @@ watch(() => props.task, (task) => {
     form.result = ''
     form.priority = 'high'
     form.status = 'draft'
+    form.execution_status = 'unplanned'
+    form.execution_plan = ''
+    form.execution_log = ''
+    form.execution_result = ''
     form.task_list_id = props.defaultTaskListId || taskListStore.allLists.find(l => l.is_default)?.id || ''
     form.due_date = ''
     links.value = []
@@ -182,6 +203,11 @@ const handleSubmit = async (keepOpen = false) => {
     description: form.description || undefined,
     result: form.result || undefined,
     status: form.status,
+    // 执行相关字段无条件携带:编辑时空串可正确清空(区别于 result 的 || undefined 既有模式)
+    execution_status: form.execution_status,
+    execution_plan: form.execution_plan,
+    execution_log: form.execution_log,
+    execution_result: form.execution_result,
     priority: form.priority,
     task_list_id: form.task_list_id || undefined,
     // 编辑模式无条件携带:空数组即清空(后端 nil=不动/[]=清空 语义)
@@ -257,7 +283,7 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
       </t-radio-group>
     </t-form-item>
 
-    <t-form-item label="状态" name="status">
+    <t-form-item label="任务状态" name="status">
       <t-radio-group v-model="form.status">
         <t-radio
           v-for="step in statusSteps"
@@ -267,6 +293,42 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
           {{ step.title }}
         </t-radio>
       </t-radio-group>
+    </t-form-item>
+
+    <t-form-item label="执行状态" name="execution_status">
+      <t-radio-group v-model="form.execution_status">
+        <t-radio
+          v-for="option in executionStatusOptions"
+          :key="option.value"
+          :value="option.value"
+        >
+          {{ option.label }}
+        </t-radio>
+      </t-radio-group>
+    </t-form-item>
+
+    <t-form-item label="执行计划" name="execution_plan">
+      <t-textarea
+        v-model="form.execution_plan"
+        placeholder="请输入执行计划"
+        :autosize="{ minRows: 4, maxRows: 14 }"
+      />
+    </t-form-item>
+
+    <t-form-item label="执行日志" name="execution_log">
+      <t-textarea
+        v-model="form.execution_log"
+        placeholder="请输入执行日志"
+        :autosize="{ minRows: 4, maxRows: 14 }"
+      />
+    </t-form-item>
+
+    <t-form-item label="执行结果" name="execution_result">
+      <t-textarea
+        v-model="form.execution_result"
+        placeholder="请输入执行结果"
+        :autosize="{ minRows: 4, maxRows: 14 }"
+      />
     </t-form-item>
 
     <t-form-item label="截止日期" name="due_date">

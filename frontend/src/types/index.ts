@@ -57,6 +57,8 @@ export interface RefreshTokenRequest {
 
 // Task Types
 export type TaskStatus = 'draft' | 'pending' | 'executing' | 'completed'
+// 执行状态(任务执行过程的细化管理)
+export type TaskExecutionStatus = 'unplanned' | 'planning' | 'planned' | 'working' | 'completed'
 export type TaskPriority = 'low' | 'medium' | 'high'
 
 export interface Task {
@@ -66,6 +68,10 @@ export interface Task {
   description: string
   result: string
   status: TaskStatus
+  execution_status: TaskExecutionStatus
+  execution_plan: string
+  execution_log: string
+  execution_result: string
   priority: TaskPriority
   creator_id: string
   task_list_id: string
@@ -117,6 +123,10 @@ export interface CreateTaskRequest {
   description?: string
   result?: string
   status?: TaskStatus
+  execution_status?: TaskExecutionStatus
+  execution_plan?: string
+  execution_log?: string
+  execution_result?: string
   priority?: TaskPriority
   task_list_id?: string
   due_date?: string
@@ -128,6 +138,10 @@ export interface UpdateTaskRequest {
   description?: string
   result?: string
   status?: TaskStatus
+  execution_status?: TaskExecutionStatus
+  execution_plan?: string
+  execution_log?: string
+  execution_result?: string
   priority?: TaskPriority
   task_list_id?: string
   due_date?: string

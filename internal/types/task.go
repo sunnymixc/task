@@ -16,6 +16,17 @@ const (
 	TaskStatusCompleted TaskStatus = "completed"
 )
 
+// TaskExecutionStatus 任务执行状态（status = executing 时对执行过程的细化管理）
+type TaskExecutionStatus string
+
+const (
+	TaskExecutionStatusUnplanned TaskExecutionStatus = "unplanned" // 未计划
+	TaskExecutionStatusPlanning  TaskExecutionStatus = "planning"  // 计划中
+	TaskExecutionStatusPlanned   TaskExecutionStatus = "planned"   // 已计划
+	TaskExecutionStatusWorking   TaskExecutionStatus = "working"   // 工作中
+	TaskExecutionStatusCompleted TaskExecutionStatus = "completed" // 已完成
+)
+
 // TaskPriority represents the priority of a task
 type TaskPriority string
 
@@ -81,6 +92,14 @@ type Task struct {
 	Result string `json:"result" gorm:"type:text"`
 	// Current status of the task
 	Status TaskStatus `json:"status" gorm:"type:varchar(20);not null;default:'draft'"`
+	// Execution status (细化管理执行过程)
+	ExecutionStatus TaskExecutionStatus `json:"execution_status" gorm:"type:varchar(20);not null;default:'unplanned'"`
+	// Execution plan (大文本，无字符上限)
+	ExecutionPlan string `json:"execution_plan" gorm:"type:text"`
+	// Execution log (大文本，无字符上限)
+	ExecutionLog string `json:"execution_log" gorm:"type:text"`
+	// Execution result (大文本，无字符上限)
+	ExecutionResult string `json:"execution_result" gorm:"type:text"`
 	// Priority of the task
 	Priority TaskPriority `json:"priority" gorm:"type:varchar(20);default:'medium'"`
 	// Status sort priority derived from Status (internal, kept in sync by BeforeSave)
@@ -92,8 +111,8 @@ type Task struct {
 	// Due date for the task (nullable)
 	DueDate *time.Time `json:"due_date"`
 	// Timestamps
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 
 	// Associations (not stored in DB)
@@ -116,25 +135,33 @@ func (t *Task) BeforeSave(tx *gorm.DB) error {
 
 // CreateTaskRequest 创建任务请求
 type CreateTaskRequest struct {
-	Title       string       `json:"title" binding:"required,min=1,max=255"`
-	Description string       `json:"description" binding:"max=5000"`
-	Result      string       `json:"result"`
-	Status      TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
-	Priority    TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate     *time.Time   `json:"due_date"`
-	Links       []TaskLinkInput `json:"links" binding:"omitempty,dive"`
+	Title           string              `json:"title" binding:"required,min=1,max=255"`
+	Description     string              `json:"description" binding:"max=5000"`
+	Result          string              `json:"result"`
+	Status          TaskStatus          `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
+	ExecutionStatus TaskExecutionStatus `json:"execution_status" binding:"omitempty,oneof=unplanned planning planned working completed"`
+	ExecutionPlan   string              `json:"execution_plan"`
+	ExecutionLog    string              `json:"execution_log"`
+	ExecutionResult string              `json:"execution_result"`
+	Priority        TaskPriority        `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID      string              `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate         *time.Time          `json:"due_date"`
+	Links           []TaskLinkInput     `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskRequest 更新任务请求
 type UpdateTaskRequest struct {
-	Title       *string       `json:"title" binding:"omitempty,min=1,max=255"`
-	Description *string       `json:"description" binding:"omitempty,max=5000"`
-	Result      *string       `json:"result"`
-	Status      *TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
-	Priority    *TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID  *string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate     *time.Time    `json:"due_date"`
+	Title           *string              `json:"title" binding:"omitempty,min=1,max=255"`
+	Description     *string              `json:"description" binding:"omitempty,max=5000"`
+	Result          *string              `json:"result"`
+	Status          *TaskStatus          `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
+	ExecutionStatus *TaskExecutionStatus `json:"execution_status" binding:"omitempty,oneof=unplanned planning planned working completed"`
+	ExecutionPlan   *string              `json:"execution_plan"`
+	ExecutionLog    *string              `json:"execution_log"`
+	ExecutionResult *string              `json:"execution_result"`
+	Priority        *TaskPriority        `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID      *string              `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate         *time.Time           `json:"due_date"`
 	// Links 为 nil 表示不修改链接；空数组表示清空；非空表示整体替换
 	Links *[]TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
@@ -146,19 +173,19 @@ type UpdateTaskStatusRequest struct {
 
 // ListTasksRequest 列出任务请求
 type ListTasksRequest struct {
-	Status     []TaskStatus  `form:"status" binding:"omitempty,dive,oneof=draft pending executing completed"`
-	CreatorID  *string       `form:"creator_id" binding:"omitempty,uuid"`
+	Status     []TaskStatus   `form:"status" binding:"omitempty,dive,oneof=draft pending executing completed"`
+	CreatorID  *string        `form:"creator_id" binding:"omitempty,uuid"`
 	Priority   []TaskPriority `form:"priority" binding:"omitempty,dive,oneof=low medium high"`
-	TaskListID []string     `form:"task_list_id" binding:"omitempty,dive,len=24,alpha"`
-	Page       int          `form:"page" binding:"min=1"`
-	PageSize   int          `form:"page_size" binding:"min=1,max=100"`
+	TaskListID []string       `form:"task_list_id" binding:"omitempty,dive,len=24,alpha"`
+	Page       int            `form:"page" binding:"min=1"`
+	PageSize   int            `form:"page_size" binding:"min=1,max=100"`
 }
 
 // SearchTasksRequest 搜索任务请求
 type SearchTasksRequest struct {
-	Query   string `form:"q" binding:"required,min=1,max=100"`
-	Page    int    `form:"page" binding:"min=1"`
-	PageSize int   `form:"page_size" binding:"min=1,max=100"`
+	Query    string `form:"q" binding:"required,min=1,max=100"`
+	Page     int    `form:"page" binding:"min=1"`
+	PageSize int    `form:"page_size" binding:"min=1,max=100"`
 }
 
 // TaskFilters represents filters for querying tasks
@@ -171,18 +198,22 @@ type TaskFilters struct {
 
 // TaskResponse represents the response for a task
 type TaskResponse struct {
-	ID          string       `json:"id"`
-	TenantID    uint64       `json:"tenant_id"`
-	Title       string       `json:"title"`
-	Description string       `json:"description"`
-	Result      string       `json:"result"`
-	Status      TaskStatus   `json:"status"`
-	Priority    TaskPriority `json:"priority"`
-	CreatorID   string       `json:"creator_id"`
-	TaskListID  string       `json:"task_list_id"`
-	DueDate     *time.Time   `json:"due_date"`
-	CreatedAt   time.Time    `json:"created_at"`
-	UpdatedAt   time.Time    `json:"updated_at"`
+	ID              string              `json:"id"`
+	TenantID        uint64              `json:"tenant_id"`
+	Title           string              `json:"title"`
+	Description     string              `json:"description"`
+	Result          string              `json:"result"`
+	Status          TaskStatus          `json:"status"`
+	ExecutionStatus TaskExecutionStatus `json:"execution_status"`
+	ExecutionPlan   string              `json:"execution_plan"`
+	ExecutionLog    string              `json:"execution_log"`
+	ExecutionResult string              `json:"execution_result"`
+	Priority        TaskPriority        `json:"priority"`
+	CreatorID       string              `json:"creator_id"`
+	TaskListID      string              `json:"task_list_id"`
+	DueDate         *time.Time          `json:"due_date"`
+	CreatedAt       time.Time           `json:"created_at"`
+	UpdatedAt       time.Time           `json:"updated_at"`
 
 	// Nested objects
 	Creator  *UserInfo      `json:"creator,omitempty"`
@@ -201,18 +232,22 @@ type UserInfo struct {
 // ToResponse converts a Task to TaskResponse
 func (t *Task) ToResponse() *TaskResponse {
 	resp := &TaskResponse{
-		ID:          t.ID,
-		TenantID:    t.TenantID,
-		Title:       t.Title,
-		Description: t.Description,
-		Result:      t.Result,
-		Status:      t.Status,
-		Priority:    t.Priority,
-		CreatorID:   t.CreatorID,
-		TaskListID:  t.TaskListID,
-		DueDate:     t.DueDate,
-		CreatedAt:   t.CreatedAt,
-		UpdatedAt:   t.UpdatedAt,
+		ID:              t.ID,
+		TenantID:        t.TenantID,
+		Title:           t.Title,
+		Description:     t.Description,
+		Result:          t.Result,
+		Status:          t.Status,
+		ExecutionStatus: t.ExecutionStatus,
+		ExecutionPlan:   t.ExecutionPlan,
+		ExecutionLog:    t.ExecutionLog,
+		ExecutionResult: t.ExecutionResult,
+		Priority:        t.Priority,
+		CreatorID:       t.CreatorID,
+		TaskListID:      t.TaskListID,
+		DueDate:         t.DueDate,
+		CreatedAt:       t.CreatedAt,
+		UpdatedAt:       t.UpdatedAt,
 	}
 
 	if t.Creator != nil {

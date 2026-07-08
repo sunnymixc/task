@@ -72,6 +72,12 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		status = types.TaskStatusDraft
 	}
 
+	// Set default execution status if not provided
+	executionStatus := req.ExecutionStatus
+	if executionStatus == "" {
+		executionStatus = types.TaskExecutionStatusUnplanned
+	}
+
 	// Resolve the task list: validate the given one, or fall back to the tenant's default
 	taskListID := req.TaskListID
 	if taskListID != "" {
@@ -99,16 +105,20 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 	}
 
 	task := &types.Task{
-		ID:          taskID,
-		TenantID:    user.TenantID,
-		Title:       req.Title,
-		Description: req.Description,
-		Result:      req.Result,
-		Status:      status,
-		Priority:    priority,
-		CreatorID:   userID,
-		TaskListID:  taskListID,
-		DueDate:     req.DueDate,
+		ID:              taskID,
+		TenantID:        user.TenantID,
+		Title:           req.Title,
+		Description:     req.Description,
+		Result:          req.Result,
+		Status:          status,
+		ExecutionStatus: executionStatus,
+		ExecutionPlan:   req.ExecutionPlan,
+		ExecutionLog:    req.ExecutionLog,
+		ExecutionResult: req.ExecutionResult,
+		Priority:        priority,
+		CreatorID:       userID,
+		TaskListID:      taskListID,
+		DueDate:         req.DueDate,
 	}
 
 	if err := s.taskRepo.CreateTask(ctx, task); err != nil {
@@ -266,6 +276,18 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 	}
 	if req.Result != nil {
 		task.Result = *req.Result
+	}
+	if req.ExecutionStatus != nil {
+		task.ExecutionStatus = *req.ExecutionStatus
+	}
+	if req.ExecutionPlan != nil {
+		task.ExecutionPlan = *req.ExecutionPlan
+	}
+	if req.ExecutionLog != nil {
+		task.ExecutionLog = *req.ExecutionLog
+	}
+	if req.ExecutionResult != nil {
+		task.ExecutionResult = *req.ExecutionResult
 	}
 	if req.Priority != nil {
 		task.Priority = *req.Priority

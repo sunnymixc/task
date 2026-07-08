@@ -8,6 +8,7 @@ import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import type { PrimaryTableCol } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
 import StatusBadge from '@/components/task/StatusBadge.vue'
+import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge.vue'
 import PriorityBadge from '@/components/task/PriorityBadge.vue'
 import StatusActions, { hasStatusActions } from '@/components/task/StatusActions.vue'
 import TaskLinkList from '@/components/task/TaskLinkList.vue'
@@ -65,7 +66,8 @@ const pageTitle = computed(() => {
 // Table columns(清单作用域下省略任务清单列)
 const columns = computed<PrimaryTableCol[]>(() => [
   { colKey: 'title', title: '标题和描述', width: 420, minWidth: 300 },
-  { colKey: 'status', title: '状态', width: 100 },
+  { colKey: 'status', title: '任务状态', width: 100 },
+  { colKey: 'execution_status', title: '执行状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
   ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
   { colKey: 'links', title: '链接', width: 200 },
@@ -306,7 +308,7 @@ onMounted(() => {
         <t-select
           v-model="currentStatus"
           :options="statusOptions"
-          placeholder="选择状态"
+          placeholder="选择任务状态"
           multiple
           clearable
           auto-width
@@ -366,6 +368,10 @@ onMounted(() => {
 
         <template #status="{ row }">
           <StatusBadge :status="row.status" />
+        </template>
+
+        <template #execution_status="{ row }">
+          <ExecutionStatusBadge :status="row.execution_status" />
         </template>
 
         <template #priority="{ row }">
