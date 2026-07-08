@@ -26,7 +26,7 @@ make run              # go run cmd/server/main.go
 make test             # go test -v ./...
 go test -v ./internal/application/service/...        # single package
 go test -v -run TestName ./internal/...             # single test
-make migrate          # psql ... -f migrations/000001_init.up.sql (needs DB_USER, DB_NAME)
+make migrate          # go run cmd/server/main.go --migrate-only (apply pending migrations, then exit)
 ```
 
 Frontend-only (from `frontend/`):
@@ -41,7 +41,9 @@ Backend config is loaded from environment / `.env` (see `.env.example`) by `inte
 
 ## Database & migrations
 
-There is **no GORM AutoMigrate** — the schema is managed by raw SQL in `migrations/` and must be applied manually (e.g. `make migrate`). When changing a model in `internal/types`, write a corresponding migration; the struct's GORM tags alone won't alter the DB.
+There is **no GORM AutoMigrate** — the schema is managed by raw SQL in `migrations/`. Migrations are **embedded into the binary** (`migrations/embed.go`, `go:embed`) and **applied automatically at server startup** by `internal/database/migrate.go`: each `NNNNNN_*.up.sql` not yet recorded in the `schema_migrations` table runs in its own transaction (guarded by a Postgres advisory lock against concurrent starts), then its numeric version is recorded. `./bin/task --migrate-only` (or `make migrate`) runs migrations and exits.
+
+When changing a model in `internal/types`, write a corresponding migration; the struct's GORM tags alone won't alter the DB. New migrations must be **idempotent** (`IF NOT EXISTS` / `DO $$` guards) and must not use non-transactional DDL (`CREATE INDEX CONCURRENTLY`). Rebuild the binary after adding SQL — files are embedded at build time. For an existing DB that's already current, baseline by inserting its versions into `schema_migrations` instead of re-running.
 
 Soft deletes are used (`gorm.DeletedAt`). All times are stored UTC (`database.Init` sets `NowFunc` to `time.Now().UTC()`).
 

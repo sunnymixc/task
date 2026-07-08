@@ -209,16 +209,16 @@ start_app() {
     # Deploy port overrides .env (unified app listens on its own port)
     export SERVER_PORT="$APP_PORT"
 
-    # Start app in background
+    # Start app in background (SQL migrations run automatically at startup)
     nohup "$BUILD_DIR/$BINARY_NAME" > "$LOG_FILE" 2>&1 &
     local pid=$!
 
     # Save PID
     echo $pid > "$PID_FILE"
 
-    # Wait for health check
+    # Wait for health check (window covers startup migrations, which may be slow)
     local count=0
-    while [ $count -lt 10 ]; do
+    while [ $count -lt 30 ]; do
         sleep 1
         if ! is_running; then
             break
@@ -233,7 +233,7 @@ start_app() {
     done
 
     log_error "App failed to start. Recent logs:"
-    tail -10 "$LOG_FILE" 2>/dev/null | sed 's/^/  /'
+    tail -20 "$LOG_FILE" 2>/dev/null | sed 's/^/  /'
     kill "$(get_pid)" 2>/dev/null || true
     rm -f "$PID_FILE"
     return 1

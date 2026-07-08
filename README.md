@@ -73,10 +73,17 @@ DB_NAME=taskdb
 JWT_SECRET=your-secret-key
 ```
 
-5. Run database migrations:
+5. Database migrations run **automatically at startup**: the server embeds `migrations/*.up.sql` (via `go:embed`) and applies any version not yet recorded in the `schema_migrations` table, in filename order, one transaction per file. To run migrations without starting the server:
 ```bash
-psql -U postgres -d taskdb -f migrations/000001_init.up.sql
+make migrate                 # = go run cmd/server/main.go --migrate-only
 ```
+
+Migration authoring rules:
+- Name files `NNNNNN_description.up.sql` (zero-padded sequence, e.g. `000010_add_foo.up.sql`).
+- Write idempotent SQL (`IF NOT EXISTS` / `DO $$` guards) — safe for re-runs and for adopting existing databases.
+- Each file runs inside a transaction, so non-transactional DDL (`CREATE INDEX CONCURRENTLY`, some `ALTER TYPE ... ADD VALUE`) cannot be used here.
+- Migration files are embedded at build time — rebuild the binary after adding or changing SQL (`./start.sh start` and `./deploy.sh deploy` already rebuild).
+- For a pre-existing database whose schema is already current, baseline it once by inserting the applied versions: `INSERT INTO schema_migrations (version) VALUES ('000001'), ... ;`
 
 6. Run the server:
 ```bash

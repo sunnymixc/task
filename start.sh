@@ -156,24 +156,37 @@ start_backend() {
         export $(cat .env | grep -v '^#' | xargs)
     fi
 
-    # Start backend in background
+    # Start backend in background (SQL migrations run automatically at startup)
     nohup "$BUILD_DIR/$BINARY_NAME" > "$BACKEND_LOG_FILE" 2>&1 &
     local pid=$!
 
     # Save PID
     echo $pid > "$BACKEND_PID_FILE"
 
-    # Wait a moment and check if it's still running
-    sleep 2
-    if is_backend_running; then
-        log_info "Backend started successfully (PID: $pid)"
-        log_info "Backend logs: $BACKEND_LOG_FILE"
-        return 0
+    # Wait for startup: migrations may take a while, fail fast if the process dies
+    local port=${SERVER_PORT:-5001}
+    local count=0
+    while [ $count -lt 15 ]; do
+        sleep 1
+        if ! is_backend_running; then
+            log_error "Backend failed to start. Recent logs:"
+            tail -20 "$BACKEND_LOG_FILE" 2>/dev/null | sed 's/^/  /'
+            rm -f "$BACKEND_PID_FILE"
+            return 1
+        fi
+        if curl -sf "http://localhost:$port/health" > /dev/null 2>&1; then
+            break
+        fi
+        count=$((count + 1))
+    done
+
+    if [ $count -ge 15 ]; then
+        log_warn "Backend is running but /health not responding yet (PID: $pid)"
     else
-        log_error "Backend failed to start. Check $BACKEND_LOG_FILE"
-        rm -f "$BACKEND_PID_FILE"
-        return 1
+        log_info "Backend started successfully (PID: $pid)"
     fi
+    log_info "Backend logs: $BACKEND_LOG_FILE"
+    return 0
 }
 
 # Start the frontend dev server
