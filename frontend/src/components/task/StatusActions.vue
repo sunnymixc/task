@@ -5,13 +5,13 @@ import type { TaskStatus } from '@/types'
 const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> = {
   draft: [
     { label: '确认', value: 'pending' },
-    { label: '执行', value: 'running' }
+    { label: '执行', value: 'executing' }
   ],
   pending: [
-    { label: '执行', value: 'running' },
+    { label: '执行', value: 'executing' },
     { label: '完成', value: 'completed' }
   ],
-  running: [
+  executing: [
     { label: '暂停', value: 'pending' },
     { label: '完成', value: 'completed' }
   ],

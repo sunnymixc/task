@@ -56,7 +56,7 @@ export interface RefreshTokenRequest {
 }
 
 // Task Types
-export type TaskStatus = 'draft' | 'pending' | 'running' | 'completed'
+export type TaskStatus = 'draft' | 'pending' | 'executing' | 'completed'
 export type TaskPriority = 'low' | 'medium' | 'high'
 
 export interface Task {

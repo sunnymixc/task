@@ -70,7 +70,7 @@ handler  → service → repository → GORM (global database.DB)
 
 ### Task status
 
-`types.TaskStatus` defines the workflow Draft → Published → In Progress → Completed → Ended, and `ValidStatusTransitions` / `IsValidTransition` encode the allowed transitions. **However**, transition validation is currently NOT enforced — `UpdateTask` and `UpdateTaskStatus` set status freely (a recent change removed the check; see commit history). Don't assume the guard runs unless you re-add it.
+`types.TaskStatus` defines the workflow Draft → Pending → Executing → Completed (wire values `draft` / `pending` / `executing` / `completed`), and `ValidStatusTransitions` / `IsValidTransition` encode the allowed transitions. **However**, transition validation is currently NOT enforced — `UpdateTask` and `UpdateTaskStatus` set status freely (a recent change removed the check; see commit history). Don't assume the guard runs unless you re-add it.
 
 ## Frontend architecture
 

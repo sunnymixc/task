@@ -42,7 +42,7 @@ const pagination = ref({
 const statusOptions = [
   { label: '草稿', value: 'draft' },
   { label: '待执行', value: 'pending' },
-  { label: '执行中', value: 'running' },
+  { label: '执行中', value: 'executing' },
   { label: '已完成', value: 'completed' }
 ]
 

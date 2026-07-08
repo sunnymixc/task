@@ -11,7 +11,7 @@ const props = defineProps<Props>()
 const statusConfig: Record<TaskStatus, { label: string; theme: 'default' | 'primary' | 'warning' | 'success' | 'danger' }> = {
   draft: { label: '草稿', theme: 'default' },
   pending: { label: '待执行', theme: 'warning' },
-  running: { label: '执行中', theme: 'primary' },
+  executing: { label: '执行中', theme: 'primary' },
   completed: { label: '已完成', theme: 'success' }
 }
 

@@ -12,7 +12,7 @@ type TaskStatus string
 const (
 	TaskStatusDraft     TaskStatus = "draft"
 	TaskStatusPending   TaskStatus = "pending"
-	TaskStatusRunning   TaskStatus = "running"
+	TaskStatusExecuting TaskStatus = "executing"
 	TaskStatusCompleted TaskStatus = "completed"
 )
 
@@ -27,19 +27,19 @@ const (
 
 // Valid status transitions for tasks
 // Draft -> Pending
-// Pending -> Running
-// Running -> Completed
+// Pending -> Executing
+// Executing -> Completed
 // Completed -> (no transitions)
 var ValidStatusTransitions = map[TaskStatus][]TaskStatus{
 	TaskStatusDraft:     {TaskStatusPending},
-	TaskStatusPending:   {TaskStatusRunning},
-	TaskStatusRunning:   {TaskStatusCompleted},
+	TaskStatusPending:   {TaskStatusExecuting},
+	TaskStatusExecuting: {TaskStatusCompleted},
 	TaskStatusCompleted: {},
 }
 
 // statusPriorities 状态排序优先级，数值越小排序越靠前（与 000008 迁移中的 CASE 保持一致）
 var statusPriorities = map[TaskStatus]int{
-	TaskStatusRunning:   1,
+	TaskStatusExecuting: 1,
 	TaskStatusPending:   2,
 	TaskStatusDraft:     3,
 	TaskStatusCompleted: 4,
@@ -119,7 +119,7 @@ type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
 	Result      string       `json:"result"`
-	Status      TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending running completed"`
+	Status      TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
 	Priority    TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *time.Time   `json:"due_date"`
@@ -131,7 +131,7 @@ type UpdateTaskRequest struct {
 	Title       *string       `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string       `json:"description" binding:"omitempty,max=5000"`
 	Result      *string       `json:"result"`
-	Status      *TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending running completed"`
+	Status      *TaskStatus   `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
 	Priority    *TaskPriority `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  *string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *time.Time    `json:"due_date"`
@@ -141,12 +141,12 @@ type UpdateTaskRequest struct {
 
 // UpdateTaskStatusRequest 更新任务状态请求
 type UpdateTaskStatusRequest struct {
-	Status TaskStatus `json:"status" binding:"required,oneof=draft pending running completed"`
+	Status TaskStatus `json:"status" binding:"required,oneof=draft pending executing completed"`
 }
 
 // ListTasksRequest 列出任务请求
 type ListTasksRequest struct {
-	Status     []TaskStatus  `form:"status" binding:"omitempty,dive,oneof=draft pending running completed"`
+	Status     []TaskStatus  `form:"status" binding:"omitempty,dive,oneof=draft pending executing completed"`
 	CreatorID  *string       `form:"creator_id" binding:"omitempty,uuid"`
 	Priority   []TaskPriority `form:"priority" binding:"omitempty,dive,oneof=low medium high"`
 	TaskListID []string     `form:"task_list_id" binding:"omitempty,dive,len=24,alpha"`

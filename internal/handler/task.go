@@ -55,7 +55,7 @@ type CreateTaskRequest struct {
 	Title       string       `json:"title" binding:"required,min=1,max=255"`
 	Description string       `json:"description" binding:"max=5000"`
 	Result      string       `json:"result"`
-	Status      string       `json:"status" binding:"omitempty,oneof=draft pending running completed"`
+	Status      string       `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
 	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  string       `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *string      `json:"due_date"` // ISO 8601 date string
@@ -67,7 +67,7 @@ type UpdateTaskRequest struct {
 	Title       *string  `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string  `json:"description" binding:"omitempty,max=5000"`
 	Result      *string  `json:"result"`
-	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending running completed"`
+	Status      *string  `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
 	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
 	TaskListID  *string  `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate     *string  `json:"due_date"`
@@ -77,7 +77,7 @@ type UpdateTaskRequest struct {
 
 // UpdateTaskStatusRequest represents the update task status request body
 type UpdateTaskStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=draft pending running completed"`
+	Status string `json:"status" binding:"required,oneof=draft pending executing completed"`
 }
 
 // CreateTask creates a new task
