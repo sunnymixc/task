@@ -69,13 +69,13 @@ const columns = computed<PrimaryTableCol[]>(() => [
   { colKey: 'status', title: '任务状态', width: 100 },
   { colKey: 'execution_status', title: '执行状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
+  { colKey: 'action', title: '操作', width: 280 },
   ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
   { colKey: 'links', title: '链接', width: 200 },
   { colKey: 'due_date', title: '截止时间', width: 180 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
-  { colKey: 'updated_at', title: '更新时间', width: 180 },
-  { colKey: 'action', title: '操作', width: 280, fixed: 'right' }
+  { colKey: 'updated_at', title: '更新时间', width: 180 }
 ])
 
 // Fetch tasks
