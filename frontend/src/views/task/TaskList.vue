@@ -235,6 +235,21 @@ const handleCopyTask = async (task: Task) => {
   }
 }
 
+// 弹窗底部"拷贝":复制表单当前标题+描述到剪贴板(未保存的输入也会被复制)
+const handleCopyForm = async (formRef: InstanceType<typeof TaskForm> | undefined) => {
+  const text = formRef?.getCopyText()?.trim()
+  if (!text) {
+    MessagePlugin.warning('暂无内容可复制')
+    return
+  }
+  try {
+    await copyToClipboard(text)
+    MessagePlugin.success('已复制到剪贴板')
+  } catch {
+    MessagePlugin.error('复制失败')
+  }
+}
+
 // 复制任务：以原任务内容创建副本（标题加“-副本”，状态重置为草稿），成功后刷新列表并打开副本编辑弹窗
 const handleDuplicateTask = async (task: Task) => {
   const created = await taskStore.createTask({
@@ -452,6 +467,7 @@ onMounted(() => {
       <TaskForm ref="createFormRef" :default-task-list-id="taskListId" @submit="handleCreateTask" />
       <template #footer>
         <t-button theme="default" @click="showCreateDialog = false">取消</t-button>
+        <t-button theme="default" @click="handleCopyForm(createFormRef)">拷贝</t-button>
         <t-button theme="primary" variant="outline" @click="createFormRef?.save()">保存</t-button>
         <t-button theme="primary" @click="createFormRef?.submit()">确定</t-button>
       </template>
@@ -473,6 +489,7 @@ onMounted(() => {
       />
       <template #footer>
         <t-button theme="default" @click="showEditDialog = false; editingTask = null">取消</t-button>
+        <t-button theme="default" @click="handleCopyForm(editFormRef)">拷贝</t-button>
         <t-button theme="primary" variant="outline" @click="editFormRef?.save()">保存</t-button>
         <t-button theme="primary" @click="editFormRef?.submit()">确定</t-button>
       </template>

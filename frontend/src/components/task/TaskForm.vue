@@ -226,9 +226,13 @@ const handleSubmit = async (keepOpen = false) => {
 // 弹窗打开后由父组件调用,聚焦标题输入框
 const focusTitle = () => titleInputRef.value?.focus?.()
 
+// 弹窗底部"拷贝"用:取表单当前标题+描述,格式与列表操作列的拷贝一致
+const getCopyText = () =>
+  form.description ? `${form.title}\n\n${form.description}` : form.title
+
 // Expose submit/save so the dialog footer can trigger validation + submit
 // save: 仅保存入库,不关闭弹窗
-defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true), focusTitle })
+defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true), focusTitle, getCopyText })
 </script>
 
 <template>
