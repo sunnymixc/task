@@ -444,6 +444,7 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showCreateDialog"
       header="新建任务"
+      placement="center"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
       @opened="createFormRef?.focusTitle()"
@@ -460,6 +461,7 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showEditDialog"
       header="编辑任务"
+      placement="center"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
       @opened="editFormRef?.focusTitle()"
@@ -570,9 +572,10 @@ onMounted(() => {
 </style>
 
 <style>
-/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见 */
+/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见;
+   预留约 220px 给标题栏、底部按钮和上下留白,保证居中后小视口下弹窗不超出屏幕 */
 .task-form-dialog .t-dialog__body {
-  max-height: 72vh;
+  max-height: min(62vh, calc(100vh - 220px));
   overflow-y: auto;
 }
 </style>

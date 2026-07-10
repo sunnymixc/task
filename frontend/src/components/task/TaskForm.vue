@@ -254,7 +254,7 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
         v-model="form.description"
         placeholder="请输入任务描述"
         :maxlength="5000"
-        :autosize="{ minRows: 4, maxRows: 14 }"
+        :autosize="{ minRows: 2, maxRows: 14 }"
         show-limit-number
       />
     </t-form-item>
@@ -263,7 +263,7 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
       <t-textarea
         v-model="form.result"
         placeholder="请输入任务结果"
-        :autosize="{ minRows: 4, maxRows: 14 }"
+        :autosize="{ minRows: 2, maxRows: 14 }"
       />
     </t-form-item>
 
@@ -311,7 +311,7 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
       <t-textarea
         v-model="form.execution_plan"
         placeholder="请输入执行计划"
-        :autosize="{ minRows: 4, maxRows: 14 }"
+        :autosize="{ minRows: 2, maxRows: 14 }"
       />
     </t-form-item>
 
@@ -319,7 +319,7 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
       <t-textarea
         v-model="form.execution_log"
         placeholder="请输入执行日志"
-        :autosize="{ minRows: 4, maxRows: 14 }"
+        :autosize="{ minRows: 2, maxRows: 14 }"
       />
     </t-form-item>
 
@@ -327,7 +327,7 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
       <t-textarea
         v-model="form.execution_result"
         placeholder="请输入执行结果"
-        :autosize="{ minRows: 4, maxRows: 14 }"
+        :autosize="{ minRows: 2, maxRows: 14 }"
       />
     </t-form-item>
 

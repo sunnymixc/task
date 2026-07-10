@@ -203,6 +203,7 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showCreateDialog"
       header="新建清单"
+      placement="center"
       width="min(92vw, 640px)"
       cancel-btn="取消"
       confirm-btn="确定"
@@ -216,6 +217,7 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showEditDialog"
       header="编辑清单"
+      placement="center"
       width="min(92vw, 640px)"
       cancel-btn="取消"
       confirm-btn="确定"
