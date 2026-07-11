@@ -156,12 +156,7 @@ onMounted(() => {
         </template>
 
         <template #creator="{ row }">
-          <div class="creator-info">
-            <t-avatar :image="row.creator?.avatar || ''" size="24">
-              {{ row.creator?.username?.charAt(0) || 'U' }}
-            </t-avatar>
-            <span>{{ row.creator?.username || '-' }}</span>
-          </div>
+          <span class="creator-info">{{ row.creator?.username || '-' }}</span>
         </template>
 
         <template #created_at="{ row }">
@@ -290,9 +285,6 @@ onMounted(() => {
 }
 
 .creator-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 13px;
   color: var(--td-text-color-primary);
 }
