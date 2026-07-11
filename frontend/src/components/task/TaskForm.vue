@@ -200,10 +200,10 @@ const handleSubmit = async (keepOpen = false) => {
 
   const data: CreateTaskRequest | UpdateTaskRequest = {
     title: form.title,
-    description: form.description || undefined,
-    result: form.result || undefined,
+    // 描述/结果/执行相关字段无条件携带:编辑时空串可正确清空
+    description: form.description,
+    result: form.result,
     status: form.status,
-    // 执行相关字段无条件携带:编辑时空串可正确清空(区别于 result 的 || undefined 既有模式)
     execution_status: form.execution_status,
     execution_plan: form.execution_plan,
     execution_log: form.execution_log,
