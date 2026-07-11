@@ -16,6 +16,10 @@ export const RADIUS_OPTIONS = [
 
 const DEFAULT_RADIUS = 1
 
+// 自定义圆角允许的取值范围
+export const RADIUS_MIN = 0
+export const RADIUS_MAX = 32
+
 // tdesign 组件圆角全部取自这五个变量；documentElement 内联样式覆盖 theme.css 的 :root 声明
 const RADIUS_VARS = [
   '--td-radius-small',
@@ -25,9 +29,17 @@ const RADIUS_VARS = [
   '--td-radius-extraLarge'
 ]
 
+const clampRadius = (px: number): number =>
+  Math.min(RADIUS_MAX, Math.max(RADIUS_MIN, Math.round(px)))
+
 const loadRadius = (): number => {
-  const value = Number(localStorage.getItem(RADIUS_KEY))
-  return RADIUS_OPTIONS.some((opt) => opt.px === value) ? value : DEFAULT_RADIUS
+  const raw = localStorage.getItem(RADIUS_KEY)
+  if (raw === null) return DEFAULT_RADIUS
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value < RADIUS_MIN || value > RADIUS_MAX) {
+    return DEFAULT_RADIUS
+  }
+  return Math.round(value)
 }
 
 const applyRadiusToDom = (px: number) => {
@@ -58,9 +70,10 @@ export const useUiStore = defineStore('ui', () => {
   applyRadiusToDom(radius.value)
 
   const setRadius = (px: number) => {
-    radius.value = px
-    applyRadiusToDom(px)
-    localStorage.setItem(RADIUS_KEY, String(px))
+    const value = clampRadius(px)
+    radius.value = value
+    applyRadiusToDom(value)
+    localStorage.setItem(RADIUS_KEY, String(value))
   }
 
   return {
