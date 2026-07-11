@@ -182,3 +182,25 @@ func (r *taskRepository) MoveTasksToList(ctx context.Context, tenantID uint64, f
 		Where("tenant_id = ? AND task_list_id = ?", tenantID, fromListID).
 		Update("task_list_id", toListID).Error
 }
+
+// CountTasksByStatusPerList 按清单分组统计租户下指定状态的任务数（软删除任务自动排除）
+func (r *taskRepository) CountTasksByStatusPerList(ctx context.Context, tenantID uint64, status types.TaskStatus) (map[string]int64, error) {
+	var rows []struct {
+		TaskListID string
+		Count      int64
+	}
+	err := r.db.WithContext(ctx).
+		Model(&types.Task{}).
+		Select("task_list_id, COUNT(*) AS count").
+		Where("tenant_id = ? AND status = ?", tenantID, status).
+		Group("task_list_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		counts[row.TaskListID] = row.Count
+	}
+	return counts, nil
+}

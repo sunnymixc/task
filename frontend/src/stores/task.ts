@@ -9,6 +9,7 @@ import type {
   TaskStatus
 } from '@/types'
 import { MessagePlugin } from 'tdesign-vue-next'
+import { useTaskListStore } from './taskList'
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref<Task[]>([])
@@ -16,6 +17,11 @@ export const useTaskStore = defineStore('task', () => {
   const loading = ref(false)
   const currentPage = ref(1)
   const pageSize = ref(20)
+
+  // 任务增删/状态变化会影响侧边栏清单的执行中数量,静默刷新(fetchAllLists 自行吞错)
+  const refreshListCounts = () => {
+    useTaskListStore().fetchAllLists()
+  }
 
   // Computed
   const hasMore = computed(() => tasks.value.length < total.value)
@@ -49,6 +55,7 @@ export const useTaskStore = defineStore('task', () => {
       const task = await taskAPI.create(data)
       tasks.value.unshift(task)
       total.value += 1
+      refreshListCounts()
       MessagePlugin.success('任务创建成功')
       return task
     } catch (error) {
@@ -69,6 +76,7 @@ export const useTaskStore = defineStore('task', () => {
       if (index !== -1) {
         tasks.value[index] = updatedTask
       }
+      refreshListCounts()
       MessagePlugin.success('任务更新成功')
       return updatedTask
     } catch (error) {
@@ -87,6 +95,7 @@ export const useTaskStore = defineStore('task', () => {
       await taskAPI.delete(id)
       tasks.value = tasks.value.filter(t => t.id !== id)
       total.value -= 1
+      refreshListCounts()
       MessagePlugin.success('任务删除成功')
       return true
     } catch (error) {
@@ -107,6 +116,7 @@ export const useTaskStore = defineStore('task', () => {
       if (index !== -1) {
         tasks.value[index] = updatedTask
       }
+      refreshListCounts()
       MessagePlugin.success('状态更新成功')
       return updatedTask
     } catch (error) {

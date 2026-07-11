@@ -25,10 +25,12 @@ const menuItems: MenuItem[] = [
 
 // 任务清单子菜单(每个清单一项)
 const taskListChildren = computed(() =>
-  taskListStore.allLists.map(list => ({
+  taskListStore.allLists.map((list, index) => ({
+    seq: index + 1, // 纯展示序号,按侧边栏显示顺序编号
     title: list.title,
     path: `/task-lists/${list.id}/tasks`,
-    isDefault: list.is_default
+    isDefault: list.is_default,
+    executingCount: list.executing_count || 0
   }))
 )
 
@@ -111,8 +113,16 @@ const userDropdownPopupProps = {
             :class="{ 'menu-item--active': route.path === child.path }"
             @click="handleMenuClick(child.path)"
           >
+            <span class="menu-sub-index">{{ child.seq }}</span>
             <span class="menu-title">{{ child.title }}</span>
             <t-tag v-if="child.isDefault" size="small" variant="light" class="menu-sub-tag">默认</t-tag>
+            <t-tag
+              v-if="child.executingCount > 0"
+              size="small"
+              variant="light"
+              theme="primary"
+              class="menu-sub-tag"
+            >{{ child.executingCount }}</t-tag>
           </div>
         </template>
       </div>
@@ -300,6 +310,17 @@ const userDropdownPopupProps = {
 .menu-sub-tag {
   flex-shrink: 0;
   margin-left: 6px;
+}
+
+.menu-sub-index {
+  flex-shrink: 0;
+  margin-right: 6px;
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.menu-item--active .menu-sub-index {
+  color: var(--td-brand-color);
 }
 
 .sidebar-toggle-collapsed {

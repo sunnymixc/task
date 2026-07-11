@@ -142,6 +142,17 @@ func (s *taskListService) ListTaskLists(ctx context.Context, req *types.ListTask
 		return nil, 0, fmt.Errorf("failed to list task lists: %w", err)
 	}
 
+	// 批量统计各清单执行中任务数（一次 GROUP BY，避免 N+1）
+	if len(lists) > 0 {
+		counts, err := s.taskRepo.CountTasksByStatusPerList(ctx, user.TenantID, types.TaskStatusExecuting)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to count executing tasks: %w", err)
+		}
+		for _, list := range lists {
+			list.ExecutingCount = counts[list.ID]
+		}
+	}
+
 	return lists, total, nil
 }
 

@@ -16,6 +16,7 @@ type TaskRepository interface {
 	SearchTasks(ctx context.Context, tenantID uint64, query string, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)
 	FilterTasks(ctx context.Context, tenantID uint64, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)
 	MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error
+	CountTasksByStatusPerList(ctx context.Context, tenantID uint64, status types.TaskStatus) (map[string]int64, error)
 	ReplaceTaskLinks(ctx context.Context, taskID string, links []*types.TaskLink) error
 }
 

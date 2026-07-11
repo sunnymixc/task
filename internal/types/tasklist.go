@@ -27,6 +27,9 @@ type TaskList struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 
+	// 执行中任务数（列表接口动态统计，不落库）
+	ExecutingCount int64 `json:"executing_count" gorm:"-"`
+
 	// Associations (not stored in DB)
 	Creator *User   `json:"creator,omitempty" gorm:"foreignKey:CreatorID"`
 	Tenant  *Tenant `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`

@@ -195,6 +195,8 @@ export interface TaskList {
   creator_id: string
   created_at: string
   updated_at: string
+  // 执行中任务数(列表接口动态返回)
+  executing_count?: number
   creator?: UserInfo
 }
 

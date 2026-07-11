@@ -93,7 +93,8 @@ export const useTaskListStore = defineStore('taskList', () => {
       }
       const allIndex = allLists.value.findIndex(l => l.id === id)
       if (allIndex !== -1) {
-        allLists.value[allIndex] = updated
+        // update 接口不返回 executing_count,保留原有统计值
+        allLists.value[allIndex] = { ...updated, executing_count: allLists.value[allIndex].executing_count }
       }
       sortTaskLists(lists.value)
       sortTaskLists(allLists.value)
