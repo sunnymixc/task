@@ -175,6 +175,38 @@ func (r *taskRepository) ReplaceTaskLinks(ctx context.Context, taskID string, li
 	})
 }
 
+// CreateTaskLogs 批量写入任务日志
+func (r *taskRepository) CreateTaskLogs(ctx context.Context, logs []*types.TaskLog) error {
+	if len(logs) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).Omit(clause.Associations).Create(&logs).Error
+}
+
+// GetTaskLogsByTaskID 分页查询任务日志（新的在前）
+func (r *taskRepository) GetTaskLogsByTaskID(ctx context.Context, taskID string, offset, limit int) ([]*types.TaskLog, int64, error) {
+	var logs []*types.TaskLog
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&types.TaskLog{}).Where("task_id = ?", taskID)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := query.
+		Preload("Operator").
+		Order("id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&logs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
+}
+
 // MoveTasksToList reassigns all tasks in a list to another list (within a tenant)
 func (r *taskRepository) MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error {
 	return r.db.WithContext(ctx).

@@ -22,6 +22,7 @@ declare module 'vue' {
     TaskForm: typeof import('./components/task/TaskForm.vue')['default']
     TaskLinkList: typeof import('./components/task/TaskLinkList.vue')['default']
     TaskListForm: typeof import('./components/task-list/TaskListForm.vue')['default']
+    TaskLogList: typeof import('./components/task/TaskLogList.vue')['default']
     TAvatar: typeof import('tdesign-vue-next/esm')['Avatar']
     TButton: typeof import('tdesign-vue-next/esm')['Button']
     TCard: typeof import('tdesign-vue-next/esm')['Card']
@@ -42,8 +43,12 @@ declare module 'vue' {
     TSelect: typeof import('tdesign-vue-next/esm')['Select']
     TSpace: typeof import('tdesign-vue-next/esm')['Space']
     TTable: typeof import('tdesign-vue-next/esm')['Table']
+    TTabPanel: typeof import('tdesign-vue-next/esm')['TabPanel']
+    TTabs: typeof import('tdesign-vue-next/esm')['Tabs']
     TTag: typeof import('tdesign-vue-next/esm')['Tag']
     TTextarea: typeof import('tdesign-vue-next/esm')['Textarea']
+    TTimeline: typeof import('tdesign-vue-next/esm')['Timeline']
+    TTimelineItem: typeof import('tdesign-vue-next/esm')['TimelineItem']
     TTooltip: typeof import('tdesign-vue-next/esm')['Tooltip']
   }
 }

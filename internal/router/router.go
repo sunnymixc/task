@@ -59,6 +59,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 			tasks.POST("", taskHandler.CreateTask)
 			tasks.GET("/search", taskHandler.SearchTasks)
 			tasks.GET("/:id", taskHandler.GetTask)
+			tasks.GET("/:id/logs", taskHandler.ListTaskLogs)
 			tasks.PUT("/:id", taskHandler.UpdateTask)
 			tasks.DELETE("/:id", taskHandler.DeleteTask)
 			tasks.PATCH("/:id/status", taskHandler.UpdateTaskStatus)

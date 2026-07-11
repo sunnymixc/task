@@ -224,6 +224,55 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ListTaskLogs lists change logs of a task
+// @Summary List task logs
+// @Description List change logs of a task (newest first)
+// @Tags tasks
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Task ID"
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(50)
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/tasks/{id}/logs [get]
+func (h *TaskHandler) ListTaskLogs(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Task ID is required",
+		})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+
+	logs, total, err := h.taskService.ListTaskLogs(c.Request.Context(), id, page, pageSize)
+	if err != nil {
+		if err == service.ErrTaskNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": "Task not found",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to list task logs: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"data":      logs,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
 // ListTasks lists tasks with pagination and filters
 // @Summary List tasks
 // @Description List tasks for the current user's tenant

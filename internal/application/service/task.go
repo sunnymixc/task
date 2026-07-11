@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -131,6 +133,14 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 			return nil, fmt.Errorf("failed to create task links: %w", err)
 		}
 	}
+
+	s.writeTaskLogs(ctx, []*types.TaskLog{{
+		TaskID:     taskID,
+		TenantID:   user.TenantID,
+		OperatorID: userID,
+		Action:     types.TaskLogActionCreate,
+		NewValue:   req.Title,
+	}})
 
 	// Reload with associations
 	task, err = s.taskRepo.GetTaskByID(ctx, task.ID)
@@ -268,29 +278,55 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 
 	// TODO: Verify tenant access
 
+	// 逐字段收集变更日志（值相同则跳过；sort_order 拖拽排序噪音不记；links 暂不记）
+	operatorID := getContextUserID(ctx)
+	var changes []*types.TaskLog
+	appendChange := func(field, oldV, newV string) {
+		if oldV == newV {
+			return
+		}
+		changes = append(changes, &types.TaskLog{
+			TaskID:     task.ID,
+			TenantID:   task.TenantID,
+			OperatorID: operatorID,
+			Action:     types.TaskLogActionUpdate,
+			FieldName:  field,
+			OldValue:   oldV,
+			NewValue:   newV,
+		})
+	}
+
 	// Update fields if provided
 	if req.Title != nil {
+		appendChange("title", task.Title, *req.Title)
 		task.Title = *req.Title
 	}
 	if req.Description != nil {
+		appendChange("description", task.Description, *req.Description)
 		task.Description = *req.Description
 	}
 	if req.Result != nil {
+		appendChange("result", task.Result, *req.Result)
 		task.Result = *req.Result
 	}
 	if req.ExecutionStatus != nil {
+		appendChange("execution_status", string(task.ExecutionStatus), string(*req.ExecutionStatus))
 		task.ExecutionStatus = *req.ExecutionStatus
 	}
 	if req.ExecutionPlan != nil {
+		appendChange("execution_plan", task.ExecutionPlan, *req.ExecutionPlan)
 		task.ExecutionPlan = *req.ExecutionPlan
 	}
 	if req.ExecutionLog != nil {
+		appendChange("execution_log", task.ExecutionLog, *req.ExecutionLog)
 		task.ExecutionLog = *req.ExecutionLog
 	}
 	if req.ExecutionResult != nil {
+		appendChange("execution_result", task.ExecutionResult, *req.ExecutionResult)
 		task.ExecutionResult = *req.ExecutionResult
 	}
 	if req.Priority != nil {
+		appendChange("priority", string(task.Priority), string(*req.Priority))
 		task.Priority = *req.Priority
 	}
 	// 0 表示清除序号恢复默认（排最前）
@@ -298,6 +334,7 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 		task.SortOrder = *req.SortOrder
 	}
 	if req.DueDate != nil {
+		appendChange("due_date", formatLogDate(task.DueDate), formatLogDate(req.DueDate))
 		task.DueDate = req.DueDate
 	}
 	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
@@ -309,11 +346,18 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 		if list == nil || list.TenantID != task.TenantID {
 			return nil, ErrTaskListNotFound
 		}
+		// 日志记清单标题而非 ID（旧清单可能被删，ID 无展示意义）
+		oldListTitle := ""
+		if task.TaskList != nil {
+			oldListTitle = task.TaskList.Title
+		}
+		appendChange("task_list_id", oldListTitle, list.Title)
 		task.TaskListID = *req.TaskListID
 	}
 
 	// Update status if provided (no transition restriction)
 	if req.Status != nil {
+		appendChange("status", string(task.Status), string(*req.Status))
 		task.Status = *req.Status
 	}
 
@@ -335,6 +379,8 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 			return nil, fmt.Errorf("failed to replace task links: %w", err)
 		}
 	}
+
+	s.writeTaskLogs(ctx, changes)
 
 	// Reload with associations
 	task, err = s.taskRepo.GetTaskByID(ctx, id)
@@ -362,6 +408,14 @@ func (s *taskService) DeleteTask(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}
 
+	s.writeTaskLogs(ctx, []*types.TaskLog{{
+		TaskID:     task.ID,
+		TenantID:   task.TenantID,
+		OperatorID: getContextUserID(ctx),
+		Action:     types.TaskLogActionDelete,
+		OldValue:   task.Title,
+	}})
+
 	return nil
 }
 
@@ -375,10 +429,23 @@ func (s *taskService) UpdateTaskStatus(ctx context.Context, id string, status ty
 		return nil, ErrTaskNotFound
 	}
 
+	oldStatus := task.Status
 	task.Status = status
 
 	if err := s.taskRepo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task status: %w", err)
+	}
+
+	if oldStatus != status {
+		s.writeTaskLogs(ctx, []*types.TaskLog{{
+			TaskID:     task.ID,
+			TenantID:   task.TenantID,
+			OperatorID: getContextUserID(ctx),
+			Action:     types.TaskLogActionStatusChange,
+			FieldName:  "status",
+			OldValue:   string(oldStatus),
+			NewValue:   string(status),
+		}})
 	}
 
 	// Reload with associations
@@ -428,6 +495,57 @@ func (s *taskService) SearchTasks(ctx context.Context, req *types.SearchTasksReq
 	}
 
 	return tasks, total, nil
+}
+
+// ListTaskLogs lists change logs of a task (newest first)
+func (s *taskService) ListTaskLogs(ctx context.Context, taskID string, page, pageSize int) ([]*types.TaskLogResponse, int64, error) {
+	task, err := s.taskRepo.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get task: %w", err)
+	}
+	if task == nil {
+		return nil, 0, ErrTaskNotFound
+	}
+
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
+	offset := (page - 1) * pageSize
+
+	logs, total, err := s.taskRepo.GetTaskLogsByTaskID(ctx, taskID, offset, pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get task logs: %w", err)
+	}
+
+	responses := make([]*types.TaskLogResponse, 0, len(logs))
+	for _, l := range logs {
+		responses = append(responses, l.ToResponse())
+	}
+	return responses, total, nil
+}
+
+// formatLogDate 日志中日期字段的展示值
+func formatLogDate(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format("2006-01-02")
+}
+
+// writeTaskLogs 尽力而为写日志：失败仅告警，不影响主流程（服务层无跨仓储事务）
+func (s *taskService) writeTaskLogs(ctx context.Context, logs []*types.TaskLog) {
+	if len(logs) == 0 {
+		return
+	}
+	if err := s.taskRepo.CreateTaskLogs(ctx, logs); err != nil {
+		log.Printf("[WARN] failed to write task logs (task=%s): %v", logs[0].TaskID, err)
+	}
 }
 
 // Context key for user ID

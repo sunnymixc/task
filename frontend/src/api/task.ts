@@ -5,6 +5,7 @@ import type {
   SearchTasksRequest,
   Task,
   TaskListResponse,
+  TaskLogListResponse,
   UpdateTaskRequest,
   UpdateTaskStatusRequest
 } from '@/types'
@@ -68,6 +69,15 @@ export const taskAPI = {
   search: (params: SearchTasksRequest): Promise<TaskListResponse> => {
     return request({
       url: '/v1/tasks/search',
+      method: 'GET',
+      params
+    })
+  },
+
+  // List task change logs (newest first)
+  listLogs: (id: string, params?: { page?: number; page_size?: number }): Promise<TaskLogListResponse> => {
+    return request({
+      url: `/v1/tasks/${id}/logs`,
       method: 'GET',
       params
     })

@@ -5,6 +5,7 @@ import type { FormRules } from 'tdesign-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useTaskListStore } from '@/stores/taskList'
 import { taskAPI } from '@/api/task'
+import TaskLogList from './TaskLogList.vue'
 
 interface Props {
   task?: Task | null
@@ -22,6 +23,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const formRef = ref()
+// 基础 / 日志 tab
+const activeTab = ref('basic')
 // tdesign Input 实例在运行时暴露 focus(),但当前版本未导出实例类型
 const titleInputRef = ref<{ focus?: () => void } | null>(null)
 const taskListStore = useTaskListStore()
@@ -149,6 +152,7 @@ const formRules: FormRules = {
 // Watch for task changes (edit mode)
 watch(() => props.task, (task) => {
   if (task) {
+    activeTab.value = 'basic'
     form.title = task.title
     form.description = task.description || ''
     form.result = task.result || ''
@@ -170,6 +174,7 @@ watch(() => props.task, (task) => {
 // Reset form when dialog opens
 watch(() => props.task, (task) => {
   if (!task) {
+    activeTab.value = 'basic'
     form.title = ''
     form.description = ''
     form.result = ''
@@ -250,6 +255,10 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
 </script>
 
 <template>
+  <t-tabs v-model="activeTab">
+    <!-- destroy-on-hide 必须关闭:否则切 tab 会销毁表单丢失未保存输入,弹窗底部按钮经 defineExpose 调用也会失效 -->
+    <t-tab-panel value="basic" label="基础" :destroy-on-hide="false">
+      <div class="tab-body">
   <t-form
     ref="formRef"
     :data="form"
@@ -408,11 +417,31 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
     </t-form-item>
 
   </t-form>
+      </div>
+    </t-tab-panel>
+    <!-- 日志面板默认销毁:每次激活重挂载重新拉取,保证保存后数据新鲜 -->
+    <t-tab-panel value="logs" label="日志">
+      <div class="tab-body">
+        <TaskLogList v-if="props.task?.id" :task-id="props.task.id" />
+        <div v-else class="log-placeholder">任务创建后可查看变更日志</div>
+      </div>
+    </t-tab-panel>
+  </t-tabs>
 </template>
 
 <style scoped>
 .t-form-item {
   margin-bottom: 24px;
+}
+
+.tab-body {
+  padding-top: 16px;
+}
+
+.log-placeholder {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--td-text-color-placeholder);
 }
 
 .link-rows {

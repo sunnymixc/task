@@ -158,6 +158,28 @@ export interface UpdateTaskStatusRequest {
   status: TaskStatus
 }
 
+// 任务变更日志
+export type TaskLogAction = 'create' | 'update' | 'status_change' | 'delete'
+
+export interface TaskLog {
+  id: number
+  task_id: string
+  action: TaskLogAction
+  field_name: string
+  old_value: string
+  new_value: string
+  operator?: UserInfo
+  created_at: string
+}
+
+export interface TaskLogListResponse {
+  success: boolean
+  data: TaskLog[]
+  total: number
+  page: number
+  page_size: number
+}
+
 export interface ListTasksRequest {
   status?: TaskStatus[]
   creator_id?: string
