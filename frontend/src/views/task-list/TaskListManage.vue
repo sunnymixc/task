@@ -260,12 +260,42 @@ onMounted(() => {
   background: var(--td-bg-color-container);
   border: 0;
   border-radius: var(--td-radius-default);
+  box-shadow: var(--td-shadow-1);
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--td-gray-color-4) transparent;
+}
+
+/* 定制滚动条：透明轨道 + 内缩圆角滑块，轨道两端避开圆角区，保住右上/右下圆角 */
+.table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin: var(--td-radius-default);
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--td-gray-color-4);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.table-container::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* pin 置顶表头脱离容器 overflow 裁剪，需自带顶部圆角 */
 .table-container :deep(.t-table__affixed-header-elm-wrap) {
   border-radius: var(--td-radius-default) var(--td-radius-default) 0 0;
+  background: var(--td-bg-color-container);
 }
 
 .list-id {
