@@ -702,6 +702,12 @@ onMounted(() => {
   min-width: 1730px;
 }
 
+/* 行分隔线调浅:仅覆盖单元格下边框,不影响单元格内输入框等组件边框 */
+.table-container :deep(.t-table th),
+.table-container :deep(.t-table td) {
+  border-bottom-color: var(--td-gray-color-2);
+}
+
 .task-title {
   font-weight: 500;
   color: var(--td-text-color-primary);
