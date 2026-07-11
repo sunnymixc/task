@@ -65,7 +65,8 @@ const pageTitle = computed(() => {
 
 // Table columns(清单作用域下省略任务清单列)
 const columns = computed<PrimaryTableCol[]>(() => [
-  { colKey: 'title', title: '标题和描述', width: 420, minWidth: 300 },
+  { colKey: 'sort_order', title: '序号', width: 100 },
+  { colKey: 'title', title: '标题和描述', width: 520, minWidth: 360 },
   { colKey: 'status', title: '任务状态', width: 100 },
   { colKey: 'execution_status', title: '执行状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
@@ -376,6 +377,10 @@ onMounted(() => {
         hover
         @page-change="onPageChange"
       >
+        <template #sort_order="{ row }">
+          {{ row.sort_order > 0 ? row.sort_order : '-' }}
+        </template>
+
         <template #title="{ row }">
           <div class="task-title">{{ row.title }}</div>
           <div v-if="row.description" class="task-desc">{{ row.description }}</div>

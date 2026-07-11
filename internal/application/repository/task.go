@@ -69,7 +69,7 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 		Preload("TaskList").
 		Preload("Links", orderLinks).
 		Preload("Links.TargetTask").
-		Order("status_priority ASC, created_at DESC").
+		Order("sort_order ASC, status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -111,7 +111,7 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 		Preload("TaskList").
 		Preload("Links", orderLinks).
 		Preload("Links.TargetTask").
-		Order("status_priority ASC, created_at DESC").
+		Order("sort_order ASC, status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -137,7 +137,7 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 		Preload("TaskList").
 		Preload("Links", orderLinks).
 		Preload("Links.TargetTask").
-		Order("status_priority ASC, created_at DESC").
+		Order("sort_order ASC, status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error

@@ -69,6 +69,10 @@ const formatDate = (dateStr: string) => {
         <t-card :bordered="false" class="detail-card">
           <div class="meta-grid">
             <div class="meta-item">
+              <div class="meta-label">序号</div>
+              <div class="meta-value">{{ task.sort_order > 0 ? task.sort_order : '-' }}</div>
+            </div>
+            <div class="meta-item">
               <div class="meta-label">任务清单</div>
               <div class="meta-value">{{ task.task_list?.title || '-' }}</div>
             </div>

@@ -104,6 +104,8 @@ type Task struct {
 	Priority TaskPriority `json:"priority" gorm:"type:varchar(20);default:'medium'"`
 	// Status sort priority derived from Status (internal, kept in sync by BeforeSave)
 	StatusPriority int `json:"-" gorm:"type:integer;not null;default:3;index"`
+	// 序号（1-100000000），0 表示未设置（默认，排最前），列表按序号升序优先排序
+	SortOrder int `json:"sort_order" gorm:"type:integer;not null;default:0;index"`
 	// ID of the user who created this task
 	CreatorID string `json:"creator_id" gorm:"type:varchar(36);not null"`
 	// ID of the task list this task belongs to (每个任务只属于一个清单)
@@ -144,6 +146,7 @@ type CreateTaskRequest struct {
 	ExecutionLog    string              `json:"execution_log"`
 	ExecutionResult string              `json:"execution_result"`
 	Priority        TaskPriority        `json:"priority" binding:"omitempty,oneof=low medium high"`
+	SortOrder       int                 `json:"sort_order" binding:"omitempty,min=1,max=100000000"`
 	TaskListID      string              `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate         *time.Time          `json:"due_date"`
 	Links           []TaskLinkInput     `json:"links" binding:"omitempty,dive"`
@@ -160,8 +163,10 @@ type UpdateTaskRequest struct {
 	ExecutionLog    *string              `json:"execution_log"`
 	ExecutionResult *string              `json:"execution_result"`
 	Priority        *TaskPriority        `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID      *string              `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate         *time.Time           `json:"due_date"`
+	// 传 0 表示清除序号恢复默认（排最前），nil 表示不修改
+	SortOrder  *int       `json:"sort_order" binding:"omitempty,min=0,max=100000000"`
+	TaskListID *string    `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate    *time.Time `json:"due_date"`
 	// Links 为 nil 表示不修改链接；空数组表示清空；非空表示整体替换
 	Links *[]TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
@@ -209,6 +214,7 @@ type TaskResponse struct {
 	ExecutionLog    string              `json:"execution_log"`
 	ExecutionResult string              `json:"execution_result"`
 	Priority        TaskPriority        `json:"priority"`
+	SortOrder       int                 `json:"sort_order"`
 	CreatorID       string              `json:"creator_id"`
 	TaskListID      string              `json:"task_list_id"`
 	DueDate         *time.Time          `json:"due_date"`
@@ -243,6 +249,7 @@ func (t *Task) ToResponse() *TaskResponse {
 		ExecutionLog:    t.ExecutionLog,
 		ExecutionResult: t.ExecutionResult,
 		Priority:        t.Priority,
+		SortOrder:       t.SortOrder,
 		CreatorID:       t.CreatorID,
 		TaskListID:      t.TaskListID,
 		DueDate:         t.DueDate,

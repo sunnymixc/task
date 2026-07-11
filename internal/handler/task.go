@@ -61,6 +61,7 @@ type CreateTaskRequest struct {
 	ExecutionLog    string                `json:"execution_log"`
 	ExecutionResult string                `json:"execution_result"`
 	Priority        string                `json:"priority" binding:"omitempty,oneof=low medium high"`
+	SortOrder       int                   `json:"sort_order" binding:"omitempty,min=1,max=100000000"`
 	TaskListID      string                `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate         *string               `json:"due_date"` // ISO 8601 date string
 	Links           []types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
@@ -77,8 +78,10 @@ type UpdateTaskRequest struct {
 	ExecutionLog    *string `json:"execution_log"`
 	ExecutionResult *string `json:"execution_result"`
 	Priority        *string `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID      *string `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate         *string `json:"due_date"`
+	// 传 0 表示清除序号恢复默认（排最前），null 表示不修改
+	SortOrder  *int    `json:"sort_order" binding:"omitempty,min=0,max=100000000"`
+	TaskListID *string `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate    *string `json:"due_date"`
 	// Links 为 null 表示不修改；空数组表示清空；非空表示整体替换
 	Links *[]types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
@@ -116,6 +119,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		ExecutionPlan:   req.ExecutionPlan,
 		ExecutionLog:    req.ExecutionLog,
 		ExecutionResult: req.ExecutionResult,
+		SortOrder:       req.SortOrder,
 		TaskListID:      req.TaskListID,
 		Links:           req.Links,
 	}
@@ -316,6 +320,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		ExecutionPlan:   req.ExecutionPlan,
 		ExecutionLog:    req.ExecutionLog,
 		ExecutionResult: req.ExecutionResult,
+		SortOrder:       req.SortOrder,
 		TaskListID:      req.TaskListID,
 		Links:           req.Links,
 	}

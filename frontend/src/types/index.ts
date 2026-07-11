@@ -73,6 +73,8 @@ export interface Task {
   execution_log: string
   execution_result: string
   priority: TaskPriority
+  // 序号(1-100000000),0 表示未设置(默认,排最前),列表按序号升序优先排序
+  sort_order: number
   creator_id: string
   task_list_id: string
   due_date?: string | null
@@ -128,6 +130,7 @@ export interface CreateTaskRequest {
   execution_log?: string
   execution_result?: string
   priority?: TaskPriority
+  sort_order?: number
   task_list_id?: string
   due_date?: string
   links?: TaskLinkInput[]
@@ -143,6 +146,8 @@ export interface UpdateTaskRequest {
   execution_log?: string
   execution_result?: string
   priority?: TaskPriority
+  // 0 表示清除序号恢复默认(排最前),缺省表示不修改
+  sort_order?: number
   task_list_id?: string
   due_date?: string
   // 缺省表示不修改链接;空数组表示清空;非空表示整体替换

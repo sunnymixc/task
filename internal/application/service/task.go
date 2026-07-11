@@ -116,6 +116,7 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		ExecutionLog:    req.ExecutionLog,
 		ExecutionResult: req.ExecutionResult,
 		Priority:        priority,
+		SortOrder:       req.SortOrder,
 		CreatorID:       userID,
 		TaskListID:      taskListID,
 		DueDate:         req.DueDate,
@@ -291,6 +292,10 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 	}
 	if req.Priority != nil {
 		task.Priority = *req.Priority
+	}
+	// 0 表示清除序号恢复默认（排最前）
+	if req.SortOrder != nil {
+		task.SortOrder = *req.SortOrder
 	}
 	if req.DueDate != nil {
 		task.DueDate = req.DueDate
