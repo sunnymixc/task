@@ -64,19 +64,21 @@ const pageTitle = computed(() => {
 })
 
 // Table columns(清单作用域下省略任务清单列)
+// 标题列不设 width,作为弹性列吸收剩余宽度;其余列取内容所需的紧凑宽度,
+// 使常规屏宽下总宽不超出容器,避免水平滚动条
 const columns = computed<PrimaryTableCol[]>(() => [
-  { colKey: 'sort_order', title: '序号', width: 100 },
-  { colKey: 'title', title: '标题和描述', width: 520, minWidth: 360 },
-  { colKey: 'status', title: '任务状态', width: 100 },
-  { colKey: 'execution_status', title: '执行状态', width: 100 },
-  { colKey: 'priority', title: '优先级', width: 100 },
+  { colKey: 'sort_order', title: '序号', width: 64 },
+  { colKey: 'title', title: '标题和描述', minWidth: 320 },
+  { colKey: 'status', title: '任务状态', width: 90 },
+  { colKey: 'execution_status', title: '执行状态', width: 90 },
+  { colKey: 'priority', title: '优先级', width: 80 },
   { colKey: 'action', title: '操作', width: 280 },
-  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
-  { colKey: 'links', title: '链接', width: 200 },
-  { colKey: 'due_date', title: '截止时间', width: 180 },
-  { colKey: 'creator', title: '创建者', width: 120 },
-  { colKey: 'created_at', title: '创建时间', width: 180 },
-  { colKey: 'updated_at', title: '更新时间', width: 180 }
+  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 120, ellipsis: true }]),
+  { colKey: 'links', title: '链接', width: 150 },
+  { colKey: 'due_date', title: '截止时间', width: 110 },
+  { colKey: 'creator', title: '创建者', width: 100, ellipsis: true },
+  { colKey: 'created_at', title: '创建时间', width: 110 },
+  { colKey: 'updated_at', title: '更新时间', width: 110 }
 ])
 
 // Fetch tasks
@@ -273,15 +275,13 @@ const handleStatusUpdate = async (taskId: string, status: TaskStatus) => {
   fetchTasks()
 }
 
-// Format date
+// Format date(列宽有限,只显示日期)
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    day: '2-digit'
   })
 }
 
@@ -585,6 +585,13 @@ onMounted(() => {
 .table-container :deep(.t-table__affixed-header-elm-wrap) {
   border-radius: var(--td-radius-default) var(--td-radius-default) 0 0;
   background: var(--td-bg-color-container);
+}
+
+/* 兜底：窄窗口下保住标题列最小宽度（col 上的 min-width 浏览器不认），
+   此时才允许出现横向滚动。1624 = 固定列合计 1304 + 标题列最小 320 */
+.table-container :deep(.t-table__content > table),
+.table-container :deep(.t-table__affixed-header-elm-wrap table) {
+  min-width: 1624px;
 }
 
 .task-title {
