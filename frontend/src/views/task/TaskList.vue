@@ -64,11 +64,11 @@ const pageTitle = computed(() => {
 })
 
 // Table columns(清单作用域下省略任务清单列)
-// 标题列不设 width,作为弹性列吸收剩余宽度;其余列取内容所需的紧凑宽度,
-// 使常规屏宽下总宽不超出容器,避免水平滚动条
+// 各列均为固定宽度,标题列取 320 避免宽屏下独占剩余空间;
+// 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
 const columns = computed<PrimaryTableCol[]>(() => [
   { colKey: 'sort_order', title: '序号', width: 64 },
-  { colKey: 'title', title: '标题和描述', minWidth: 300 },
+  { colKey: 'title', title: '标题和描述', width: 320 },
   { colKey: 'status', title: '任务状态', width: 90 },
   { colKey: 'execution_status', title: '执行状态', width: 90 },
   { colKey: 'priority', title: '优先级', width: 80 },
@@ -685,11 +685,11 @@ onMounted(() => {
   background: var(--td-bg-color-container);
 }
 
-/* 兜底：窄窗口下保住标题列最小宽度（col 上的 min-width 浏览器不认），
-   此时才允许出现横向滚动。1610 = 固定列合计 1310 + 标题列最小 300 */
+/* 兜底：窄窗口下保住各列宽度，此时才允许出现横向滚动。
+   1630 = 各列固定宽合计（其余列 1310 + 标题列 320） */
 .table-container :deep(.t-table__content > table),
 .table-container :deep(.t-table__affixed-header-elm-wrap table) {
-  min-width: 1610px;
+  min-width: 1630px;
 }
 
 .task-title {
