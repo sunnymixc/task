@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useTaskListStore } from '@/stores/taskList'
+import SystemSettingsDialog from '@/components/settings/SystemSettingsDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,6 +53,8 @@ const handleLogout = () => {
   authStore.logout()
   router.push('/login')
 }
+
+const showSettingsDialog = ref(false)
 
 const avatarText = computed(() => authStore.userName?.charAt(0)?.toUpperCase() || 'U')
 
@@ -131,6 +134,12 @@ const userDropdownPopupProps = {
               <div class="user-email">{{ authStore.userEmail }}</div>
             </t-dropdown-item>
             <t-dropdown-item :divider="true" />
+            <t-dropdown-item @click="showSettingsDialog = true">
+              <template #prefix-icon>
+                <t-icon name="setting" />
+              </template>
+              系统设置
+            </t-dropdown-item>
             <t-dropdown-item @click="handleLogout">
               <template #prefix-icon>
                 <t-icon name="logout" />
@@ -141,6 +150,8 @@ const userDropdownPopupProps = {
         </template>
       </t-dropdown>
     </div>
+
+    <SystemSettingsDialog v-model:visible="showSettingsDialog" />
   </aside>
 </template>
 

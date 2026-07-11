@@ -18,6 +18,7 @@ declare module 'vue' {
     Sidebar: typeof import('./components/layout/Sidebar.vue')['default']
     StatusActions: typeof import('./components/task/StatusActions.vue')['default']
     StatusBadge: typeof import('./components/task/StatusBadge.vue')['default']
+    SystemSettingsDialog: typeof import('./components/settings/SystemSettingsDialog.vue')['default']
     TaskForm: typeof import('./components/task/TaskForm.vue')['default']
     TaskLinkList: typeof import('./components/task/TaskLinkList.vue')['default']
     TaskListForm: typeof import('./components/task-list/TaskListForm.vue')['default']

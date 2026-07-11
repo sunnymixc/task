@@ -10,11 +10,14 @@ import '@/assets/theme.css'
 
 import App from './App.vue'
 import router from './router'
+import { useUiStore } from '@/stores/ui'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+// 主动实例化 ui store，使持久化的圆角设置在任意入口路由（含登录页）都立即生效
+useUiStore()
 app.use(router)
 
 app.mount('#app')
