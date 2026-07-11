@@ -192,6 +192,51 @@ const handleUpdateTask = async (data: any, keepOpen = false) => {
   }
 }
 
+// 原地编辑标题/描述:同一时刻只允许编辑一处(行 id + 字段),避免多处草稿状态
+const inlineEdit = ref<{ id: string; field: 'title' | 'description' } | null>(null)
+const inlineDraft = ref('')
+const inlineSaving = ref(false)
+
+const isInlineEditing = (row: Task, field: 'title' | 'description') =>
+  inlineEdit.value?.id === row.id && inlineEdit.value?.field === field
+
+const startInlineEdit = (task: Task, field: 'title' | 'description') => {
+  inlineEdit.value = { id: task.id, field }
+  inlineDraft.value = field === 'title' ? task.title : (task.description || '')
+}
+
+const cancelInlineEdit = () => {
+  inlineEdit.value = null
+}
+
+// 保存原地编辑:仅提交被编辑的单个字段;失败时保留编辑态与草稿
+const saveInlineEdit = async (task: Task) => {
+  if (!inlineEdit.value || inlineSaving.value) return
+  const field = inlineEdit.value.field
+  const value = field === 'title' ? inlineDraft.value.trim() : inlineDraft.value
+  if (field === 'title' && !value) {
+    MessagePlugin.warning('任务标题不能为空')
+    return
+  }
+  const original = field === 'title' ? task.title : (task.description || '')
+  if (value === original) {
+    inlineEdit.value = null
+    return
+  }
+  inlineSaving.value = true
+  try {
+    const updated = await taskStore.updateTask(
+      task.id,
+      field === 'title' ? { title: value } : { description: value }
+    )
+    if (updated) {
+      inlineEdit.value = null
+    }
+  } finally {
+    inlineSaving.value = false
+  }
+}
+
 // Handle delete task
 const handleDeleteTask = (task: Task) => {
   const dialog = DialogPlugin.confirm({
@@ -382,8 +427,61 @@ onMounted(() => {
         </template>
 
         <template #title="{ row }">
-          <div class="task-title">{{ row.title }}</div>
-          <div v-if="row.description" class="task-desc">{{ row.description }}</div>
+          <!-- 标题:展示态(末尾悬停显示编辑图标) / 编辑态(输入框 + 保存/取消) -->
+          <div v-if="!isInlineEditing(row, 'title')" class="task-title">
+            {{ row.title }}
+            <t-button
+              class="inline-edit-btn"
+              theme="default"
+              variant="text"
+              shape="square"
+              size="small"
+              @click="startInlineEdit(row, 'title')"
+            >
+              <t-icon name="edit" />
+            </t-button>
+          </div>
+          <div v-else class="inline-edit-box inline-edit-box--row" @keydown.esc="cancelInlineEdit">
+            <t-input
+              v-model="inlineDraft"
+              size="small"
+              :maxlength="255"
+              autofocus
+              style="flex: 1"
+              @enter="saveInlineEdit(row)"
+            />
+            <t-button theme="primary" size="small" :loading="inlineSaving" @click="saveInlineEdit(row)">保存</t-button>
+            <t-button theme="default" size="small" @click="cancelInlineEdit">取消</t-button>
+          </div>
+
+          <!-- 描述:有描述时文本末尾跟编辑图标;无描述时悬停显示"添加描述"入口 -->
+          <div
+            v-if="!isInlineEditing(row, 'description')"
+            class="task-desc"
+            :class="{ 'task-desc--empty': !row.description }"
+          >{{ row.description }}<t-button
+              class="inline-edit-btn"
+              theme="default"
+              variant="text"
+              :shape="row.description ? 'square' : 'rectangle'"
+              size="small"
+              @click="startInlineEdit(row, 'description')"
+            >
+              <t-icon name="edit" /><span v-if="!row.description">添加描述</span>
+            </t-button>
+          </div>
+          <div v-else class="inline-edit-box" @keydown.esc="cancelInlineEdit">
+            <t-textarea
+              v-model="inlineDraft"
+              :maxlength="5000"
+              :autosize="{ minRows: 2, maxRows: 8 }"
+              autofocus
+            />
+            <div class="inline-edit-actions">
+              <t-button theme="primary" size="small" :loading="inlineSaving" @click="saveInlineEdit(row)">保存</t-button>
+              <t-button theme="default" size="small" @click="cancelInlineEdit">取消</t-button>
+            </div>
+          </div>
         </template>
 
         <template #status="{ row }">
@@ -605,6 +703,43 @@ onMounted(() => {
   color: var(--td-text-color-secondary);
   white-space: pre-line;
   word-break: break-word;
+}
+
+/* 原地编辑入口:默认隐藏,悬停所在行或获得焦点时显示;不参与 pre-line 排版 */
+.inline-edit-btn {
+  white-space: nowrap;
+  vertical-align: middle;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.task-desc--empty .inline-edit-btn {
+  margin-left: 0;
+  font-size: 12px;
+}
+
+.table-container :deep(tr:hover) .inline-edit-btn,
+.inline-edit-btn:focus {
+  opacity: 1;
+}
+
+/* 原地编辑态:标题为一行(输入框+按钮),描述为纵向(文本域在上、按钮行在下) */
+.inline-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.inline-edit-box--row {
+  flex-direction: row;
+  align-items: center;
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .creator-info {
