@@ -68,15 +68,15 @@ const pageTitle = computed(() => {
 // 使常规屏宽下总宽不超出容器,避免水平滚动条
 const columns = computed<PrimaryTableCol[]>(() => [
   { colKey: 'sort_order', title: '序号', width: 64 },
-  { colKey: 'title', title: '标题和描述', minWidth: 320 },
+  { colKey: 'title', title: '标题和描述', minWidth: 300 },
   { colKey: 'status', title: '任务状态', width: 90 },
   { colKey: 'execution_status', title: '执行状态', width: 90 },
   { colKey: 'priority', title: '优先级', width: 80 },
-  { colKey: 'action', title: '操作', width: 280 },
-  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 120, ellipsis: true }]),
-  { colKey: 'links', title: '链接', width: 150 },
+  { colKey: 'action', title: '操作', width: 316 },
+  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 110, ellipsis: true }]),
+  { colKey: 'links', title: '链接', width: 140 },
   { colKey: 'due_date', title: '截止时间', width: 110 },
-  { colKey: 'creator', title: '创建者', width: 100, ellipsis: true },
+  { colKey: 'creator', title: '创建者', width: 90, ellipsis: true },
   { colKey: 'created_at', title: '创建时间', width: 110 },
   { colKey: 'updated_at', title: '更新时间', width: 110 }
 ])
@@ -423,24 +423,24 @@ onMounted(() => {
         </template>
 
         <template #action="{ row }">
-          <t-space size="medium">
+          <t-space size="small">
             <StatusActions
               v-if="hasStatusActions(row.status)"
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />
-            <t-link theme="primary" hover="color" @click="handleCopyTask(row)">
+            <t-button theme="default" size="small" @click="handleCopyTask(row)">
               拷贝
-            </t-link>
-            <t-link theme="primary" hover="color" @click="handleDuplicateTask(row)">
+            </t-button>
+            <t-button theme="default" size="small" @click="handleDuplicateTask(row)">
               复制
-            </t-link>
-            <t-link theme="primary" hover="color" @click="openEditDialog(row)">
+            </t-button>
+            <t-button theme="default" size="small" @click="openEditDialog(row)">
               编辑
-            </t-link>
-            <t-link theme="primary" hover="color" @click="handleDeleteTask(row)">
+            </t-button>
+            <t-button theme="default" size="small" @click="handleDeleteTask(row)">
               删除
-            </t-link>
+            </t-button>
           </t-space>
         </template>
       </t-table>
@@ -588,10 +588,10 @@ onMounted(() => {
 }
 
 /* 兜底：窄窗口下保住标题列最小宽度（col 上的 min-width 浏览器不认），
-   此时才允许出现横向滚动。1624 = 固定列合计 1304 + 标题列最小 320 */
+   此时才允许出现横向滚动。1610 = 固定列合计 1310 + 标题列最小 300 */
 .table-container :deep(.t-table__content > table),
 .table-container :deep(.t-table__affixed-header-elm-wrap table) {
-  min-width: 1624px;
+  min-width: 1610px;
 }
 
 .task-title {

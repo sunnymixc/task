@@ -48,15 +48,15 @@ const handleStatusChange = (status: TaskStatus) => {
 </script>
 
 <template>
-  <t-space v-if="availableActions.length" size="medium">
-    <t-link
+  <t-space v-if="availableActions.length" size="small">
+    <t-button
       v-for="action in availableActions"
       :key="action.value"
-      theme="primary"
-      hover="color"
+      theme="default"
+      size="small"
       @click="handleStatusChange(action.value)"
     >
       {{ action.label }}
-    </t-link>
+    </t-button>
   </t-space>
 </template>
