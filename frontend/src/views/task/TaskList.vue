@@ -466,7 +466,7 @@ onMounted(() => {
     >
       <TaskForm ref="createFormRef" :default-task-list-id="taskListId" @submit="handleCreateTask" />
       <template #footer>
-        <t-button theme="default" @click="showCreateDialog = false">取消</t-button>
+        <t-button theme="default" @click="showCreateDialog = false">关闭</t-button>
         <t-button theme="default" @click="handleCopyForm(createFormRef)">拷贝</t-button>
         <t-button theme="primary" variant="outline" @click="createFormRef?.save()">保存</t-button>
         <t-button theme="primary" @click="createFormRef?.submit()">确定</t-button>
@@ -488,7 +488,7 @@ onMounted(() => {
         @submit="handleUpdateTask"
       />
       <template #footer>
-        <t-button theme="default" @click="showEditDialog = false; editingTask = null">取消</t-button>
+        <t-button theme="default" @click="showEditDialog = false; editingTask = null">关闭</t-button>
         <t-button theme="default" @click="handleCopyForm(editFormRef)">拷贝</t-button>
         <t-button theme="primary" variant="outline" @click="editFormRef?.save()">保存</t-button>
         <t-button theme="primary" @click="editFormRef?.submit()">确定</t-button>
