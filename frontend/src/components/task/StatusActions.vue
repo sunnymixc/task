@@ -12,8 +12,8 @@ const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> 
     { label: '完成', value: 'completed' }
   ],
   executing: [
-    { label: '暂停', value: 'pending' },
-    { label: '完成', value: 'completed' }
+    { label: '完成', value: 'completed' },
+    { label: '暂停', value: 'pending' }
   ],
   completed: []
 }
