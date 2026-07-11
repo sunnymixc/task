@@ -1,22 +1,36 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useTaskStore } from '@/stores/task'
-import type { Task, TaskStatus, TaskPriority } from '@/types'
+import { useTaskListStore } from '@/stores/taskList'
+import { useTaskFilterStore } from '@/stores/taskFilter'
+import type { Task, TaskStatus } from '@/types'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
+import type { PrimaryTableCol } from 'tdesign-vue-next'
 import TaskForm from '@/components/task/TaskForm.vue'
 import StatusBadge from '@/components/task/StatusBadge.vue'
+import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge.vue'
 import PriorityBadge from '@/components/task/PriorityBadge.vue'
-import StatusActions from '@/components/task/StatusActions.vue'
+import StatusActions, { hasStatusActions } from '@/components/task/StatusActions.vue'
+import TaskLinkList from '@/components/task/TaskLinkList.vue'
+
+// 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
+const props = defineProps<{ taskListId?: string }>()
 
 const taskStore = useTaskStore()
+const taskListStore = useTaskListStore()
+const taskFilterStore = useTaskFilterStore()
+
+const isListScoped = computed(() => !!props.taskListId)
+// 状态筛选缓存的作用域:清单 id,全局任务视图用 'all'
+const filterScopeKey = computed(() => props.taskListId ?? 'all')
 
 const tasks = computed(() => taskStore.tasks)
 const loading = computed(() => taskStore.loading)
 const total = computed(() => taskStore.total)
 
-// Filter states
-const currentStatus = ref<TaskStatus | 'all'>('all')
-const currentPriority = ref<TaskPriority | 'all'>('all')
+// Filter states(状态筛选初始值从缓存恢复,覆盖刷新/直达路由场景)
+const currentStatus = ref<TaskStatus[]>(taskFilterStore.getStatusFilter(props.taskListId ?? 'all'))
+const currentTaskLists = ref<string[]>([])
 const searchQuery = ref('')
 
 // Pagination
@@ -27,31 +41,42 @@ const pagination = ref({
 
 // Status filter options
 const statusOptions = [
-  { label: '全部', value: 'all' },
   { label: '草稿', value: 'draft' },
-  { label: '已发布', value: 'published' },
-  { label: '进行中', value: 'in_progress' },
-  { label: '已完成', value: 'completed' },
-  { label: '已结束', value: 'ended' }
+  { label: '待执行', value: 'pending' },
+  { label: '执行中', value: 'executing' },
+  { label: '已完成', value: 'completed' }
 ]
 
-// Priority filter options
-const priorityOptions = [
-  { label: '全部', value: 'all' },
-  { label: '高', value: 'high' },
-  { label: '中', value: 'medium' },
-  { label: '低', value: 'low' }
-]
+// Task list filter options
+const taskListOptions = computed(() =>
+  taskListStore.allLists.map(list => ({
+    label: list.is_default ? `${list.title}（默认）` : list.title,
+    value: list.id
+  }))
+)
 
-// Table columns
-const columns = [
-  { colKey: 'title', title: '标题', width: 300 },
-  { colKey: 'status', title: '状态', width: 100 },
+// 页头标题:清单作用域下显示清单名称
+const pageTitle = computed(() => {
+  if (props.taskListId) {
+    return taskListStore.allLists.find(l => l.id === props.taskListId)?.title || '任务清单'
+  }
+  return '任务列表'
+})
+
+// Table columns(清单作用域下省略任务清单列)
+const columns = computed<PrimaryTableCol[]>(() => [
+  { colKey: 'title', title: '标题和描述', width: 420, minWidth: 300 },
+  { colKey: 'status', title: '任务状态', width: 100 },
+  { colKey: 'execution_status', title: '执行状态', width: 100 },
   { colKey: 'priority', title: '优先级', width: 100 },
+  { colKey: 'action', title: '操作', width: 280 },
+  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
+  { colKey: 'links', title: '链接', width: 200 },
+  { colKey: 'due_date', title: '截止时间', width: 180 },
   { colKey: 'creator', title: '创建者', width: 120 },
   { colKey: 'created_at', title: '创建时间', width: 180 },
-  { colKey: 'action', title: '操作', width: 180, fixed: 'right' }
-]
+  { colKey: 'updated_at', title: '更新时间', width: 180 }
+])
 
 // Fetch tasks
 const fetchTasks = async () => {
@@ -60,11 +85,14 @@ const fetchTasks = async () => {
     page_size: pagination.value.pageSize
   }
 
-  if (currentStatus.value !== 'all') {
+  if (currentStatus.value.length) {
     params.status = currentStatus.value
   }
-  if (currentPriority.value !== 'all') {
-    params.priority = currentPriority.value
+
+  if (props.taskListId) {
+    params.task_list_id = [props.taskListId]
+  } else if (currentTaskLists.value.length) {
+    params.task_list_id = currentTaskLists.value
   }
 
   await taskStore.fetchTasks(params)
@@ -72,12 +100,20 @@ const fetchTasks = async () => {
 
 // Handle status filter change
 const handleStatusChange = () => {
+  taskFilterStore.setStatusFilter(filterScopeKey.value, currentStatus.value)
   pagination.value.current = 1
   fetchTasks()
 }
 
-// Handle priority filter change
-const handlePriorityChange = () => {
+// 重置:仅恢复状态筛选为默认值(不动清单多选与搜索框),并刷新列表
+const handleResetFilter = () => {
+  currentStatus.value = taskFilterStore.resetStatusFilter(filterScopeKey.value)
+  pagination.value.current = 1
+  fetchTasks()
+}
+
+// Handle task list filter change
+const handleTaskListChange = () => {
   pagination.value.current = 1
   fetchTasks()
 }
@@ -109,19 +145,31 @@ const clearSearch = () => {
 }
 
 // Open create dialog
+const createFormRef = ref<InstanceType<typeof TaskForm>>()
 const showCreateDialog = ref(false)
+// "保存"(不关窗)后记住已入库的任务,后续保存/确定改走更新,避免重复建单
+const createdTask = ref<Task | null>(null)
 const openCreateDialog = () => {
+  createdTask.value = null
   showCreateDialog.value = true
 }
 
-// Handle create task
-const handleCreateTask = async (data: any) => {
-  await taskStore.createTask(data)
-  showCreateDialog.value = false
+// Handle create task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
+const handleCreateTask = async (data: any, keepOpen = false) => {
+  const saved = createdTask.value
+    ? await taskStore.updateTask(createdTask.value.id, data)
+    : await taskStore.createTask(data)
+  if (!saved) return
+  createdTask.value = saved
   fetchTasks()
+  if (!keepOpen) {
+    showCreateDialog.value = false
+    createdTask.value = null
+  }
 }
 
 // Open edit dialog
+const editFormRef = ref<InstanceType<typeof TaskForm>>()
 const editingTask = ref<Task | null>(null)
 const showEditDialog = ref(false)
 const openEditDialog = (task: Task) => {
@@ -129,31 +177,93 @@ const openEditDialog = (task: Task) => {
   showEditDialog.value = true
 }
 
-// Handle update task
-const handleUpdateTask = async (data: any) => {
-  if (editingTask.value) {
-    await taskStore.updateTask(editingTask.value.id, data)
+// Handle update task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
+const handleUpdateTask = async (data: any, keepOpen = false) => {
+  if (!editingTask.value) return
+  const updated = await taskStore.updateTask(editingTask.value.id, data)
+  if (!updated) return
+  fetchTasks()
+  if (!keepOpen) {
     showEditDialog.value = false
     editingTask.value = null
-    fetchTasks()
   }
 }
 
 // Handle delete task
-const handleDeleteTask = async (task: Task) => {
+const handleDeleteTask = (task: Task) => {
   const dialog = DialogPlugin.confirm({
     header: '确认删除',
     body: `确定要删除任务 "${task.title}" 吗？`,
     confirmBtn: '确定',
-    cancelBtn: '取消'
+    cancelBtn: '取消',
+    onConfirm: async () => {
+      const success = await taskStore.deleteTask(task.id)
+      dialog.hide()
+      if (success) {
+        fetchTasks()
+      }
+    },
   })
+}
 
-  dialog.onConfirm(async () => {
-    const success = await taskStore.deleteTask(task.id)
-    if (success) {
-      fetchTasks()
-    }
+// Copy text to clipboard (falls back for non-secure contexts, e.g. LAN http access)
+const copyToClipboard = async (text: string) => {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.opacity = '0'
+  document.body.appendChild(ta)
+  ta.select()
+  document.execCommand('copy')
+  document.body.removeChild(ta)
+}
+
+// Copy task title + description to clipboard (title/description separated by 2 newlines)
+const handleCopyTask = async (task: Task) => {
+  const text = task.description
+    ? `${task.title}\n\n${task.description}`
+    : task.title
+  try {
+    await copyToClipboard(text)
+    MessagePlugin.success('已复制到剪贴板')
+  } catch {
+    MessagePlugin.error('复制失败')
+  }
+}
+
+// 弹窗底部"拷贝":复制表单当前标题+描述到剪贴板(未保存的输入也会被复制)
+const handleCopyForm = async (formRef: InstanceType<typeof TaskForm> | undefined) => {
+  const text = formRef?.getCopyText()?.trim()
+  if (!text) {
+    MessagePlugin.warning('暂无内容可复制')
+    return
+  }
+  try {
+    await copyToClipboard(text)
+    MessagePlugin.success('已复制到剪贴板')
+  } catch {
+    MessagePlugin.error('复制失败')
+  }
+}
+
+// 复制任务：以原任务内容创建副本（标题加“-副本”，状态重置为草稿），成功后刷新列表并打开副本编辑弹窗
+const handleDuplicateTask = async (task: Task) => {
+  const created = await taskStore.createTask({
+    title: `${task.title}-副本`,
+    description: task.description || undefined,
+    status: 'draft',
+    priority: task.priority,
+    task_list_id: task.task_list_id || undefined,
+    due_date: task.due_date || undefined,
   })
+  if (created) {
+    await fetchTasks()
+    openEditDialog(created)
+  }
 }
 
 // Handle status update
@@ -180,9 +290,19 @@ const onPageChange = (pageInfo: any) => {
   fetchTasks()
 }
 
+// 路由在 /tasks 与各清单子路由之间切换时复用同一组件实例,监听 prop 重置状态并刷新
+watch(() => props.taskListId, () => {
+  pagination.value.current = 1
+  currentTaskLists.value = []
+  searchQuery.value = ''
+  currentStatus.value = taskFilterStore.getStatusFilter(filterScopeKey.value)
+  fetchTasks()
+})
+
 // On mounted
 onMounted(() => {
   fetchTasks()
+  taskListStore.fetchAllLists()
 })
 </script>
 
@@ -190,7 +310,7 @@ onMounted(() => {
   <div class="task-list-container">
     <!-- Header -->
     <div class="page-header">
-      <div class="title">任务列表</div>
+      <div class="title">{{ pageTitle }}</div>
       <t-button theme="primary" @click="openCreateDialog">
         <template #icon><t-icon name="add" /></template>
         新建任务
@@ -203,17 +323,25 @@ onMounted(() => {
         <t-select
           v-model="currentStatus"
           :options="statusOptions"
-          placeholder="选择状态"
-          style="width: 120px"
+          placeholder="选择任务状态"
+          multiple
+          clearable
+          auto-width
+          style="min-width: 120px"
           @change="handleStatusChange"
         />
         <t-select
-          v-model="currentPriority"
-          :options="priorityOptions"
-          placeholder="选择优先级"
-          style="width: 100px"
-          @change="handlePriorityChange"
+          v-if="!isListScoped"
+          v-model="currentTaskLists"
+          :options="taskListOptions"
+          placeholder="选择任务清单"
+          multiple
+          clearable
+          auto-width
+          style="min-width: 140px"
+          @change="handleTaskListChange"
         />
+        <t-button theme="default" variant="outline" @click="handleResetFilter">重置</t-button>
       </div>
       <div class="search-group">
         <t-input
@@ -237,6 +365,7 @@ onMounted(() => {
         :data="tasks"
         :columns="columns"
         :loading="loading"
+        :header-affixed-top="{ container: '.table-container' }"
         :pagination="{
           current: pagination.current,
           pageSize: pagination.pageSize,
@@ -244,46 +373,69 @@ onMounted(() => {
           showPageSize: false
         }"
         row-key="id"
+        hover
         @page-change="onPageChange"
       >
         <template #title="{ row }">
           <div class="task-title">{{ row.title }}</div>
-          <div class="task-desc">{{ row.description || '-' }}</div>
+          <div v-if="row.description" class="task-desc">{{ row.description }}</div>
         </template>
 
         <template #status="{ row }">
           <StatusBadge :status="row.status" />
         </template>
 
+        <template #execution_status="{ row }">
+          <ExecutionStatusBadge :status="row.execution_status" />
+        </template>
+
         <template #priority="{ row }">
           <PriorityBadge :priority="row.priority" />
         </template>
 
+        <template #task_list="{ row }">
+          {{ row.task_list?.title || '-' }}
+        </template>
+
+        <template #links="{ row }">
+          <TaskLinkList :links="row.links" />
+        </template>
+
+        <template #due_date="{ row }">
+          {{ row.due_date ? formatDate(row.due_date) : '-' }}
+        </template>
+
         <template #creator="{ row }">
-          <div class="creator-info">
-            <t-avatar :image="row.creator?.avatar || ''" size="24">
-              {{ row.creator?.username?.charAt(0) || 'U' }}
-            </t-avatar>
-            <span>{{ row.creator?.username || '-' }}</span>
-          </div>
+          <span class="creator-info">{{ row.creator?.username || '-' }}</span>
         </template>
 
         <template #created_at="{ row }">
           {{ formatDate(row.created_at) }}
         </template>
 
+        <template #updated_at="{ row }">
+          {{ formatDate(row.updated_at) }}
+        </template>
+
         <template #action="{ row }">
-          <t-space>
+          <t-space size="medium">
             <StatusActions
+              v-if="hasStatusActions(row.status)"
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />
-            <t-button size="small" variant="base" @click="openEditDialog(row)">
+            <t-link theme="primary" hover="color" @click="handleCopyTask(row)">
+              拷贝
+            </t-link>
+            <t-link theme="primary" hover="color" @click="handleDuplicateTask(row)">
+              复制
+            </t-link>
+            <t-link theme="primary" hover="color" @click="openEditDialog(row)">
               编辑
-            </t-button>
-            <t-button size="small" variant="base" theme="danger" @click="handleDeleteTask(row)">
+            </t-link>
+            <t-link theme="primary" hover="color" @click="handleDeleteTask(row)">
               删除
-            </t-button>
+            </t-link>
           </t-space>
         </template>
       </t-table>
@@ -302,28 +454,40 @@ onMounted(() => {
     <t-dialog
       v-model:visible="showCreateDialog"
       header="新建任务"
+      placement="center"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
-      :confirm-btn="null"
-      :close-btn="null"
+      @opened="createFormRef?.focusTitle()"
     >
-      <TaskForm @submit="handleCreateTask" @cancel="showCreateDialog = false" />
+      <TaskForm ref="createFormRef" :default-task-list-id="taskListId" @submit="handleCreateTask" />
+      <template #footer>
+        <t-button theme="default" @click="showCreateDialog = false">关闭</t-button>
+        <t-button theme="default" @click="handleCopyForm(createFormRef)">拷贝</t-button>
+        <t-button theme="primary" variant="outline" @click="createFormRef?.save()">保存</t-button>
+        <t-button theme="primary" @click="createFormRef?.submit()">确定</t-button>
+      </template>
     </t-dialog>
 
     <!-- Edit Dialog -->
     <t-dialog
       v-model:visible="showEditDialog"
       header="编辑任务"
+      placement="center"
       width="min(92vw, 760px)"
       dialog-class-name="task-form-dialog"
-      :confirm-btn="null"
-      :close-btn="null"
+      @opened="editFormRef?.focusTitle()"
     >
       <TaskForm
+        ref="editFormRef"
         :task="editingTask"
         @submit="handleUpdateTask"
-        @cancel="showEditDialog = false; editingTask = null"
       />
+      <template #footer>
+        <t-button theme="default" @click="showEditDialog = false; editingTask = null">关闭</t-button>
+        <t-button theme="default" @click="handleCopyForm(editFormRef)">拷贝</t-button>
+        <t-button theme="primary" variant="outline" @click="editFormRef?.save()">保存</t-button>
+        <t-button theme="primary" @click="editFormRef?.submit()">确定</t-button>
+      </template>
     </t-dialog>
   </div>
 </template>
@@ -363,17 +527,59 @@ onMounted(() => {
 
 .filter-group {
   display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 12px;
+}
+
+.filter-group > * {
+  flex: 0 0 auto;
 }
 
 .table-container {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  position: relative;
   background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
+  border: 0;
   border-radius: var(--td-radius-default);
-  padding: 16px;
+  box-shadow: var(--td-shadow-1);
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--td-gray-color-4) transparent;
+}
+
+/* 定制滚动条：透明轨道 + 内缩圆角滑块，轨道两端避开圆角区，保住右上/右下圆角 */
+.table-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin: var(--td-radius-default);
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background-color: var(--td-gray-color-4);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.table-container::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* pin 置顶表头脱离容器 overflow 裁剪，需自带顶部圆角 */
+.table-container :deep(.t-table__affixed-header-elm-wrap) {
+  border-radius: var(--td-radius-default) var(--td-radius-default) 0 0;
+  background: var(--td-bg-color-container);
 }
 
 .task-title {
@@ -385,16 +591,11 @@ onMounted(() => {
 .task-desc {
   font-size: 12px;
   color: var(--td-text-color-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 280px;
+  white-space: pre-line;
+  word-break: break-word;
 }
 
 .creator-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-size: 13px;
   color: var(--td-text-color-primary);
 }
@@ -415,9 +616,10 @@ onMounted(() => {
 </style>
 
 <style>
-/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见 */
+/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见;
+   预留约 220px 给标题栏、底部按钮和上下留白,保证居中后小视口下弹窗不超出屏幕 */
 .task-form-dialog .t-dialog__body {
-  max-height: 72vh;
+  max-height: min(62vh, calc(100vh - 220px));
   overflow-y: auto;
 }
 </style>

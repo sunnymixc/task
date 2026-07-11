@@ -3,6 +3,7 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import type { RegisterRequest } from '@/types'
+import type { FormRules } from 'tdesign-vue-next'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -17,7 +18,7 @@ const loading = ref(false)
 const showPassword = ref(false)
 const formRef = ref()
 
-const formRules = {
+const formRules: FormRules = {
   username: [
     { required: true, message: '请输入用户名' },
     { min: 3, max: 100, message: '用户名长度应为3-100个字符', type: 'warning' }
@@ -80,7 +81,6 @@ const goToLogin = () => {
           <t-input
             v-model="form.email"
             placeholder="请输入邮箱"
-            type="email"
             clearable
             size="large"
           >
@@ -138,14 +138,14 @@ const goToLogin = () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #fff 60%, var(--td-brand-color-1) 100%);
 }
 
 .register-box {
   width: 400px;
   padding: 40px;
   background: white;
-  border-radius: 8px;
+  border-radius: var(--td-radius-default);
   box-shadow: 0 0 2px 2px rgba(0, 0, 0, 0.025);
 }
 

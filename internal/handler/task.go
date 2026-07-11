@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -10,6 +11,32 @@ import (
 	"github.com/task-management/task/internal/types"
 	"github.com/task-management/task/internal/types/interfaces"
 )
+
+// dueDateLayouts lists the date/time formats accepted from the client.
+// The date picker may send a full ISO 8601 timestamp or a date-only string.
+var dueDateLayouts = []string{
+	time.RFC3339,
+	"2006-01-02T15:04:05",
+	"2006-01-02 15:04:05",
+	"2006-01-02",
+}
+
+// parseDueDate parses a date string into *time.Time, trying each supported layout.
+// Returns (nil, nil) for an empty string so callers can leave the field unchanged.
+func parseDueDate(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	var lastErr error
+	for _, layout := range dueDateLayouts {
+		if t, err := time.Parse(layout, s); err == nil {
+			return &t, nil
+		} else {
+			lastErr = err
+		}
+	}
+	return nil, lastErr
+}
 
 // TaskHandler handles task requests
 type TaskHandler struct {
@@ -25,26 +52,40 @@ func NewTaskHandler(taskService interfaces.TaskService) *TaskHandler {
 
 // CreateTaskRequest represents the create task request body
 type CreateTaskRequest struct {
-	Title       string       `json:"title" binding:"required,min=1,max=255"`
-	Description string       `json:"description" binding:"max=5000"`
-	Priority    string       `json:"priority" binding:"omitempty,oneof=low medium high"`
-	AssigneeID  *string      `json:"assignee_id" binding:"omitempty,uuid"`
-	DueDate     *string      `json:"due_date"` // ISO 8601 date string
+	Title           string                `json:"title" binding:"required,min=1,max=255"`
+	Description     string                `json:"description" binding:"max=5000"`
+	Result          string                `json:"result"`
+	Status          string                `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
+	ExecutionStatus string                `json:"execution_status" binding:"omitempty,oneof=unplanned planning planned working completed"`
+	ExecutionPlan   string                `json:"execution_plan"`
+	ExecutionLog    string                `json:"execution_log"`
+	ExecutionResult string                `json:"execution_result"`
+	Priority        string                `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID      string                `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate         *string               `json:"due_date"` // ISO 8601 date string
+	Links           []types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskRequest represents the update task request body
 type UpdateTaskRequest struct {
-	Title       *string  `json:"title" binding:"omitempty,min=1,max=255"`
-	Description *string  `json:"description" binding:"omitempty,max=5000"`
-	Status      *string  `json:"status" binding:"omitempty,oneof=draft published in_progress completed ended"`
-	Priority    *string  `json:"priority" binding:"omitempty,oneof=low medium high"`
-	AssigneeID  *string  `json:"assignee_id" binding:"omitempty,uuid"`
-	DueDate     *string  `json:"due_date"`
+	Title           *string `json:"title" binding:"omitempty,min=1,max=255"`
+	Description     *string `json:"description" binding:"omitempty,max=5000"`
+	Result          *string `json:"result"`
+	Status          *string `json:"status" binding:"omitempty,oneof=draft pending executing completed"`
+	ExecutionStatus *string `json:"execution_status" binding:"omitempty,oneof=unplanned planning planned working completed"`
+	ExecutionPlan   *string `json:"execution_plan"`
+	ExecutionLog    *string `json:"execution_log"`
+	ExecutionResult *string `json:"execution_result"`
+	Priority        *string `json:"priority" binding:"omitempty,oneof=low medium high"`
+	TaskListID      *string `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate         *string `json:"due_date"`
+	// Links 为 null 表示不修改；空数组表示清空；非空表示整体替换
+	Links *[]types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
 
 // UpdateTaskStatusRequest represents the update task status request body
 type UpdateTaskStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=draft published in_progress completed ended"`
+	Status string `json:"status" binding:"required,oneof=draft pending executing completed"`
 }
 
 // CreateTask creates a new task
@@ -69,9 +110,14 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 	}
 
 	createReq := &types.CreateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		AssigneeID:  req.AssigneeID,
+		Title:           req.Title,
+		Description:     req.Description,
+		Result:          req.Result,
+		ExecutionPlan:   req.ExecutionPlan,
+		ExecutionLog:    req.ExecutionLog,
+		ExecutionResult: req.ExecutionResult,
+		TaskListID:      req.TaskListID,
+		Links:           req.Links,
 	}
 
 	// Parse priority
@@ -79,14 +125,52 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		createReq.Priority = types.TaskPriority(req.Priority)
 	}
 
+	// Parse status
+	if req.Status != "" {
+		createReq.Status = types.TaskStatus(req.Status)
+	}
+
+	// Parse execution status
+	if req.ExecutionStatus != "" {
+		createReq.ExecutionStatus = types.TaskExecutionStatus(req.ExecutionStatus)
+	}
+
 	// Parse due date if provided
-	if req.DueDate != nil && *req.DueDate != "" {
-		// TODO: Parse ISO 8601 date string
-		// For simplicity, we're skipping this for now
+	if req.DueDate != nil {
+		dueDate, err := parseDueDate(*req.DueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Invalid due_date: " + err.Error(),
+			})
+			return
+		}
+		createReq.DueDate = dueDate
 	}
 
 	resp, err := h.taskService.CreateTask(c.Request.Context(), createReq)
 	if err != nil {
+		if err == service.ErrTaskListNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "指定的任务清单不存在",
+			})
+			return
+		}
+		if err == service.ErrLinkTargetTaskNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接的目标任务不存在",
+			})
+			return
+		}
+		if err == service.ErrInvalidTaskLink {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接格式不正确",
+			})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Failed to create task: " + err.Error(),
@@ -143,7 +227,6 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 // @Produce json
 // @Security Bearer
 // @Param status query string false "Filter by status"
-// @Param assignee_id query string false "Filter by assignee ID"
 // @Param creator_id query string false "Filter by creator ID"
 // @Param priority query string false "Filter by priority"
 // @Param page query int false "Page number" default(1)
@@ -154,19 +237,21 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	req := &types.ListTasksRequest{}
 
 	// Parse query parameters
-	if status := c.Query("status"); status != "" {
-		s := types.TaskStatus(status)
-		req.Status = &s
-	}
-	if assigneeID := c.Query("assignee_id"); assigneeID != "" {
-		req.AssigneeID = &assigneeID
+	if statuses := c.QueryArray("status"); len(statuses) > 0 {
+		for _, s := range statuses {
+			req.Status = append(req.Status, types.TaskStatus(s))
+		}
 	}
 	if creatorID := c.Query("creator_id"); creatorID != "" {
 		req.CreatorID = &creatorID
 	}
-	if priority := c.Query("priority"); priority != "" {
-		p := types.TaskPriority(priority)
-		req.Priority = &p
+	if taskListIDs := c.QueryArray("task_list_id"); len(taskListIDs) > 0 {
+		req.TaskListID = taskListIDs
+	}
+	if priorities := c.QueryArray("priority"); len(priorities) > 0 {
+		for _, p := range priorities {
+			req.Priority = append(req.Priority, types.TaskPriority(p))
+		}
 	}
 
 	// Parse pagination
@@ -185,10 +270,10 @@ func (h *TaskHandler) ListTasks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    tasks,
-		"total":   total,
-		"page":    page,
+		"success":   true,
+		"data":      tasks,
+		"total":     total,
+		"page":      page,
 		"page_size": pageSize,
 	})
 }
@@ -225,15 +310,26 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 	}
 
 	updateReq := &types.UpdateTaskRequest{
-		Title:       req.Title,
-		Description: req.Description,
-		AssigneeID:  req.AssigneeID,
+		Title:           req.Title,
+		Description:     req.Description,
+		Result:          req.Result,
+		ExecutionPlan:   req.ExecutionPlan,
+		ExecutionLog:    req.ExecutionLog,
+		ExecutionResult: req.ExecutionResult,
+		TaskListID:      req.TaskListID,
+		Links:           req.Links,
 	}
 
 	// Parse status if provided
 	if req.Status != nil {
 		s := types.TaskStatus(*req.Status)
 		updateReq.Status = &s
+	}
+
+	// Parse execution status if provided
+	if req.ExecutionStatus != nil {
+		es := types.TaskExecutionStatus(*req.ExecutionStatus)
+		updateReq.ExecutionStatus = &es
 	}
 
 	// Parse priority if provided
@@ -244,8 +340,15 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 
 	// Parse due date if provided
 	if req.DueDate != nil {
-		// TODO: Parse ISO 8601 date string
-		// For simplicity, we're skipping this for now
+		dueDate, err := parseDueDate(*req.DueDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "Invalid due_date: " + err.Error(),
+			})
+			return
+		}
+		updateReq.DueDate = dueDate
 	}
 
 	resp, err := h.taskService.UpdateTask(c.Request.Context(), id, updateReq)
@@ -261,6 +364,27 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"message": err.Error(),
+			})
+			return
+		}
+		if err == service.ErrTaskListNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "指定的任务清单不存在",
+			})
+			return
+		}
+		if err == service.ErrLinkTargetTaskNotFound {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接的目标任务不存在",
+			})
+			return
+		}
+		if err == service.ErrInvalidTaskLink {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "链接格式不正确",
 			})
 			return
 		}
@@ -410,11 +534,11 @@ func (h *TaskHandler) SearchTasks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    tasks,
-		"total":   total,
-		"page":    page,
+		"success":   true,
+		"data":      tasks,
+		"total":     total,
+		"page":      page,
 		"page_size": pageSize,
-		"query":   query,
+		"query":     query,
 	})
 }

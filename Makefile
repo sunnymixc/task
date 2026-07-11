@@ -32,4 +32,4 @@ clean:
 
 migrate:
 	@echo "Running database migrations..."
-	psql -U $(DB_USER) -d $(DB_NAME) -f migrations/000001_init.up.sql
+	go run cmd/server/main.go --migrate-only

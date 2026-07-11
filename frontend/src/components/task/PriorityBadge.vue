@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { TaskPriority } from '@/types'
 
 interface Props {
@@ -7,13 +8,13 @@ interface Props {
 
 const props = defineProps<Props>()
 
-const priorityConfig: Record<TaskPriority, { label: string; theme: 'default' | 'primary' | 'warning' | 'success' | 'error' }> = {
-  high: { label: '高', theme: 'error' },
+const priorityConfig: Record<TaskPriority, { label: string; theme: 'default' | 'primary' | 'warning' | 'success' | 'danger' }> = {
+  high: { label: '高', theme: 'danger' },
   medium: { label: '中', theme: 'warning' },
   low: { label: '低', theme: 'success' }
 }
 
-const config = priorityConfig[props.priority]
+const config = computed(() => priorityConfig[props.priority] ?? { label: props.priority, theme: 'default' as const })
 </script>
 
 <template>

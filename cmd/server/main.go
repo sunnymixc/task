@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -34,6 +35,9 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
+	migrateOnly := flag.Bool("migrate-only", false, "run database migrations and exit")
+	flag.Parse()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -47,6 +51,16 @@ func main() {
 	defer database.Close()
 
 	log.Println("Database connected successfully")
+
+	// Apply pending SQL migrations before serving traffic
+	if err := database.Migrate(); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	if *migrateOnly {
+		log.Println("Migrations complete")
+		return
+	}
 
 	// Setup router
 	r := router.Setup(cfg)

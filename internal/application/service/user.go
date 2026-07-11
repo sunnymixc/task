@@ -21,6 +21,7 @@ type userService struct {
 	userRepo       interfaces.UserRepository
 	tenantRepo     interfaces.TenantRepository
 	memberRepo     interfaces.TenantMemberRepository
+	taskListRepo   interfaces.TaskListRepository
 	config         *config.Config
 }
 
@@ -44,10 +45,11 @@ type JWTClaims struct {
 // NewUserService creates a new user service
 func NewUserService(cfg *config.Config) interfaces.UserService {
 	return &userService{
-		userRepo:   repository.NewUserRepository(),
-		tenantRepo: repository.NewTenantRepository(),
-		memberRepo: repository.NewTenantMemberRepository(),
-		config:     cfg,
+		userRepo:     repository.NewUserRepository(),
+		tenantRepo:   repository.NewTenantRepository(),
+		memberRepo:   repository.NewTenantMemberRepository(),
+		taskListRepo: repository.NewTaskListRepository(),
+		config:       cfg,
 	}
 }
 
@@ -111,6 +113,11 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 	}
 	if err := s.memberRepo.CreateTenantMember(ctx, member); err != nil {
 		return nil, fmt.Errorf("failed to create membership: %w", err)
+	}
+
+	// Create the tenant's default task list (CreateTask 亦有懒建兜底)
+	if _, err := getOrCreateDefaultTaskList(ctx, s.taskListRepo, tenant.ID, user.ID); err != nil {
+		return nil, fmt.Errorf("failed to create default task list: %w", err)
 	}
 
 	// Generate JWT token

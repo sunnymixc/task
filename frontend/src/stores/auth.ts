@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { authAPI } from '@/api/auth'
-import type { LoginRequest, LoginResponse, RegisterRequest, User } from '@/types'
+import type { LoginRequest, RegisterRequest, User } from '@/types'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -15,6 +15,25 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const userName = computed(() => user.value?.username || '')
   const userEmail = computed(() => user.value?.email || '')
+
+  // 解析 JWT 的 exp 声明，判断当前 token 是否已过期
+  // 无 token 或解析失败时返回 false（不误判为过期，交由服务端 401 处理）
+  const isTokenExpired = (): boolean => {
+    if (!token.value) {
+      return false
+    }
+    try {
+      const seg = token.value.split('.')[1]
+      const payload = JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/')))
+      if (!payload.exp) {
+        return false
+      }
+      return payload.exp * 1000 <= Date.now()
+    } catch (e) {
+      console.error('Failed to parse token exp', e)
+      return false
+    }
+  }
 
   // Initialize from localStorage
   const init = () => {
@@ -150,6 +169,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     userName,
     userEmail,
+    isTokenExpired,
     init,
     login,
     register,

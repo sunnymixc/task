@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -14,9 +15,10 @@ import (
 
 // taskService implements interfaces.TaskService
 type taskService struct {
-	taskRepo  interfaces.TaskRepository
-	userRepo  interfaces.UserRepository
-	tenantRepo interfaces.TenantRepository
+	taskRepo     interfaces.TaskRepository
+	userRepo     interfaces.UserRepository
+	tenantRepo   interfaces.TenantRepository
+	taskListRepo interfaces.TaskListRepository
 }
 
 var (
@@ -24,14 +26,19 @@ var (
 	ErrTaskNotFound = errors.New("task not found")
 	// ErrInvalidStatusTransition is returned when a status transition is invalid
 	ErrInvalidStatusTransition = errors.New("invalid status transition")
+	// ErrLinkTargetTaskNotFound is returned when a task link's target task does not exist in the caller's tenant
+	ErrLinkTargetTaskNotFound = errors.New("链接的目标任务不存在")
+	// ErrInvalidTaskLink is returned when a task link input is malformed
+	ErrInvalidTaskLink = errors.New("无效的任务链接")
 )
 
 // NewTaskService creates a new task service
 func NewTaskService() interfaces.TaskService {
 	return &taskService{
-		taskRepo:  repository.NewTaskRepository(),
-		userRepo:  repository.NewUserRepository(),
-		tenantRepo: repository.NewTenantRepository(),
+		taskRepo:     repository.NewTaskRepository(),
+		userRepo:     repository.NewUserRepository(),
+		tenantRepo:   repository.NewTenantRepository(),
+		taskListRepo: repository.NewTaskListRepository(),
 	}
 }
 
@@ -53,38 +60,75 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 		return nil, errors.New("user not found")
 	}
 
-	// Validate assignee if provided
-	if req.AssigneeID != nil {
-		assignee, err := s.userRepo.GetUserByID(ctx, *req.AssigneeID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get assignee: %w", err)
-		}
-		if assignee == nil {
-			return nil, errors.New("assignee not found")
-		}
-		// TODO: Check if assignee is a member of the same tenant
-	}
-
 	// Set default priority if not provided
 	priority := req.Priority
 	if priority == "" {
-		priority = types.TaskPriorityMedium
+		priority = types.TaskPriorityHigh
+	}
+
+	// Set default status if not provided
+	status := req.Status
+	if status == "" {
+		status = types.TaskStatusDraft
+	}
+
+	// Set default execution status if not provided
+	executionStatus := req.ExecutionStatus
+	if executionStatus == "" {
+		executionStatus = types.TaskExecutionStatusUnplanned
+	}
+
+	// Resolve the task list: validate the given one, or fall back to the tenant's default
+	taskListID := req.TaskListID
+	if taskListID != "" {
+		list, err := s.taskListRepo.GetTaskListByID(ctx, taskListID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task list: %w", err)
+		}
+		if list == nil || list.TenantID != user.TenantID {
+			return nil, ErrTaskListNotFound
+		}
+	} else {
+		defaultList, err := getOrCreateDefaultTaskList(ctx, s.taskListRepo, user.TenantID, userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve default task list: %w", err)
+		}
+		taskListID = defaultList.ID
+	}
+
+	taskID := uuid.New().String()
+
+	// 先校验链接（含目标任务同租户校验），再落库，避免部分写入
+	links, err := s.validateAndBuildLinks(ctx, user.TenantID, taskID, req.Links)
+	if err != nil {
+		return nil, err
 	}
 
 	task := &types.Task{
-		ID:          uuid.New().String(),
-		TenantID:    user.TenantID,
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      types.TaskStatusDraft,
-		Priority:    priority,
-		AssigneeID:  req.AssigneeID,
-		CreatorID:   userID,
-		DueDate:     req.DueDate,
+		ID:              taskID,
+		TenantID:        user.TenantID,
+		Title:           req.Title,
+		Description:     req.Description,
+		Result:          req.Result,
+		Status:          status,
+		ExecutionStatus: executionStatus,
+		ExecutionPlan:   req.ExecutionPlan,
+		ExecutionLog:    req.ExecutionLog,
+		ExecutionResult: req.ExecutionResult,
+		Priority:        priority,
+		CreatorID:       userID,
+		TaskListID:      taskListID,
+		DueDate:         req.DueDate,
 	}
 
 	if err := s.taskRepo.CreateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to create task: %w", err)
+	}
+
+	if len(links) > 0 {
+		if err := s.taskRepo.ReplaceTaskLinks(ctx, taskID, links); err != nil {
+			return nil, fmt.Errorf("failed to create task links: %w", err)
+		}
 	}
 
 	// Reload with associations
@@ -94,6 +138,49 @@ func (s *taskService) CreateTask(ctx context.Context, req *types.CreateTaskReque
 	}
 
 	return task.ToResponse(), nil
+}
+
+// validateAndBuildLinks 校验链接输入并构造 TaskLink 实体，position 按输入顺序。
+// task 类型链接强制校验目标任务存在且与当前任务同租户，并禁止链接自身。
+func (s *taskService) validateAndBuildLinks(ctx context.Context, tenantID uint64, taskID string, inputs []types.TaskLinkInput) ([]*types.TaskLink, error) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
+	links := make([]*types.TaskLink, 0, len(inputs))
+	for i, in := range inputs {
+		link := &types.TaskLink{
+			TaskID:   taskID,
+			LinkType: in.LinkType,
+			Position: i,
+		}
+		switch in.LinkType {
+		case types.TaskLinkTypeURL:
+			title := strings.TrimSpace(in.Title)
+			if title == "" || (!strings.HasPrefix(in.URL, "http://") && !strings.HasPrefix(in.URL, "https://")) {
+				return nil, ErrInvalidTaskLink
+			}
+			link.Title = title
+			link.URL = in.URL
+		case types.TaskLinkTypeTask:
+			if in.TargetTaskID == "" || in.TargetTaskID == taskID {
+				return nil, ErrInvalidTaskLink
+			}
+			target, err := s.taskRepo.GetTaskByID(ctx, in.TargetTaskID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get link target task: %w", err)
+			}
+			if target == nil || target.TenantID != tenantID {
+				return nil, ErrLinkTargetTaskNotFound
+			}
+			// 不挂 TargetTask 关联，避免 Create 时级联写目标任务
+			link.TargetTaskID = in.TargetTaskID
+		default:
+			return nil, ErrInvalidTaskLink
+		}
+		links = append(links, link)
+	}
+	return links, nil
 }
 
 // GetTaskByID retrieves a task by ID
@@ -146,16 +233,16 @@ func (s *taskService) ListTasks(ctx context.Context, req *types.ListTasksRequest
 	// Build filters
 	filters := types.TaskFilters{
 		Status:     req.Status,
-		AssigneeID: req.AssigneeID,
 		CreatorID:  req.CreatorID,
 		Priority:   req.Priority,
+		TaskListID: req.TaskListID,
 	}
 
 	// If any filters are set, use FilterTasks, otherwise use GetTasksByTenantID
 	var tasks []*types.Task
 	var total int64
 
-	if filters.Status != nil || filters.AssigneeID != nil || filters.CreatorID != nil || filters.Priority != nil {
+	if len(filters.Status) > 0 || filters.CreatorID != nil || len(filters.Priority) > 0 || len(filters.TaskListID) > 0 {
 		tasks, total, err = s.taskRepo.FilterTasks(ctx, user.TenantID, filters, offset, pageSize)
 	} else {
 		tasks, total, err = s.taskRepo.GetTasksByTenantID(ctx, user.TenantID, offset, pageSize)
@@ -187,37 +274,61 @@ func (s *taskService) UpdateTask(ctx context.Context, id string, req *types.Upda
 	if req.Description != nil {
 		task.Description = *req.Description
 	}
+	if req.Result != nil {
+		task.Result = *req.Result
+	}
+	if req.ExecutionStatus != nil {
+		task.ExecutionStatus = *req.ExecutionStatus
+	}
+	if req.ExecutionPlan != nil {
+		task.ExecutionPlan = *req.ExecutionPlan
+	}
+	if req.ExecutionLog != nil {
+		task.ExecutionLog = *req.ExecutionLog
+	}
+	if req.ExecutionResult != nil {
+		task.ExecutionResult = *req.ExecutionResult
+	}
 	if req.Priority != nil {
 		task.Priority = *req.Priority
-	}
-	if req.AssigneeID != nil {
-		// Validate assignee
-		if *req.AssigneeID != "" {
-			assignee, err := s.userRepo.GetUserByID(ctx, *req.AssigneeID)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get assignee: %w", err)
-			}
-			if assignee == nil {
-				return nil, errors.New("assignee not found")
-			}
-		}
-		task.AssigneeID = req.AssigneeID
 	}
 	if req.DueDate != nil {
 		task.DueDate = req.DueDate
 	}
-
-	// Handle status update with validation
-	if req.Status != nil {
-		if !types.IsValidTransition(task.Status, *req.Status) {
-			return nil, fmt.Errorf("%w: cannot transition from %s to %s",
-				ErrInvalidStatusTransition, task.Status, *req.Status)
+	if req.TaskListID != nil && *req.TaskListID != task.TaskListID {
+		// Validate the target list exists and belongs to the task's tenant
+		list, err := s.taskListRepo.GetTaskListByID(ctx, *req.TaskListID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get task list: %w", err)
 		}
+		if list == nil || list.TenantID != task.TenantID {
+			return nil, ErrTaskListNotFound
+		}
+		task.TaskListID = *req.TaskListID
+	}
+
+	// Update status if provided (no transition restriction)
+	if req.Status != nil {
 		task.Status = *req.Status
+	}
+
+	// Links: nil 表示不修改；空数组表示清空；非空整体替换。校验放在落库前。
+	var newLinks []*types.TaskLink
+	if req.Links != nil {
+		newLinks, err = s.validateAndBuildLinks(ctx, task.TenantID, task.ID, *req.Links)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if err := s.taskRepo.UpdateTask(ctx, task); err != nil {
 		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	if req.Links != nil {
+		if err := s.taskRepo.ReplaceTaskLinks(ctx, task.ID, newLinks); err != nil {
+			return nil, fmt.Errorf("failed to replace task links: %w", err)
+		}
 	}
 
 	// Reload with associations
@@ -241,6 +352,7 @@ func (s *taskService) DeleteTask(ctx context.Context, id string) error {
 
 	// TODO: Verify tenant access and permissions
 
+	// 任务是软删，task_links 物理行有意保留：links 只经 task 查询，不存在泄漏路径
 	if err := s.taskRepo.DeleteTask(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete task: %w", err)
 	}
@@ -256,12 +368,6 @@ func (s *taskService) UpdateTaskStatus(ctx context.Context, id string, status ty
 	}
 	if task == nil {
 		return nil, ErrTaskNotFound
-	}
-
-	// Validate status transition
-	if !types.IsValidTransition(task.Status, status) {
-		return nil, fmt.Errorf("%w: cannot transition from %s to %s",
-			ErrInvalidStatusTransition, task.Status, status)
 	}
 
 	task.Status = status

@@ -27,6 +27,26 @@ const routes: RouteRecordRaw[] = [
         name: 'TaskList',
         component: () => import('@/views/task/TaskList.vue'),
         meta: { title: '任务列表' }
+      },
+      {
+        path: 'tasks/:id',
+        name: 'TaskDetail',
+        component: () => import('@/views/task/TaskDetail.vue'),
+        props: route => ({ taskId: route.params.id as string }),
+        meta: { title: '任务详情' }
+      },
+      {
+        path: 'task-lists',
+        name: 'TaskListManage',
+        component: () => import('@/views/task-list/TaskListManage.vue'),
+        meta: { title: '任务清单' }
+      },
+      {
+        path: 'task-lists/:listId/tasks',
+        name: 'TaskListTasks',
+        component: () => import('@/views/task/TaskList.vue'),
+        props: route => ({ taskListId: route.params.listId as string }),
+        meta: { title: '清单任务' }
       }
     ]
   },
@@ -43,7 +63,7 @@ const router = createRouter({
 })
 
 // Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   authStore.init()
 

@@ -8,6 +8,7 @@ import (
 	"github.com/task-management/task/internal/types"
 	"github.com/task-management/task/internal/types/interfaces"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // taskRepository implements interfaces.TaskRepository
@@ -22,18 +23,26 @@ func NewTaskRepository() interfaces.TaskRepository {
 	}
 }
 
-// CreateTask creates a new task
+// orderLinks 链接按录入顺序返回
+func orderLinks(db *gorm.DB) *gorm.DB {
+	return db.Order("position ASC, id ASC")
+}
+
+// CreateTask creates a new task.
+// Omit associations: 防止 task 上挂载的关联(如 Links)被 GORM 级联插入。
 func (r *taskRepository) CreateTask(ctx context.Context, task *types.Task) error {
-	return r.db.WithContext(ctx).Create(task).Error
+	return r.db.WithContext(ctx).Omit(clause.Associations).Create(task).Error
 }
 
 // GetTaskByID retrieves a task by ID
 func (r *taskRepository) GetTaskByID(ctx context.Context, id string) (*types.Task, error) {
 	var task types.Task
 	err := r.db.WithContext(ctx).
-		Preload("Assignee").
 		Preload("Creator").
 		Preload("Tenant").
+		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
 		Where("id = ?", id).
 		First(&task).Error
 	if err != nil {
@@ -56,9 +65,11 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 		return nil, 0, err
 	}
 
-	err := query.Preload("Assignee").
-		Preload("Creator").
-		Order("created_at DESC").
+	err := query.Preload("Creator").
+		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
+		Order("status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -66,9 +77,11 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 	return tasks, total, err
 }
 
-// UpdateTask updates a task
+// UpdateTask updates a task.
+// Omit associations: task 由 GetTaskByID 预加载了旧的 TaskList/Creator 等关联,
+// 若不忽略,GORM Save 会用旧关联的主键回写外键(如 task_list_id),覆盖服务层刚设置的新值。
 func (r *taskRepository) UpdateTask(ctx context.Context, task *types.Task) error {
-	return r.db.WithContext(ctx).Save(task).Error
+	return r.db.WithContext(ctx).Omit(clause.Associations).Save(task).Error
 }
 
 // DeleteTask soft deletes a task
@@ -83,9 +96,9 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 
 	db := r.db.WithContext(ctx).Model(&types.Task{}).Where("tenant_id = ?", tenantID)
 
-	// Add search conditions for title and description
+	// Add search conditions for title, description and result
 	searchPattern := "%" + query + "%"
-	db = db.Where("title ILIKE ? OR description ILIKE ?", searchPattern, searchPattern)
+	db = db.Where("title ILIKE ? OR description ILIKE ? OR result ILIKE ?", searchPattern, searchPattern, searchPattern)
 
 	// Apply additional filters
 	db = r.applyFilters(db, filters)
@@ -94,9 +107,11 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 		return nil, 0, err
 	}
 
-	err := db.Preload("Assignee").
-		Preload("Creator").
-		Order("created_at DESC").
+	err := db.Preload("Creator").
+		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
+		Order("status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -118,9 +133,11 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 		return nil, 0, err
 	}
 
-	err := db.Preload("Assignee").
-		Preload("Creator").
-		Order("created_at DESC").
+	err := db.Preload("Creator").
+		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
+		Order("status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -130,17 +147,38 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 
 // applyFilters applies filters to the query
 func (r *taskRepository) applyFilters(db *gorm.DB, filters types.TaskFilters) *gorm.DB {
-	if filters.Status != nil {
-		db = db.Where("status = ?", *filters.Status)
-	}
-	if filters.AssigneeID != nil {
-		db = db.Where("assignee_id = ?", *filters.AssigneeID)
+	if len(filters.Status) > 0 {
+		db = db.Where("status IN ?", filters.Status)
 	}
 	if filters.CreatorID != nil {
 		db = db.Where("creator_id = ?", *filters.CreatorID)
 	}
-	if filters.Priority != nil {
-		db = db.Where("priority = ?", *filters.Priority)
+	if len(filters.Priority) > 0 {
+		db = db.Where("priority IN ?", filters.Priority)
+	}
+	if len(filters.TaskListID) > 0 {
+		db = db.Where("task_list_id IN ?", filters.TaskListID)
 	}
 	return db
+}
+
+// ReplaceTaskLinks 在单事务内整体替换某任务的链接（物理删除旧行后重插）
+func (r *taskRepository) ReplaceTaskLinks(ctx context.Context, taskID string, links []*types.TaskLink) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("task_id = ?", taskID).Delete(&types.TaskLink{}).Error; err != nil {
+			return err
+		}
+		if len(links) == 0 {
+			return nil
+		}
+		return tx.Omit(clause.Associations).Create(&links).Error
+	})
+}
+
+// MoveTasksToList reassigns all tasks in a list to another list (within a tenant)
+func (r *taskRepository) MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error {
+	return r.db.WithContext(ctx).
+		Model(&types.Task{}).
+		Where("tenant_id = ? AND task_list_id = ?", tenantID, fromListID).
+		Update("task_list_id", toListID).Error
 }
