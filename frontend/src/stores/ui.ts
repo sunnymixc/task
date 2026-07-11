@@ -7,11 +7,12 @@ const RADIUS_KEY = 'task_radius'
 // 圆角档位（px 值同时写入五个 --td-radius-* 变量，全局统一）
 export const RADIUS_OPTIONS = [
   { label: '直角', px: 1 },
-  { label: '默认', px: 3 },
-  { label: '小', px: 6 },
-  { label: '中', px: 9 },
+  { label: '默认', px: 2 },
+  { label: '小', px: 4 },
+  { label: '中', px: 8 },
   { label: '大', px: 12 },
-  { label: '超大', px: 16 }
+  { label: '超大', px: 14 },
+  { label: '圆角', px: 16 }
 ] as const
 
 const DEFAULT_RADIUS = 1
