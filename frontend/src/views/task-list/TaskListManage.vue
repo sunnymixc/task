@@ -263,6 +263,11 @@ onMounted(() => {
   padding: 0;
 }
 
+/* pin 置顶表头脱离容器 overflow 裁剪，需自带顶部圆角 */
+.table-container :deep(.t-table__affixed-header-elm-wrap) {
+  border-radius: var(--td-radius-default) var(--td-radius-default) 0 0;
+}
+
 .list-id {
   font-family: monospace;
   font-size: 12px;
