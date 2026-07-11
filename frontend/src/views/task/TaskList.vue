@@ -64,11 +64,11 @@ const pageTitle = computed(() => {
 })
 
 // Table columns(清单作用域下省略任务清单列)
-// 各列均为固定宽度,标题列取 320 避免宽屏下独占剩余空间;
+// 各列均为固定宽度,标题列取 420 避免宽屏下独占剩余空间;
 // 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
 const columns = computed<PrimaryTableCol[]>(() => [
   { colKey: 'sort_order', title: '序号', width: 64 },
-  { colKey: 'title', title: '标题和描述', width: 320 },
+  { colKey: 'title', title: '标题和描述', width: 420 },
   { colKey: 'status', title: '任务状态', width: 90 },
   { colKey: 'execution_status', title: '执行状态', width: 90 },
   { colKey: 'priority', title: '优先级', width: 80 },
@@ -440,6 +440,17 @@ onMounted(() => {
             >
               <t-icon name="edit" />
             </t-button>
+            <t-button
+              v-if="!row.description && !isInlineEditing(row, 'description')"
+              class="inline-edit-btn inline-add-desc-btn"
+              theme="default"
+              variant="text"
+              shape="rectangle"
+              size="small"
+              @click="startInlineEdit(row, 'description')"
+            >
+              <t-icon name="edit" /><span>添加描述</span>
+            </t-button>
           </div>
           <div v-else class="inline-edit-box inline-edit-box--row" @keydown.esc="cancelInlineEdit">
             <t-input
@@ -454,23 +465,22 @@ onMounted(() => {
             <t-button theme="default" size="small" @click="cancelInlineEdit">取消</t-button>
           </div>
 
-          <!-- 描述:有描述时文本末尾跟编辑图标;无描述时悬停显示"添加描述"入口 -->
+          <!-- 描述:有描述时文本末尾跟编辑图标;无描述时不渲染,"添加描述"入口在标题行 -->
           <div
-            v-if="!isInlineEditing(row, 'description')"
+            v-if="!isInlineEditing(row, 'description') && row.description"
             class="task-desc"
-            :class="{ 'task-desc--empty': !row.description }"
           >{{ row.description }}<t-button
               class="inline-edit-btn"
               theme="default"
               variant="text"
-              :shape="row.description ? 'square' : 'rectangle'"
+              shape="square"
               size="small"
               @click="startInlineEdit(row, 'description')"
             >
-              <t-icon name="edit" /><span v-if="!row.description">添加描述</span>
+              <t-icon name="edit" />
             </t-button>
           </div>
-          <div v-else class="inline-edit-box" @keydown.esc="cancelInlineEdit">
+          <div v-else-if="isInlineEditing(row, 'description')" class="inline-edit-box" @keydown.esc="cancelInlineEdit">
             <t-textarea
               v-model="inlineDraft"
               :maxlength="5000"
@@ -686,15 +696,19 @@ onMounted(() => {
 }
 
 /* 兜底：窄窗口下保住各列宽度，此时才允许出现横向滚动。
-   1630 = 各列固定宽合计（其余列 1310 + 标题列 320） */
+   1730 = 各列固定宽合计（其余列 1310 + 标题列 420） */
 .table-container :deep(.t-table__content > table),
 .table-container :deep(.t-table__affixed-header-elm-wrap table) {
-  min-width: 1630px;
+  min-width: 1730px;
 }
 
 .task-title {
   font-weight: 500;
   color: var(--td-text-color-primary);
+}
+
+/* 仅当下方还有描述块/编辑框时才留间距,空描述时标题单独存在以保证垂直居中 */
+.task-title:not(:last-child) {
   margin-bottom: 4px;
 }
 
@@ -714,9 +728,13 @@ onMounted(() => {
   transition: opacity 0.2s;
 }
 
-.task-desc--empty .inline-edit-btn {
-  margin-left: 0;
+.inline-add-desc-btn {
   font-size: 12px;
+}
+
+/* 图标与文字垂直居中,对齐方式与描述行的编辑按钮一致 */
+.inline-add-desc-btn :deep(.t-button__text) {
+  align-items: center;
 }
 
 .table-container :deep(tr:hover) .inline-edit-btn,
