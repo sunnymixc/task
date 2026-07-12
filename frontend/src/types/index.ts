@@ -6,6 +6,7 @@ export interface User {
   avatar: string
   tenant_id: number
   is_active: boolean
+  is_admin: boolean
   preferences: UserPreferences
   created_at: string
   updated_at: string
@@ -53,6 +54,16 @@ export interface LoginResponse {
 
 export interface RefreshTokenRequest {
   refresh_token: string
+}
+
+// System Settings Types（服务端全局设置，仅管理员可写）
+export interface SystemSettings {
+  ui_radius: number
+}
+
+export interface SystemSettingsResponse {
+  success: boolean
+  data: SystemSettings
 }
 
 // Task Types

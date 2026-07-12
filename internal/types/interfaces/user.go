@@ -9,6 +9,9 @@ import (
 // UserRepository defines the interface for user data operations
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *types.User) error
+	// CreateUserGrantingFirstAdmin creates the user, setting IsAdmin=true when it is
+	// the first user in the system (count guarded by an advisory lock in one tx)
+	CreateUserGrantingFirstAdmin(ctx context.Context, user *types.User) error
 	GetUserByID(ctx context.Context, id string) (*types.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*types.User, error)
 	GetUserByUsername(ctx context.Context, username string) (*types.User, error)

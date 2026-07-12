@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { settingsAPI } from '@/api/settings'
+import type { SystemSettings } from '@/types'
 
 const STORAGE_KEY = 'sidebar-collapsed'
 const RADIUS_KEY = 'task_radius'
@@ -67,6 +69,7 @@ export const useUiStore = defineStore('ui', () => {
     setSidebarCollapsed(!sidebarCollapsed.value)
   }
 
+  // localStorage 值仅作登录前/请求失败时的缓存，服务端系统设置为准
   const radius = ref<number>(loadRadius())
   applyRadiusToDom(radius.value)
 
@@ -77,11 +80,40 @@ export const useUiStore = defineStore('ui', () => {
     localStorage.setItem(RADIUS_KEY, String(value))
   }
 
+  // 从服务端加载系统设置并应用；失败时静默回退本地缓存
+  const fetchSystemSettings = async () => {
+    try {
+      const response = await settingsAPI.getSettings()
+      if (response.success && response.data) {
+        setRadius(response.data.ui_radius)
+      }
+    } catch (e) {
+      console.error('Failed to fetch system settings', e)
+    }
+  }
+
+  // 保存系统设置（仅管理员，403 由请求拦截器提示），成功后应用服务端确认值
+  const updateSystemSettings = async (patch: Partial<SystemSettings>): Promise<boolean> => {
+    try {
+      const response = await settingsAPI.updateSettings(patch)
+      if (response.success && response.data) {
+        setRadius(response.data.ui_radius)
+        return true
+      }
+      return false
+    } catch (e) {
+      console.error('Failed to update system settings', e)
+      return false
+    }
+  }
+
   return {
     sidebarCollapsed,
     setSidebarCollapsed,
     toggleSidebar,
     radius,
-    setRadius
+    setRadius,
+    fetchSystemSettings,
+    updateSystemSettings
   }
 })

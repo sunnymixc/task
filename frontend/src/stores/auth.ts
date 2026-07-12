@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value)
   const userName = computed(() => user.value?.username || '')
   const userEmail = computed(() => user.value?.email || '')
+  const isAdmin = computed(() => user.value?.is_admin === true)
 
   // 解析 JWT 的 exp 声明，判断当前 token 是否已过期
   // 无 token 或解析失败时返回 false（不误判为过期，交由服务端 401 处理）
@@ -169,6 +170,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     userName,
     userEmail,
+    isAdmin,
     isTokenExpired,
     init,
     login,
