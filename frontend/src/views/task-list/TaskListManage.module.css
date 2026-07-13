@@ -9,8 +9,8 @@
 
 .pageHeader {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 16px;
   margin-bottom: 20px;
   flex-shrink: 0;
 }
@@ -23,10 +23,9 @@
 
 .filters {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   margin-bottom: 16px;
-  gap: 16px;
+  gap: 12px;
   flex-shrink: 0;
 }
 

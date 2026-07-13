@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Input, Modal, Space, Table, Tag, Typography } from '@douyinfe/semi-ui-19'
+import { Button, Input, Modal, Space, Table, Tag, Tooltip, Typography } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
 import { IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskListStore } from '@/stores/taskList'
@@ -64,7 +64,9 @@ export default function TaskListManage() {
     debouncedSearch(value)
   }
 
+  // 清空/重置搜索(cancel 丢弃防抖中的旧关键词,避免清空后又延迟发出搜索)
   const clearSearch = () => {
+    debouncedSearch.cancel()
     setSearchQuery('')
     setPage(1)
     fetchLists({ page: 1, keyword: '' })
@@ -177,9 +179,15 @@ export default function TaskListManage() {
       {/* Header */}
       <div className={styles.pageHeader}>
         <div className={styles.title}>任务清单</div>
-        <Button theme="solid" type="primary" icon={<IconPlus />} onClick={() => setShowCreateDialog(true)}>
-          新建清单
-        </Button>
+        <Tooltip content="新建清单">
+          <Button
+            theme="borderless"
+            type="tertiary"
+            icon={<IconPlus />}
+            aria-label="新建清单"
+            onClick={() => setShowCreateDialog(true)}
+          />
+        </Tooltip>
       </div>
 
       {/* Filters */}
@@ -193,6 +201,7 @@ export default function TaskListManage() {
           prefix={<IconSearch />}
           style={{ width: 300 }}
         />
+        <Button onClick={clearSearch}>重置</Button>
       </div>
 
       {/* Task List Table */}
