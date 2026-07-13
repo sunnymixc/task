@@ -389,11 +389,17 @@ export default function TaskList() {
     </>
   )
 
-  // Table columns(清单作用域下省略任务清单列)
+  // Table columns
   // 各列均为固定宽度,标题列取 420 避免宽屏下独占剩余空间;
   // 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
   const columns: ColumnProps<Task>[] = [
-    { title: '序号', dataIndex: 'sort_order', width: 64, render: (v: number) => (v > 0 ? v : '-') },
+    {
+      title: '任务清单',
+      dataIndex: 'task_list',
+      width: 110,
+      ellipsis: true,
+      render: (_: unknown, row: Task) => row.task_list?.title || '-'
+    },
     { title: '标题和描述', dataIndex: 'title', width: 420, render: (_: unknown, row: Task) => renderTitleCell(row) },
     {
       title: '任务状态',
@@ -438,17 +444,6 @@ export default function TaskList() {
         </Space>
       )
     },
-    ...(isListScoped
-      ? []
-      : [
-          {
-            title: '任务清单',
-            dataIndex: 'task_list',
-            width: 110,
-            ellipsis: true,
-            render: (_: unknown, row: Task) => row.task_list?.title || '-'
-          } as ColumnProps<Task>
-        ]),
     {
       title: '链接',
       dataIndex: 'links',
