@@ -17,7 +17,7 @@ export const RADIUS_OPTIONS = [
   { label: '圆角', px: 16 }
 ] as const
 
-const DEFAULT_RADIUS = 1
+const DEFAULT_RADIUS = 14
 
 // 自定义圆角允许的取值范围
 export const RADIUS_MIN = 0
