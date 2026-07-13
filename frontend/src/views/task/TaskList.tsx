@@ -426,23 +426,23 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // semi 小按钮比 tdesign 宽,362=6 个按钮+间距+单元格内边距
-      width: 380,
+      // default 尺寸按钮较小按钮左右各宽 4px,430=6 个按钮+间距+单元格内边距
+      width: 430,
       render: (_: unknown, row: Task) => (
         <Space spacing={8}>
           {hasStatusActions(row.status) && (
             <StatusActions task={row} onStatusChange={(status) => handleStatusUpdate(row.id, status)} />
           )}
-          <Button size="small" onClick={() => handleCopyTask(row)}>
+          <Button onClick={() => handleCopyTask(row)}>
             拷贝
           </Button>
-          <Button size="small" onClick={() => handleDuplicateTask(row)}>
+          <Button onClick={() => handleDuplicateTask(row)}>
             复制
           </Button>
-          <Button size="small" onClick={() => openEditDialog(row)}>
+          <Button onClick={() => openEditDialog(row)}>
             编辑
           </Button>
-          <Button size="small" onClick={() => handleDeleteTask(row)}>
+          <Button onClick={() => handleDeleteTask(row)}>
             删除
           </Button>
         </Space>

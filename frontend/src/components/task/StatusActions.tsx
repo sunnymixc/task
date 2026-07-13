@@ -35,7 +35,7 @@ export default function StatusActions({ task, onStatusChange }: Props) {
   return (
     <Space spacing={8}>
       {availableActions.map((action) => (
-        <Button key={action.value} size="small" onClick={() => onStatusChange(action.value)}>
+        <Button key={action.value} onClick={() => onStatusChange(action.value)}>
           {action.label}
         </Button>
       ))}
