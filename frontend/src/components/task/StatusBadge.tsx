@@ -11,5 +11,5 @@ const statusConfig: Record<TaskStatus, { label: string; color: TagColor }> = {
 
 export default function StatusBadge({ status }: { status: TaskStatus }) {
   const config = statusConfig[status] ?? { label: status, color: 'grey' as TagColor }
-  return <Tag color={config.color}>{config.label}</Tag>
+  return <Tag type="solid" color={config.color}>{config.label}</Tag>
 }
