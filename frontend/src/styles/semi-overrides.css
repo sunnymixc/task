@@ -16,3 +16,28 @@
   max-height: min(62vh, calc(100vh - 220px));
   overflow-y: auto;
 }
+
+/* 默认字重 500(见 theme.css):Semi 在这些组件选择器里硬编码了 font-weight:400,
+   body 继承覆盖不到;input/textarea 则本身不继承字重。统一提升到默认字重。
+   每条加 body 前缀以稳压 Semi 原选择器的特异性(如 .semi-tabs-bar .semi-tabs-tab)。 */
+body .semi-select,
+body .semi-cascader,
+body .semi-tree-select,
+body .semi-tabs-bar .semi-tabs-tab,
+body .semi-tabs-tab-single.semi-tabs-tab,
+body .semi-navigation-item,
+body .semi-navigation-sub .semi-navigation-item,
+body .semi-navigation-sub-wrap .semi-navigation-sub-title,
+body .semi-page-item,
+body .semi-table-pagination-info,
+body .semi-card,
+body .semi-card-body,
+body .semi-breadcrumb-item,
+body .semi-badge-count,
+body .semi-typography-small,
+body .semi-notification-notice-content,
+body .semi-input,
+body .semi-input-textarea,
+body .semi-tagInput {
+  font-weight: var(--app-font-weight, 500);
+}

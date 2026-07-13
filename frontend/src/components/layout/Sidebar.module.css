@@ -141,7 +141,7 @@
 
 .menuItemSub .menuTitle {
   font-size: 13px;
-  font-weight: 400;
+  font-weight: var(--app-font-weight, 500);
 }
 
 .menuSubTag {

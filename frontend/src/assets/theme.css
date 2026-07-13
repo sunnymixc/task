@@ -11,6 +11,10 @@ html body[theme-mode='light'] {
     'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
     sans-serif;
   font-family: var(--app-font-family);
+  /* 默认字重提升到 500(Semi 硬编码 body 为 400,偏细);
+     组件内硬编码 400 的选择器由 semi-overrides.css 补齐 */
+  --app-font-weight: 500;
+  font-weight: var(--app-font-weight);
 
   /* 品牌色（蓝色 #1a73e8）：覆盖 Semi 蓝色色板（RGB 三元组），
      primary=blue-5、hover=blue-6、active=blue-7、disabled=blue-2、
