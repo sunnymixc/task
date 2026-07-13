@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/task-management/task/internal/application/repository"
 	"github.com/task-management/task/internal/types"
@@ -137,7 +138,7 @@ func (s *taskListService) ListTaskLists(ctx context.Context, req *types.ListTask
 
 	offset := (page - 1) * pageSize
 
-	lists, total, err := s.taskListRepo.GetTaskListsByTenantID(ctx, user.TenantID, offset, pageSize)
+	lists, total, err := s.taskListRepo.GetTaskListsByTenantID(ctx, user.TenantID, strings.TrimSpace(req.Keyword), offset, pageSize)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list task lists: %w", err)
 	}

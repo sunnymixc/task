@@ -124,6 +124,7 @@ func (h *TaskListHandler) GetTaskList(c *gin.Context) {
 // @Security Bearer
 // @Param page query int false "Page number" default(1)
 // @Param page_size query int false "Page size" default(20)
+// @Param keyword query string false "Keyword to match title/description"
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/task-lists [get]
 func (h *TaskListHandler) ListTaskLists(c *gin.Context) {
@@ -133,6 +134,7 @@ func (h *TaskListHandler) ListTaskLists(c *gin.Context) {
 	req := &types.ListTaskListsRequest{
 		Page:     page,
 		PageSize: pageSize,
+		Keyword:  c.Query("keyword"),
 	}
 
 	lists, total, err := h.taskListService.ListTaskLists(c.Request.Context(), req)

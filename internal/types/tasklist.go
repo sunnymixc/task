@@ -59,6 +59,8 @@ type UpdateTaskListRequest struct {
 type ListTaskListsRequest struct {
 	Page     int `form:"page" binding:"min=1"`
 	PageSize int `form:"page_size" binding:"min=1,max=100"`
+	// 关键字，按标题/描述模糊匹配
+	Keyword string `form:"keyword"`
 }
 
 // TaskListDetailResponse represents the response for a task list

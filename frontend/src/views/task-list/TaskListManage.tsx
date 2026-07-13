@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Modal, Space, Table, Tag, Typography } from '@douyinfe/semi-ui-19'
+import { Button, Input, Modal, Space, Table, Tag, Typography } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
-import { IconInfoCircle, IconPlus } from '@douyinfe/semi-icons'
+import { IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskListStore } from '@/stores/taskList'
-import type { CreateTaskListRequest, TaskList, UpdateTaskListRequest } from '@/types'
+import type { CreateTaskListRequest, ListTaskListsRequest, TaskList, UpdateTaskListRequest } from '@/types'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
+import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import TaskListForm, { type TaskListFormHandle } from '@/components/task-list/TaskListForm'
 import styles from './TaskListManage.module.css'
 
@@ -28,18 +29,46 @@ export default function TaskListManage() {
   const total = useTaskListStore((s) => s.total)
 
   const [page, setPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // 表体固定高度:容器剩余空间减去表头/分页条,窗口变化时自动调整
   const { containerRef, scrollY } = useTableScrollY<HTMLDivElement>()
 
-  const fetchLists = (p?: number) => {
-    return useTaskListStore.getState().fetchLists({ page: p ?? page, page_size: PAGE_SIZE })
+  // fetch 参数显式传入,避免 setState 异步导致读到旧值
+  const fetchLists = (opts?: { page?: number; keyword?: string }) => {
+    const params: ListTaskListsRequest = {
+      page: opts?.page ?? page,
+      page_size: PAGE_SIZE
+    }
+    const keyword = (opts?.keyword ?? searchQuery).trim()
+    if (keyword) {
+      params.keyword = keyword
+    }
+    return useTaskListStore.getState().fetchLists(params)
   }
 
   useEffect(() => {
-    fetchLists(1)
+    fetchLists({ page: 1 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 关键字搜索(防抖 300ms),按标题/描述模糊匹配
+  const handleSearch = (query: string) => {
+    setPage(1)
+    fetchLists({ page: 1, keyword: query })
+  }
+  const debouncedSearch = useDebouncedCallback(handleSearch, 300)
+
+  const onSearchInput = (value: string) => {
+    setSearchQuery(value)
+    debouncedSearch(value)
+  }
+
+  const clearSearch = () => {
+    setSearchQuery('')
+    setPage(1)
+    fetchLists({ page: 1, keyword: '' })
+  }
 
   // Create dialog
   const createFormRef = useRef<TaskListFormHandle>(null)
@@ -153,6 +182,19 @@ export default function TaskListManage() {
         </Button>
       </div>
 
+      {/* Filters */}
+      <div className={styles.filters}>
+        <Input
+          placeholder="搜索标题/描述"
+          value={searchQuery}
+          onChange={onSearchInput}
+          onClear={clearSearch}
+          showClear
+          prefix={<IconSearch />}
+          style={{ width: 300 }}
+        />
+      </div>
+
       {/* Task List Table */}
       <div className={styles.tableContainer} ref={containerRef}>
         <Table
@@ -162,7 +204,12 @@ export default function TaskListManage() {
           rowKey="id"
           scroll={scrollY !== undefined ? { y: scrollY } : undefined}
           empty={
-            loading ? null : (
+            loading ? null : searchQuery.trim() ? (
+              <div className={styles.emptyState}>
+                <IconInfoCircle style={{ fontSize: 48 }} />
+                <p>未找到匹配的清单</p>
+              </div>
+            ) : (
               <div className={styles.emptyState}>
                 <IconInfoCircle style={{ fontSize: 48 }} />
                 <p>暂无任务清单</p>
@@ -178,7 +225,7 @@ export default function TaskListManage() {
             total,
             onPageChange: (p: number) => {
               setPage(p)
-              fetchLists(p)
+              fetchLists({ page: p })
             }
           }}
         />

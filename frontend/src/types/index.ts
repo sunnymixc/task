@@ -256,6 +256,7 @@ export interface UpdateTaskListRequest {
 export interface ListTaskListsRequest {
   page?: number
   page_size?: number
+  keyword?: string
 }
 
 // 任务清单分页响应(区别于 TaskListResponse = 任务分页响应)

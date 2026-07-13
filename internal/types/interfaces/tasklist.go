@@ -10,7 +10,7 @@ import (
 type TaskListRepository interface {
 	CreateTaskList(ctx context.Context, list *types.TaskList) error
 	GetTaskListByID(ctx context.Context, id string) (*types.TaskList, error)
-	GetTaskListsByTenantID(ctx context.Context, tenantID uint64, offset, limit int) ([]*types.TaskList, int64, error)
+	GetTaskListsByTenantID(ctx context.Context, tenantID uint64, keyword string, offset, limit int) ([]*types.TaskList, int64, error)
 	GetDefaultTaskList(ctx context.Context, tenantID uint64) (*types.TaskList, error)
 	GetMaxSortOrder(ctx context.Context, tenantID uint64) (int, error)
 	UpdateTaskList(ctx context.Context, list *types.TaskList) error
