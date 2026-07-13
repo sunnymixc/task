@@ -1,5 +1,4 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import type { TaskStatus } from '@/types'
 
 // localStorage key 遵循 auth.ts 的 task_ 前缀约定
@@ -30,29 +29,31 @@ const load = (): StatusFilterMap => {
   }
 }
 
-// 已删除清单的残留条目不做清理（体积极小、无副作用）
-export const useTaskFilterStore = defineStore('taskFilter', () => {
-  const statusFilters = ref<StatusFilterMap>(load())
+interface TaskFilterState {
+  statusFilters: StatusFilterMap
+  getStatusFilter: (scopeKey: string) => TaskStatus[]
+  setStatusFilter: (scopeKey: string, statuses: TaskStatus[]) => void
+  resetStatusFilter: (scopeKey: string) => TaskStatus[]
+}
 
-  const persist = () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(statusFilters.value))
-  }
+// 已删除清单的残留条目不做清理（体积极小、无副作用）
+export const useTaskFilterStore = create<TaskFilterState>()((set, get) => ({
+  statusFilters: load(),
 
   // 无缓存条目 → 默认值；空数组是合法缓存，原样返回
-  const getStatusFilter = (scopeKey: string): TaskStatus[] => {
-    const cached = statusFilters.value[scopeKey]
+  getStatusFilter: (scopeKey) => {
+    const cached = get().statusFilters[scopeKey]
     return cached !== undefined ? [...cached] : [...DEFAULT_STATUS_FILTER]
-  }
+  },
 
-  const setStatusFilter = (scopeKey: string, statuses: TaskStatus[]) => {
-    statusFilters.value[scopeKey] = [...statuses]
-    persist()
-  }
+  setStatusFilter: (scopeKey, statuses) => {
+    const next = { ...get().statusFilters, [scopeKey]: [...statuses] }
+    set({ statusFilters: next })
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  },
 
-  const resetStatusFilter = (scopeKey: string): TaskStatus[] => {
-    setStatusFilter(scopeKey, DEFAULT_STATUS_FILTER)
+  resetStatusFilter: (scopeKey) => {
+    get().setStatusFilter(scopeKey, DEFAULT_STATUS_FILTER)
     return [...DEFAULT_STATUS_FILTER]
   }
-
-  return { statusFilters, getStatusFilter, setStatusFilter, resetStatusFilter }
-})
+}))

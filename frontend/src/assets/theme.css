@@ -1,73 +1,63 @@
 /**
- * 主题令牌（参考 WeKnora 前端）
+ * 主题令牌（参考 WeKnora 前端，自 Vue 版 theme.css 迁移）
  * 品牌色为蓝色 #1a73e8，并统一侧边栏/容器/文字配色。
- * 须在 tdesign-vue-next 样式之后引入。
+ * Semi 的令牌定义在 body 上，须在 semi.min.css 之后引入以覆盖。
  */
-:root,
-:root[theme-mode='light'] {
+body,
+body[theme-mode='light'] {
   /* 字体 */
   --app-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
     sans-serif;
-  --td-font-family: var(--app-font-family);
+  font-family: var(--app-font-family);
 
-  /* 品牌色（蓝色 #1a73e8） */
-  --td-brand-color-1: #e8f0fe;
-  --td-brand-color-2: #d2e3fc;
-  --td-brand-color-3: #aecbfa;
-  --td-brand-color-4: #8ab4f8;
-  --td-brand-color-5: #669df6;
-  --td-brand-color-6: #4285f4;
-  --td-brand-color-7: #1a73e8;
-  --td-brand-color-8: #1967d2;
-  --td-brand-color-9: #185abc;
-  --td-brand-color-10: #174ea6;
-  --td-brand-color: var(--td-brand-color-7);
-  --td-brand-color-hover: var(--td-brand-color-6);
-  --td-brand-color-focus: var(--td-brand-color-2);
-  --td-brand-color-active: var(--td-brand-color-8);
-  --td-brand-color-disabled: var(--td-brand-color-3);
-  --td-brand-color-light: var(--td-brand-color-1);
+  /* 品牌色（蓝色 #1a73e8）：覆盖 Semi 蓝色色板（RGB 三元组），
+     primary=blue-5、hover=blue-6、active=blue-7、disabled=blue-2、
+     light default/hover/active=blue-0/1/2 全部自动派生 */
+  --semi-blue-0: 232, 240, 254; /* #e8f0fe */
+  --semi-blue-1: 210, 227, 252; /* #d2e3fc */
+  --semi-blue-2: 174, 203, 250; /* #aecbfa */
+  --semi-blue-3: 138, 180, 248; /* #8ab4f8 */
+  --semi-blue-4: 102, 157, 246; /* #669df6 */
+  --semi-blue-5: 26, 115, 232;  /* #1a73e8 品牌主色 */
+  --semi-blue-6: 66, 133, 244;  /* #4285f4 hover（沿用 Vue 版更亮的悬停色） */
+  --semi-blue-7: 25, 103, 210;  /* #1967d2 active */
+  --semi-blue-8: 24, 90, 188;   /* #185abc */
+  --semi-blue-9: 23, 78, 166;   /* #174ea6 */
 
-  /* 中性灰阶 */
-  --td-gray-color-1: #f2f2f2;
-  --td-gray-color-2: #eee;
-  --td-gray-color-3: #e7e7e7;
-  --td-gray-color-4: #dcdcdc;
+  /* 文字（对齐 Vue 版 rgba 黑阶） */
+  --semi-color-text-0: rgba(0, 0, 0, 0.9);
+  --semi-color-text-1: rgba(0, 0, 0, 0.8);
+  --semi-color-text-2: rgba(0, 0, 0, 0.6);
+  --semi-color-text-3: rgba(0, 0, 0, 0.4);
 
-  /* 背景 */
-  --td-bg-color-container: #fff;
-  --td-bg-color-page: var(--td-gray-color-2);
-  --td-bg-color-sidebar: #f9f9f9;
-  --td-bg-color-container-hover: var(--td-gray-color-1);
-  --td-bg-color-container-active: var(--td-gray-color-3);
+  /* 描边（对齐 Vue 版 stroke/border 灰） */
+  --semi-color-border: #e7e7e7;
 
-  /* 描边 */
-  --td-component-stroke: var(--td-gray-color-3);
-  --td-component-border: var(--td-gray-color-4);
-
-  /* 文字 */
-  --td-text-color-primary: rgba(0, 0, 0, 0.9);
-  --td-text-color-secondary: rgba(0, 0, 0, 0.6);
-  --td-text-color-placeholder: rgba(0, 0, 0, 0.4);
-  --td-text-color-disabled: rgba(0, 0, 0, 0.26);
-  --td-text-color-brand: var(--td-brand-color);
-  --td-text-color-link: var(--td-brand-color);
+  /* 应用级配色（布局/侧边栏等自有样式引用，独立于组件库令牌） */
+  --app-gray-1: #f2f2f2;
+  --app-gray-2: #eee;
+  --app-gray-3: #e7e7e7;
+  --app-gray-4: #dcdcdc;
+  --app-bg-container: #fff;
+  --app-bg-page: var(--app-gray-2);
+  --app-bg-sidebar: #f9f9f9;
+  --app-bg-container-hover: var(--app-gray-1);
+  --app-bg-container-active: var(--app-gray-3);
+  --app-text-secondary: rgba(0, 0, 0, 0.6);
+  --app-text-placeholder: rgba(0, 0, 0, 0.4);
 
   /* 侧边栏对齐变量 */
   --sidebar-inset-x: 14px;
   --sidebar-icon-size: 18px;
   --sidebar-icon-gap: 8px;
 
-  /* 圆角（全局统一 1px） */
-  --td-radius-small: 1px;
-  --td-radius-default: 1px;
-  --td-radius-medium: 1px;
-  --td-radius-large: 1px;
-  --td-radius-extraLarge: 1px;
+  /* 圆角（静态默认 1px；运行时由 ui store 写内联变量覆盖） */
+  --semi-border-radius-extra-small: 1px;
+  --semi-border-radius-small: 1px;
+  --semi-border-radius-medium: 1px;
+  --semi-border-radius-large: 1px;
 
   /* 阴影（全局削弱） */
-  --td-shadow-1: 0 0 1px 1px rgba(0, 0, 0, 0.1);
-  --td-shadow-2: 0 0 1px 1px rgba(0, 0, 0, 0.1);
-  --td-shadow-3: 0 0 1px 1px rgba(0, 0, 0, 0.1);
+  --semi-shadow-elevated: 0 0 1px 1px rgba(0, 0, 0, 0.1);
 }

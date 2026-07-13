@@ -1,0 +1,17 @@
+.item {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 22px;
+}
+
+.icon {
+  margin-right: 4px;
+  vertical-align: -2px;
+}
+
+.dead {
+  color: var(--semi-color-disabled-text);
+  font-size: 14px;
+}

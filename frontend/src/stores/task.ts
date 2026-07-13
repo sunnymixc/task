@@ -1,5 +1,4 @@
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { create } from 'zustand'
 import { taskAPI } from '@/api/task'
 import type {
   CreateTaskRequest,
@@ -8,198 +7,172 @@ import type {
   UpdateTaskRequest,
   TaskStatus
 } from '@/types'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { Toast } from '@douyinfe/semi-ui-19'
 import { useTaskListStore } from './taskList'
 
-export const useTaskStore = defineStore('task', () => {
-  const tasks = ref<Task[]>([])
-  const total = ref(0)
-  const loading = ref(false)
-  const currentPage = ref(1)
-  const pageSize = ref(20)
+// 任务增删/状态变化会影响侧边栏清单的执行中数量,静默刷新(fetchAllLists 自行吞错)
+const refreshListCounts = () => {
+  useTaskListStore.getState().fetchAllLists()
+}
 
-  // 任务增删/状态变化会影响侧边栏清单的执行中数量,静默刷新(fetchAllLists 自行吞错)
-  const refreshListCounts = () => {
-    useTaskListStore().fetchAllLists()
-  }
+interface TaskState {
+  tasks: Task[]
+  total: number
+  loading: boolean
+  currentPage: number
+  pageSize: number
+  fetchTasks: (params?: ListTasksRequest) => Promise<void>
+  getById: (id: string) => Promise<Task | null>
+  createTask: (data: CreateTaskRequest) => Promise<Task | null>
+  updateTask: (id: string, data: UpdateTaskRequest) => Promise<Task | null>
+  deleteTask: (id: string) => Promise<boolean>
+  updateStatus: (id: string, status: TaskStatus) => Promise<Task | null>
+  searchTasks: (query: string, page?: number) => Promise<void>
+  setPage: (page: number) => void
+  reset: () => void
+}
 
-  // Computed
-  const hasMore = computed(() => tasks.value.length < total.value)
+export const useTaskStore = create<TaskState>()((set, get) => ({
+  tasks: [],
+  total: 0,
+  loading: false,
+  currentPage: 1,
+  pageSize: 20,
 
-  // Fetch tasks
-  const fetchTasks = async (params?: ListTasksRequest): Promise<void> => {
-    loading.value = true
+  fetchTasks: async (params) => {
+    set({ loading: true })
     try {
       const response = await taskAPI.list({
-        page: currentPage.value,
-        page_size: pageSize.value,
+        page: get().currentPage,
+        page_size: get().pageSize,
         ...params
       })
 
       if (response.success) {
-        tasks.value = response.data || []
-        total.value = response.total || 0
+        set({ tasks: response.data || [], total: response.total || 0 })
       }
     } catch (error) {
       console.error('Failed to fetch tasks:', error)
-      MessagePlugin.error('获取任务列表失败')
+      Toast.error('获取任务列表失败')
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Create task
-  const createTask = async (data: CreateTaskRequest): Promise<Task | null> => {
-    loading.value = true
+  createTask: async (data) => {
+    set({ loading: true })
     try {
       const task = await taskAPI.create(data)
-      tasks.value.unshift(task)
-      total.value += 1
+      set({ tasks: [task, ...get().tasks], total: get().total + 1 })
       refreshListCounts()
-      MessagePlugin.success('任务创建成功')
+      Toast.success('任务创建成功')
       return task
     } catch (error) {
       console.error('Failed to create task:', error)
-      MessagePlugin.error('创建任务失败')
+      Toast.error('创建任务失败')
       return null
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Update task
-  const updateTask = async (id: string, data: UpdateTaskRequest): Promise<Task | null> => {
-    loading.value = true
+  updateTask: async (id, data) => {
+    set({ loading: true })
     try {
       const updatedTask = await taskAPI.update(id, data)
-      const index = tasks.value.findIndex(t => t.id === id)
-      if (index !== -1) {
-        tasks.value[index] = updatedTask
-      }
+      set({ tasks: get().tasks.map(t => (t.id === id ? updatedTask : t)) })
       refreshListCounts()
-      MessagePlugin.success('任务更新成功')
+      Toast.success('任务更新成功')
       return updatedTask
     } catch (error) {
       console.error('Failed to update task:', error)
-      MessagePlugin.error('更新任务失败')
+      Toast.error('更新任务失败')
       return null
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Delete task
-  const deleteTask = async (id: string): Promise<boolean> => {
-    loading.value = true
+  deleteTask: async (id) => {
+    set({ loading: true })
     try {
       await taskAPI.delete(id)
-      tasks.value = tasks.value.filter(t => t.id !== id)
-      total.value -= 1
+      set({ tasks: get().tasks.filter(t => t.id !== id), total: get().total - 1 })
       refreshListCounts()
-      MessagePlugin.success('任务删除成功')
+      Toast.success('任务删除成功')
       return true
     } catch (error) {
       console.error('Failed to delete task:', error)
-      MessagePlugin.error('删除任务失败')
+      Toast.error('删除任务失败')
       return false
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Update task status
-  const updateStatus = async (id: string, status: TaskStatus): Promise<Task | null> => {
-    loading.value = true
+  updateStatus: async (id, status) => {
+    set({ loading: true })
     try {
       const updatedTask = await taskAPI.updateStatus(id, { status })
-      const index = tasks.value.findIndex(t => t.id === id)
-      if (index !== -1) {
-        tasks.value[index] = updatedTask
-      }
+      set({ tasks: get().tasks.map(t => (t.id === id ? updatedTask : t)) })
       refreshListCounts()
-      MessagePlugin.success('状态更新成功')
+      Toast.success('状态更新成功')
       return updatedTask
     } catch (error) {
       console.error('Failed to update task status:', error)
       const message = (error as any).response?.data?.message || '更新状态失败'
-      MessagePlugin.error(message)
+      Toast.error(message)
       return null
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Get task by ID
-  const getById = async (id: string): Promise<Task | null> => {
-    loading.value = true
+  getById: async (id) => {
+    set({ loading: true })
     try {
       const task = await taskAPI.getById(id)
       // Update in existing list if found
-      const index = tasks.value.findIndex(t => t.id === id)
-      if (index !== -1) {
-        tasks.value[index] = task
-      }
+      set({ tasks: get().tasks.map(t => (t.id === id ? task : t)) })
       return task
     } catch (error) {
       console.error('Failed to get task:', error)
-      MessagePlugin.error('获取任务详情失败')
+      Toast.error('获取任务详情失败')
       return null
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Search tasks
-  const searchTasks = async (query: string, page = 1): Promise<void> => {
-    loading.value = true
+  searchTasks: async (query, page = 1) => {
+    set({ loading: true })
     try {
       const response = await taskAPI.search({
         q: query,
         page,
-        page_size: pageSize.value
+        page_size: get().pageSize
       })
 
       if (response.success) {
-        tasks.value = response.data || []
-        total.value = response.total || 0
-        currentPage.value = page
+        set({
+          tasks: response.data || [],
+          total: response.total || 0,
+          currentPage: page
+        })
       }
     } catch (error) {
       console.error('Failed to search tasks:', error)
-      MessagePlugin.error('搜索任务失败')
+      Toast.error('搜索任务失败')
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Set page
-  const setPage = (page: number) => {
-    currentPage.value = page
-  }
+  setPage: (page) => {
+    set({ currentPage: page })
+  },
 
-  // Reset state
-  const reset = () => {
-    tasks.value = []
-    total.value = 0
-    currentPage.value = 1
-    loading.value = false
+  reset: () => {
+    set({ tasks: [], total: 0, currentPage: 1, loading: false })
   }
-
-  return {
-    tasks,
-    total,
-    loading,
-    currentPage,
-    pageSize,
-    hasMore,
-    fetchTasks,
-    getById,
-    createTask,
-    updateTask,
-    deleteTask,
-    updateStatus,
-    searchTasks,
-    setPage,
-    reset
-  }
-})
+}))

@@ -1,0 +1,26 @@
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--semi-color-text-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.row + .row {
+  margin-top: 12px;
+}
+
+.rowLabel {
+  flex-shrink: 0;
+  width: 80px;
+  font-size: 14px;
+  color: var(--semi-color-text-0);
+}

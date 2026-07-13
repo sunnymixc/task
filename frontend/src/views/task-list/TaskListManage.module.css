@@ -1,0 +1,121 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  background: var(--app-bg-page);
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--semi-color-text-0);
+}
+
+.tableContainer {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  background: var(--app-bg-container);
+  border: 0;
+  border-radius: var(--semi-border-radius-medium);
+  box-shadow: var(--semi-shadow-elevated);
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-gray-4) transparent;
+}
+
+/* 定制滚动条：透明轨道 + 内缩圆角滑块，轨道两端避开圆角区，保住右上/右下圆角 */
+.tableContainer::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.tableContainer::-webkit-scrollbar-track {
+  background: transparent;
+  margin: var(--semi-border-radius-medium);
+}
+
+.tableContainer::-webkit-scrollbar-thumb {
+  background-color: var(--app-gray-4);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.tableContainer::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+.tableContainer::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* 表头随容器滚动吸顶(替代 Vue 版的 affixed header) */
+.tableContainer :global(.semi-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--app-bg-container);
+}
+
+/* 窄窗口下保住各列宽度(合计 1440),此时允许横向滚动;操作列吸右保持可见 */
+.tableContainer :global(.semi-table table) {
+  min-width: 1440px;
+}
+
+.actionCell {
+  position: sticky;
+  right: 0;
+  background: var(--app-bg-container);
+}
+
+.listId {
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--semi-color-text-2);
+}
+
+.listTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  color: var(--semi-color-text-0);
+}
+
+.listDesc {
+  font-size: 13px;
+  color: var(--semi-color-text-2);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.creatorInfo {
+  font-size: 13px;
+  color: var(--semi-color-text-0);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  color: var(--semi-color-text-2);
+}
+
+.emptyState p {
+  margin: 16px 0;
+  font-size: 14px;
+}

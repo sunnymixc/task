@@ -1,5 +1,4 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { create } from 'zustand'
 import { taskListAPI } from '@/api/taskList'
 import type {
   CreateTaskListRequest,
@@ -7,155 +6,142 @@ import type {
   TaskList,
   UpdateTaskListRequest
 } from '@/types'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { Toast } from '@douyinfe/semi-ui-19'
 
 // 与后端排序保持一致:默认清单最先,其余按序号升序,同序号按创建时间先后
 const sortTaskLists = (items: TaskList[]): TaskList[] =>
-  items.sort((a, b) => {
+  [...items].sort((a, b) => {
     if (a.is_default !== b.is_default) return a.is_default ? -1 : 1
     if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
     return a.created_at.localeCompare(b.created_at)
   })
 
-export const useTaskListStore = defineStore('taskList', () => {
-  const lists = ref<TaskList[]>([])
-  const allLists = ref<TaskList[]>([])
-  const total = ref(0)
-  const loading = ref(false)
-  const currentPage = ref(1)
-  const pageSize = ref(20)
+interface TaskListState {
+  lists: TaskList[]
+  allLists: TaskList[]
+  total: number
+  loading: boolean
+  currentPage: number
+  pageSize: number
+  fetchLists: (params?: ListTaskListsRequest) => Promise<void>
+  fetchAllLists: () => Promise<TaskList[]>
+  createList: (data: CreateTaskListRequest) => Promise<TaskList | null>
+  updateList: (id: string, data: UpdateTaskListRequest) => Promise<TaskList | null>
+  deleteList: (id: string) => Promise<boolean>
+  setPage: (page: number) => void
+  reset: () => void
+}
+
+export const useTaskListStore = create<TaskListState>()((set, get) => ({
+  lists: [],
+  allLists: [],
+  total: 0,
+  loading: false,
+  currentPage: 1,
+  pageSize: 20,
 
   // Fetch task lists (paginated, for the manage page)
-  const fetchLists = async (params?: ListTaskListsRequest): Promise<void> => {
-    loading.value = true
+  fetchLists: async (params) => {
+    set({ loading: true })
     try {
       const response = await taskListAPI.list({
-        page: currentPage.value,
-        page_size: pageSize.value,
+        page: get().currentPage,
+        page_size: get().pageSize,
         ...params
       })
 
       if (response.success) {
-        lists.value = response.data || []
-        total.value = response.total || 0
+        set({ lists: response.data || [], total: response.total || 0 })
       }
     } catch (error) {
       console.error('Failed to fetch task lists:', error)
-      MessagePlugin.error('获取任务清单失败')
+      Toast.error('获取任务清单失败')
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
   // Fetch all task lists (for selectors/filters/sidebar)
-  const fetchAllLists = async (): Promise<TaskList[]> => {
+  fetchAllLists: async () => {
     try {
       const response = await taskListAPI.list({ page: 1, page_size: 100 })
       if (response.success) {
-        allLists.value = response.data || []
+        set({ allLists: response.data || [] })
       }
-      return allLists.value
+      return get().allLists
     } catch (error) {
       console.error('Failed to fetch task lists:', error)
       return []
     }
-  }
+  },
 
-  // Create task list
-  const createList = async (data: CreateTaskListRequest): Promise<TaskList | null> => {
-    loading.value = true
+  createList: async (data) => {
+    set({ loading: true })
     try {
       const list = await taskListAPI.create(data)
-      lists.value.push(list)
-      allLists.value.push(list)
-      sortTaskLists(lists.value)
-      sortTaskLists(allLists.value)
-      total.value += 1
-      MessagePlugin.success('任务清单创建成功')
+      set({
+        lists: sortTaskLists([...get().lists, list]),
+        allLists: sortTaskLists([...get().allLists, list]),
+        total: get().total + 1
+      })
+      Toast.success('任务清单创建成功')
       return list
     } catch (error) {
       console.error('Failed to create task list:', error)
-      MessagePlugin.error('创建任务清单失败')
+      Toast.error('创建任务清单失败')
       return null
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Update task list
-  const updateList = async (id: string, data: UpdateTaskListRequest): Promise<TaskList | null> => {
-    loading.value = true
+  updateList: async (id, data) => {
+    set({ loading: true })
     try {
       const updated = await taskListAPI.update(id, data)
-      const index = lists.value.findIndex(l => l.id === id)
-      if (index !== -1) {
-        lists.value[index] = updated
-      }
-      const allIndex = allLists.value.findIndex(l => l.id === id)
-      if (allIndex !== -1) {
-        // update 接口不返回 executing_count,保留原有统计值
-        allLists.value[allIndex] = { ...updated, executing_count: allLists.value[allIndex].executing_count }
-      }
-      sortTaskLists(lists.value)
-      sortTaskLists(allLists.value)
-      MessagePlugin.success('任务清单更新成功')
+      const lists = get().lists.map(l => (l.id === id ? updated : l))
+      // update 接口不返回 executing_count,保留原有统计值
+      const allLists = get().allLists.map(l =>
+        l.id === id ? { ...updated, executing_count: l.executing_count } : l
+      )
+      set({ lists: sortTaskLists(lists), allLists: sortTaskLists(allLists) })
+      Toast.success('任务清单更新成功')
       return updated
     } catch (error) {
       console.error('Failed to update task list:', error)
-      MessagePlugin.error('更新任务清单失败')
+      Toast.error('更新任务清单失败')
       return null
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Delete task list
-  const deleteList = async (id: string): Promise<boolean> => {
-    loading.value = true
+  deleteList: async (id) => {
+    set({ loading: true })
     try {
       await taskListAPI.delete(id)
-      lists.value = lists.value.filter(l => l.id !== id)
-      allLists.value = allLists.value.filter(l => l.id !== id)
-      total.value -= 1
-      MessagePlugin.success('任务清单删除成功')
+      set({
+        lists: get().lists.filter(l => l.id !== id),
+        allLists: get().allLists.filter(l => l.id !== id),
+        total: get().total - 1
+      })
+      Toast.success('任务清单删除成功')
       return true
     } catch (error) {
       console.error('Failed to delete task list:', error)
       const message = (error as any).response?.data?.message || '删除任务清单失败'
-      MessagePlugin.error(message)
+      Toast.error(message)
       return false
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Set page
-  const setPage = (page: number) => {
-    currentPage.value = page
-  }
+  setPage: (page) => {
+    set({ currentPage: page })
+  },
 
-  // Reset state
-  const reset = () => {
-    lists.value = []
-    allLists.value = []
-    total.value = 0
-    currentPage.value = 1
-    loading.value = false
+  reset: () => {
+    set({ lists: [], allLists: [], total: 0, currentPage: 1, loading: false })
   }
-
-  return {
-    lists,
-    allLists,
-    total,
-    loading,
-    currentPage,
-    pageSize,
-    fetchLists,
-    fetchAllLists,
-    createList,
-    updateList,
-    deleteList,
-    setPage,
-    reset
-  }
-})
+}))

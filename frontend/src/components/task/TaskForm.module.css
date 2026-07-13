@@ -1,0 +1,37 @@
+.tabBody {
+  padding-top: 16px;
+}
+
+.logPlaceholder {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--semi-color-text-3);
+}
+
+.linkRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.linkTypeSelect {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.linkTitleInput {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.linkFlex {
+  flex: 1;
+  min-width: 0;
+}

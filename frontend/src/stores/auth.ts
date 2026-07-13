@@ -1,30 +1,54 @@
-import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { create } from 'zustand'
 import { authAPI } from '@/api/auth'
 import type { LoginRequest, RegisterRequest, User } from '@/types'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { Toast } from '@douyinfe/semi-ui-19'
 
-export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
-  const token = ref<string>('')
-  const refreshToken = ref<string>('')
-  const loading = ref(false)
-  const isRefreshing = ref(false)
+const TOKEN_KEY = 'task_token'
+const REFRESH_TOKEN_KEY = 'task_refresh_token'
+const USER_KEY = 'task_user'
 
-  // Computed
-  const isLoggedIn = computed(() => !!token.value)
-  const userName = computed(() => user.value?.username || '')
-  const userEmail = computed(() => user.value?.email || '')
-  const isAdmin = computed(() => user.value?.is_admin === true)
+const loadUser = (): User | null => {
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch (e) {
+    console.error('Failed to parse stored user', e)
+    return null
+  }
+}
+
+interface AuthState {
+  user: User | null
+  token: string
+  refreshToken: string
+  loading: boolean
+  isRefreshing: boolean
+  isTokenExpired: () => boolean
+  login: (credentials: LoginRequest) => Promise<boolean>
+  register: (data: RegisterRequest) => Promise<boolean>
+  logout: () => void
+  refreshAccessToken: () => Promise<boolean>
+  fetchUserInfo: () => Promise<void>
+}
+
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  user: loadUser(),
+  token: localStorage.getItem(TOKEN_KEY) || '',
+  refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY) || '',
+  loading: false,
+  isRefreshing: false,
 
   // 解析 JWT 的 exp 声明，判断当前 token 是否已过期
-  // 无 token 或解析失败时返回 false（不误判为过期，交由服务端 401 处理）
-  const isTokenExpired = (): boolean => {
-    if (!token.value) {
+  // 直接读 localStorage（请求拦截器刷新后立即生效）；无 token 或解析失败时返回 false
+  // （不误判为过期，交由服务端 401 处理）
+  isTokenExpired: () => {
+    const token = localStorage.getItem(TOKEN_KEY) || get().token
+    if (!token) {
       return false
     }
     try {
-      const seg = token.value.split('.')[1]
+      const seg = token.split('.')[1]
       const payload = JSON.parse(atob(seg.replace(/-/g, '+').replace(/_/g, '/')))
       if (!payload.exp) {
         return false
@@ -34,43 +58,24 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Failed to parse token exp', e)
       return false
     }
-  }
+  },
 
-  // Initialize from localStorage
-  const init = () => {
-    const storedToken = localStorage.getItem('task_token')
-    const storedRefreshToken = localStorage.getItem('task_refresh_token')
-    const storedUser = localStorage.getItem('task_user')
-    if (storedToken) {
-      token.value = storedToken
-    }
-    if (storedRefreshToken) {
-      refreshToken.value = storedRefreshToken
-    }
-    if (storedUser) {
-      try {
-        user.value = JSON.parse(storedUser)
-      } catch (e) {
-        console.error('Failed to parse stored user', e)
-      }
-    }
-  }
-
-  // Login
-  const login = async (credentials: LoginRequest): Promise<boolean> => {
-    loading.value = true
+  login: async (credentials) => {
+    set({ loading: true })
     try {
       const response = await authAPI.login(credentials)
       if (response.success && response.user && response.token) {
-        user.value = response.user
-        token.value = response.token
-        refreshToken.value = response.refresh_token || ''
-        localStorage.setItem('task_token', response.token)
-        localStorage.setItem('task_user', JSON.stringify(response.user))
+        set({
+          user: response.user,
+          token: response.token,
+          refreshToken: response.refresh_token || ''
+        })
+        localStorage.setItem(TOKEN_KEY, response.token)
+        localStorage.setItem(USER_KEY, JSON.stringify(response.user))
         if (response.refresh_token) {
-          localStorage.setItem('task_refresh_token', response.refresh_token)
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
         }
-        MessagePlugin.success('登录成功')
+        Toast.success('登录成功')
         return true
       }
       return false
@@ -78,25 +83,26 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Login failed:', error)
       return false
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Register
-  const register = async (data: RegisterRequest): Promise<boolean> => {
-    loading.value = true
+  register: async (data) => {
+    set({ loading: true })
     try {
       const response = await authAPI.register(data)
       if (response.success && response.user && response.token) {
-        user.value = response.user
-        token.value = response.token
-        refreshToken.value = response.refresh_token || ''
-        localStorage.setItem('task_token', response.token)
-        localStorage.setItem('task_user', JSON.stringify(response.user))
+        set({
+          user: response.user,
+          token: response.token,
+          refreshToken: response.refresh_token || ''
+        })
+        localStorage.setItem(TOKEN_KEY, response.token)
+        localStorage.setItem(USER_KEY, JSON.stringify(response.user))
         if (response.refresh_token) {
-          localStorage.setItem('task_refresh_token', response.refresh_token)
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
         }
-        MessagePlugin.success('注册成功')
+        Toast.success('注册成功')
         return true
       }
       return false
@@ -104,36 +110,35 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Register failed:', error)
       return false
     } finally {
-      loading.value = false
+      set({ loading: false })
     }
-  }
+  },
 
-  // Logout
-  const logout = () => {
-    user.value = null
-    token.value = ''
-    refreshToken.value = ''
-    localStorage.removeItem('task_token')
-    localStorage.removeItem('task_refresh_token')
-    localStorage.removeItem('task_user')
-    MessagePlugin.success('已退出登录')
-  }
+  logout: () => {
+    set({ user: null, token: '', refreshToken: '' })
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
+    Toast.success('已退出登录')
+  },
 
-  // Refresh access token
-  const refreshAccessToken = async (): Promise<boolean> => {
-    if (!refreshToken.value || isRefreshing.value) {
+  refreshAccessToken: async () => {
+    const { refreshToken, isRefreshing, logout } = get()
+    if (!refreshToken || isRefreshing) {
       return false
     }
 
-    isRefreshing.value = true
+    set({ isRefreshing: true })
     try {
-      const response = await authAPI.refreshToken(refreshToken.value)
+      const response = await authAPI.refreshToken(refreshToken)
       if (response.success && response.token) {
-        token.value = response.token
-        refreshToken.value = response.refresh_token || refreshToken.value
-        localStorage.setItem('task_token', response.token)
+        set({
+          token: response.token,
+          refreshToken: response.refresh_token || refreshToken
+        })
+        localStorage.setItem(TOKEN_KEY, response.token)
         if (response.refresh_token) {
-          localStorage.setItem('task_refresh_token', response.refresh_token)
+          localStorage.setItem(REFRESH_TOKEN_KEY, response.refresh_token)
         }
         return true
       }
@@ -145,38 +150,19 @@ export const useAuthStore = defineStore('auth', () => {
       logout()
       return false
     } finally {
-      isRefreshing.value = false
+      set({ isRefreshing: false })
     }
-  }
+  },
 
-  // Fetch user info
-  const fetchUserInfo = async (): Promise<void> => {
+  fetchUserInfo: async () => {
     try {
       const response = await authAPI.getUserInfo()
       if (response.success && response.data) {
-        user.value = response.data
-        localStorage.setItem('task_user', JSON.stringify(response.data))
+        set({ user: response.data })
+        localStorage.setItem(USER_KEY, JSON.stringify(response.data))
       }
     } catch (error) {
       console.error('Failed to fetch user info:', error)
     }
   }
-
-  return {
-    user,
-    token,
-    refreshToken,
-    loading,
-    isLoggedIn,
-    userName,
-    userEmail,
-    isAdmin,
-    isTokenExpired,
-    init,
-    login,
-    register,
-    logout,
-    fetchUserInfo,
-    refreshAccessToken
-  }
-})
+}))

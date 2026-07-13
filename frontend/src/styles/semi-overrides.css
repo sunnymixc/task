@@ -1,0 +1,18 @@
+/* Semi 组件全局覆写（弹层 teleport 到 body，组件级 CSS Module 作用不到） */
+
+/* 侧边栏用户信息弹框：菜单项占满弹框宽度 */
+.sidebar-user-dropdown.semi-dropdown-menu {
+  width: 100%;
+}
+
+.sidebar-user-dropdown .semi-dropdown-item {
+  width: 100%;
+  max-width: none;
+}
+
+/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见;
+   预留约 220px 给标题栏、底部按钮和上下留白,保证居中后小视口下弹窗不超出屏幕 */
+.task-form-dialog .semi-modal-body {
+  max-height: min(62vh, calc(100vh - 220px));
+  overflow-y: auto;
+}
