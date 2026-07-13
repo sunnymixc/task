@@ -15,6 +15,11 @@ export default defineConfig({
           new URL('./node_modules/@douyinfe/semi-ui-19/dist/css/semi.min.css', import.meta.url)
         ),
       },
+      // 本项目不使用 Semi 的 Lottie 组件，stub 掉 lottie-web 以消除构建 [EVAL] 警告
+      {
+        find: /^lottie-web$/,
+        replacement: fileURLToPath(new URL('./src/shims/lottie-web-stub.ts', import.meta.url)),
+      },
     ],
   },
   server: {
@@ -34,6 +39,9 @@ export default defineConfig({
     }
   },
   build: {
+    // Semi 的 Form+DatePicker/Upload 等组件族构成 ~716KB 的共享 chunk（baseForm），
+    // 属固有体积且已被路由懒加载共享复用，将告警阈值上调至 800KB
+    chunkSizeWarningLimit: 800,
     rolldownOptions: {
       output: {
         // 框架库单独分包（内容稳定，利于长期缓存）；semi 交给按需引入 + 自动分包，
