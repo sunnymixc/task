@@ -9,7 +9,7 @@ const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> 
   ],
   pending: [
     { label: '执行', value: 'executing' },
-    { label: '完成', value: 'completed' }
+    { label: '草稿', value: 'draft' }
   ],
   executing: [
     { label: '完成', value: 'completed' },
