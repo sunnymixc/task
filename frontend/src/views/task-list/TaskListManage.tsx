@@ -4,6 +4,7 @@ import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
 import { IconInfoCircle, IconPlus } from '@douyinfe/semi-icons'
 import { useTaskListStore } from '@/stores/taskList'
 import type { CreateTaskListRequest, TaskList, UpdateTaskListRequest } from '@/types'
+import { useTableScrollY } from '@/hooks/useTableScrollY'
 import TaskListForm, { type TaskListFormHandle } from '@/components/task-list/TaskListForm'
 import styles from './TaskListManage.module.css'
 
@@ -27,6 +28,9 @@ export default function TaskListManage() {
   const total = useTaskListStore((s) => s.total)
 
   const [page, setPage] = useState(1)
+
+  // 表体固定高度:容器剩余空间减去表头/分页条,窗口变化时自动调整
+  const { containerRef, scrollY } = useTableScrollY<HTMLDivElement>()
 
   const fetchLists = (p?: number) => {
     return useTaskListStore.getState().fetchLists({ page: p ?? page, page_size: PAGE_SIZE })
@@ -150,12 +154,24 @@ export default function TaskListManage() {
       </div>
 
       {/* Task List Table */}
-      <div className={styles.tableContainer}>
+      <div className={styles.tableContainer} ref={containerRef}>
         <Table
           dataSource={lists}
           columns={columns}
           loading={loading}
           rowKey="id"
+          scroll={scrollY !== undefined ? { y: scrollY } : undefined}
+          empty={
+            loading ? null : (
+              <div className={styles.emptyState}>
+                <IconInfoCircle style={{ fontSize: 48 }} />
+                <p>暂无任务清单</p>
+                <Button type="primary" onClick={() => setShowCreateDialog(true)}>
+                  创建第一个清单
+                </Button>
+              </div>
+            )
+          }
           pagination={{
             currentPage: page,
             pageSize: PAGE_SIZE,
@@ -166,17 +182,6 @@ export default function TaskListManage() {
             }
           }}
         />
-
-        {/* Empty State */}
-        {!loading && lists.length === 0 && (
-          <div className={styles.emptyState}>
-            <IconInfoCircle style={{ fontSize: 48 }} />
-            <p>暂无任务清单</p>
-            <Button type="primary" onClick={() => setShowCreateDialog(true)}>
-              创建第一个清单
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Create Dialog */}

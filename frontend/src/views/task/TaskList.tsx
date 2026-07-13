@@ -9,6 +9,7 @@ import { useTaskFilterStore } from '@/stores/taskFilter'
 import type { CreateTaskRequest, ListTasksRequest, Task, TaskStatus, UpdateTaskRequest } from '@/types'
 import { copyToClipboard } from '@/utils/clipboard'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { useTableScrollY } from '@/hooks/useTableScrollY'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
 import StatusBadge from '@/components/task/StatusBadge'
 import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge'
@@ -58,6 +59,9 @@ export default function TaskList() {
   const [currentTaskLists, setCurrentTaskLists] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
+
+  // 表体固定高度:容器剩余空间减去表头/分页条,窗口变化时自动调整
+  const { containerRef, scrollY } = useTableScrollY<HTMLDivElement>()
 
   // fetch 参数显式传入,避免 setState 异步导致读到旧值
   const fetchTasks = (opts?: { page?: number; statuses?: TaskStatus[]; lists?: string[] }) => {
@@ -531,12 +535,24 @@ export default function TaskList() {
       </div>
 
       {/* Task Table */}
-      <div className={styles.tableContainer}>
+      <div className={styles.tableContainer} ref={containerRef}>
         <Table
           dataSource={tasks}
           columns={columns}
           loading={loading}
           rowKey="id"
+          scroll={scrollY !== undefined ? { y: scrollY } : undefined}
+          empty={
+            loading ? null : (
+              <div className={styles.emptyState}>
+                <IconInfoCircle style={{ fontSize: 48 }} />
+                <p>暂无任务</p>
+                <Button type="primary" onClick={openCreateDialog}>
+                  创建第一个任务
+                </Button>
+              </div>
+            )
+          }
           pagination={{
             currentPage: page,
             pageSize: PAGE_SIZE,
@@ -547,17 +563,6 @@ export default function TaskList() {
             }
           }}
         />
-
-        {/* Empty State */}
-        {!loading && tasks.length === 0 && (
-          <div className={styles.emptyState}>
-            <IconInfoCircle style={{ fontSize: 48 }} />
-            <p>暂无任务</p>
-            <Button type="primary" onClick={openCreateDialog}>
-              创建第一个任务
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Create Dialog */}
