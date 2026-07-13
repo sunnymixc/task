@@ -1,5 +1,10 @@
+/* 滚动收在 tab 内容区内(外层 modal body 不滚),左侧竖排 tab 栏始终可见;
+   固定高度(而非 max-height)保证切到内容很短的"日志" tab 时弹窗高度不跳变。
+   预留约 220px 给弹窗标题栏、底部按钮和上下留白,小视口下弹窗不超屏 */
 .tabBody {
-  padding-top: 16px;
+  height: min(62vh, calc(100vh - 220px));
+  overflow-y: auto;
+  padding: 4px 8px 4px 16px;
 }
 
 .logPlaceholder {

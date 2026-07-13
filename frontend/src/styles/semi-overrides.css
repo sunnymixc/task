@@ -10,12 +10,8 @@
   max-width: none;
 }
 
-/* 任务表单弹窗:正文区随视口高度伸缩,超出时滚动,标题与底部按钮始终可见;
-   预留约 220px 给标题栏、底部按钮和上下留白,保证居中后小视口下弹窗不超出屏幕 */
-.task-form-dialog .semi-modal-body {
-  max-height: min(62vh, calc(100vh - 220px));
-  overflow-y: auto;
-}
+/* 任务表单弹窗:滚动收在 TaskForm 的 tab 内容区内部(见 TaskForm.module.css 的 .tabBody),
+   modal body 本身不滚动,左侧竖排 tab 栏与标题、底部按钮始终可见 */
 
 /* 默认字重 500(见 theme.css):Semi 在这些组件选择器里硬编码了 font-weight:400,
    body 继承覆盖不到;input/textarea 则本身不继承字重。统一提升到默认字重。

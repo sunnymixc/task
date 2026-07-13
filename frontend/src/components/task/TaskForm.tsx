@@ -236,7 +236,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
 
   return (
     <div ref={containerRef}>
-      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+      <Tabs tabPosition="left" activeKey={activeTab} onChange={setActiveTab}>
         {/* Semi Tabs 默认 keepDOM:切 tab 不销毁表单,未保存输入与命令式句柄均保持有效 */}
         <TabPane tab="基础" itemKey="basic">
           <div className={styles.tabBody}>
