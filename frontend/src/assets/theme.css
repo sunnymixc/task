@@ -41,7 +41,7 @@ html body[theme-mode='light'] {
   --app-gray-3: #e7e7e7;
   --app-gray-4: #dcdcdc;
   --app-bg-container: #fff;
-  --app-bg-page: var(--app-gray-2);
+  --app-bg-page: #fff;
   --app-bg-sidebar: #f9f9f9;
   --app-bg-container-hover: var(--app-gray-1);
   --app-bg-container-active: var(--app-gray-3);

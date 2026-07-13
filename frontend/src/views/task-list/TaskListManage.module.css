@@ -27,9 +27,6 @@
   overflow: auto;
   position: relative;
   background: var(--app-bg-container);
-  border: 0;
-  border-radius: var(--semi-border-radius-medium);
-  box-shadow: var(--semi-shadow-elevated);
   padding: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--app-gray-4) transparent;
