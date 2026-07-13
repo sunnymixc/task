@@ -4,6 +4,7 @@ import { Button, Form, Typography } from '@douyinfe/semi-ui-19'
 import { IconLock, IconMail, IconUser } from '@douyinfe/semi-icons'
 import { useAuthStore } from '@/stores/auth'
 import type { RegisterRequest } from '@/types'
+import Logo from '@/components/common/Logo'
 import styles from './auth.module.css'
 
 export default function Register() {
@@ -23,7 +24,9 @@ export default function Register() {
   return (
     <div className={styles.container}>
       <div className={styles.box}>
-        <h1 className={styles.title}>TASK</h1>
+        <h1 className={styles.title}>
+          <Logo size={26} textSize={28} />
+        </h1>
         <p className={styles.subtitle}>创建新账户</p>
 
         <Form onSubmit={handleSubmit} disabled={loading}>

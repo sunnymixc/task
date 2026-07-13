@@ -30,22 +30,8 @@
 .logoBox {
   display: flex;
   align-items: center;
-  gap: var(--sidebar-icon-gap);
   cursor: pointer;
   overflow: hidden;
-}
-
-.logoIcon {
-  font-size: 22px;
-  color: var(--semi-color-primary);
-  flex-shrink: 0;
-}
-
-.logoText {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--semi-color-text-0);
-  white-space: nowrap;
 }
 
 .sidebarToggle {

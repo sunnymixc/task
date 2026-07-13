@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { Avatar, Dropdown, Tag, Tooltip } from '@douyinfe/semi-ui-19'
 import {
-  IconCheckList,
   IconChevronLeft,
   IconChevronRight,
   IconChevronUp,
@@ -15,6 +14,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useTaskListStore } from '@/stores/taskList'
 import SystemSettingsDialog from '@/components/settings/SystemSettingsDialog'
+import Logo from '@/components/common/Logo'
 import styles from './Sidebar.module.css'
 
 interface MenuItem {
@@ -101,8 +101,7 @@ export default function Sidebar() {
       {!collapsed ? (
         <div className={styles.logoRow}>
           <div className={styles.logoBox} onClick={() => navigate('/tasks')}>
-            <IconCheckList className={styles.logoIcon} />
-            <span className={styles.logoText}>TASK</span>
+            <Logo />
           </div>
           <div className={styles.sidebarToggle} onClick={toggleSidebar}>
             <IconChevronLeft />

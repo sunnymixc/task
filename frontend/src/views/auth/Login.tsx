@@ -4,6 +4,7 @@ import { Button, Form, Typography } from '@douyinfe/semi-ui-19'
 import { IconLock, IconMail } from '@douyinfe/semi-icons'
 import { useAuthStore } from '@/stores/auth'
 import type { LoginRequest } from '@/types'
+import Logo from '@/components/common/Logo'
 import styles from './auth.module.css'
 
 export default function Login() {
@@ -26,7 +27,9 @@ export default function Login() {
   return (
     <div className={styles.container}>
       <div className={styles.box}>
-        <h1 className={styles.title}>TASK</h1>
+        <h1 className={styles.title}>
+          <Logo size={26} textSize={28} />
+        </h1>
         <p className={styles.subtitle}>登录您的账户</p>
 
         <Form onSubmit={handleSubmit} disabled={loading}>
