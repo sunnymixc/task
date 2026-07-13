@@ -1,10 +1,11 @@
 /**
  * 主题令牌（参考 WeKnora 前端，自 Vue 版 theme.css 迁移）
  * 品牌色为蓝色 #1a73e8，并统一侧边栏/容器/文字配色。
- * Semi 的令牌定义在 body 上，须在 semi.min.css 之后引入以覆盖。
+ * Semi 的令牌定义在 body 上；这里用 html body 提升特异性（0-0-2 > 0-0-1），
+ * 确保无论 dev/生产的样式表注入顺序如何都能覆盖 semi.min.css。
  */
-body,
-body[theme-mode='light'] {
+html body,
+html body[theme-mode='light'] {
   /* 字体 */
   --app-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
@@ -52,12 +53,10 @@ body[theme-mode='light'] {
   --sidebar-icon-size: 18px;
   --sidebar-icon-gap: 8px;
 
-  /* 圆角（静态默认 1px；运行时由 ui store 写内联变量覆盖） */
-  --semi-border-radius-extra-small: 1px;
-  --semi-border-radius-small: 1px;
-  --semi-border-radius-medium: 1px;
-  --semi-border-radius-large: 1px;
-
-  /* 阴影（全局削弱） */
-  --semi-shadow-elevated: 0 0 1px 1px rgba(0, 0, 0, 0.1);
+  /* 圆角（静态默认与服务端默认 ui_radius=6 对齐，仅作 JS 执行前的 fallback；
+     运行时由 ui store 写 body 内联变量接管） */
+  --semi-border-radius-extra-small: 6px;
+  --semi-border-radius-small: 6px;
+  --semi-border-radius-medium: 6px;
+  --semi-border-radius-large: 6px;
 }

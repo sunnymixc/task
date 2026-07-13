@@ -23,7 +23,9 @@ export const RADIUS_MIN = 0
 export const RADIUS_MAX = 32
 
 // semi 组件圆角全部取自这些变量（full/circle 不动）；
-// documentElement 内联样式覆盖 theme.css 的声明
+// 写 body 内联样式：semi.min.css 与 theme.css 都把令牌声明在 body 上，
+// body 级声明会遮蔽 html（documentElement）上的内联值，只有 body 内联
+// 才能不依赖样式表打包顺序稳定覆盖
 const RADIUS_VARS = [
   '--semi-border-radius-extra-small',
   '--semi-border-radius-small',
@@ -46,7 +48,7 @@ const loadRadius = (): number => {
 
 const applyRadiusToDom = (px: number) => {
   for (const name of RADIUS_VARS) {
-    document.documentElement.style.setProperty(name, `${px}px`)
+    document.body.style.setProperty(name, `${px}px`)
   }
 }
 
