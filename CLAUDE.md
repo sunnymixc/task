@@ -83,6 +83,18 @@ React 19 SPA in `frontend/src` (Semi Design UI via `@douyinfe/semi-ui-19`, react
 - **`views/`** + **`components/`** — pages and widgets; `router/index.tsx` defines routes (`RequireAuth` wrapper, lazy views). Styling is CSS Modules per component plus `styles/semi-overrides.css` for teleported Semi layers.
 - **Form dialogs** — `TaskForm`/`TaskListForm` expose imperative handles (`useImperativeHandle`: `submit`/`save`/`focusTitle`/`getCopyText`) driven by parent Modal footer buttons; parents remount forms per open via `key`, and Semi Table pagination must stay fully controlled (`currentPage` passed) so it never client-slices server pages.
 
+### Table pages (standard)
+
+The app shell is a fixed `100vh` (`html/body/#root` are `overflow: hidden` — the window never scrolls); each page owns its scrolling. All table pages (`views/task/TaskList.tsx`, `views/task-list/TaskListManage.tsx`) follow one recipe — reuse it for any new table page:
+
+- **Page skeleton**: `.container` (flex column, `height: 100%`, padding) → `.pageHeader` → optional `.filters` → `.tableContainer` (`flex: 1; min-height: 0; overflow: hidden`) → `<Table>`. The flex layout makes `.tableContainer` equal "window minus title/filters/spacing" with no manual math.
+- **Fixed header/footer, scrolling body**: pass `scroll={scrollY !== undefined ? { y: scrollY } : undefined}` computed by the shared hook **`hooks/useTableScrollY.ts`** (`const { containerRef, scrollY } = useTableScrollY(); <div ref={containerRef}>`). The hook measures container minus header minus pagination and re-computes via ResizeObserver + window `resize`. With `scroll.y`, Semi renders a separate fixed head table and gives `.semi-table-body` a `max-height`; the pagination bar sits outside the scroll area and stays fixed. Do **not** re-add CSS `position: sticky` thead hacks.
+- **No `scroll.x`**: Semi syncs head/body `scrollLeft` unconditionally. Horizontal scroll on narrow windows comes from a CSS `min-width` on `.semi-table table` (sum of fixed column widths) — it hits both inner tables, keeping columns aligned while still stretching on wide screens.
+- **Empty state**: pass it via the Table `empty` prop (gated `loading ? null : <custom/>`), never as a sibling below the Table — a sibling gets pushed out by the fixed-height table and duplicates Semi's built-in placeholder.
+- **Custom scrollbars**: style `.tableContainer :global(.semi-table-body)` (the real scroller), not the container.
+- **Sticky columns**: keep CSS-sticky cells via a column `className` (applied to both th and td) rather than Semi `fixed:` (heavier cloned-table path) — but the selector must out-rank Semi's 3-class `.semi-table-tbody>.semi-table-row>.semi-table-row-cell { position: relative }`, e.g. `.tableContainer :global(.semi-table) td.actionCell` (see TaskListManage.module.css).
+- **Pagination**: fully controlled (`currentPage`, `total`, `onPageChange` → server fetch), per the rule above.
+
 ## Specs
 
 `specs/` holds design/refactor notes (`frontend-appname.md`, `ui-refactor.md`) referenced during feature work.
