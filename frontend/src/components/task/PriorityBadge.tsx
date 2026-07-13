@@ -11,7 +11,7 @@ const priorityConfig: Record<TaskPriority, { label: string; color: TagColor }> =
 export default function PriorityBadge({ priority }: { priority: TaskPriority }) {
   const config = priorityConfig[priority] ?? { label: priority, color: 'grey' as TagColor }
   return (
-    <Tag color={config.color} style={{ minWidth: 44, textAlign: 'center' }}>
+    <Tag color={config.color} size="large" shape="circle" style={{ minWidth: 44, textAlign: 'center' }}>
       {config.label}
     </Tag>
   )
