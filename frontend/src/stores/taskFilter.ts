@@ -4,7 +4,8 @@ import type { TaskStatus } from '@/types'
 // localStorage key 遵循 auth.ts 的 task_ 前缀约定
 const STORAGE_KEY = 'task_status_filters'
 
-export const DEFAULT_STATUS_FILTER: TaskStatus[] = ['draft', 'pending', 'executing']
+// 默认不勾选任何状态（空 = 不传 status 参数，展示全部状态任务）
+export const DEFAULT_STATUS_FILTER: TaskStatus[] = []
 const VALID_STATUSES: TaskStatus[] = ['draft', 'pending', 'executing', 'completed']
 
 // scopeKey: 清单 id，全局任务视图用 'all'

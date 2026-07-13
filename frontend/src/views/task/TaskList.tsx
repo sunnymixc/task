@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
-import { Button, Input, Modal, Select, Space, Table, TextArea, Toast } from '@douyinfe/semi-ui-19'
+import { Button, Input, Modal, Select, Space, Table, TextArea, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
 import { IconEdit, IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskStore } from '@/stores/task'
@@ -116,12 +116,15 @@ export default function TaskList() {
     fetchTasks({ page: 1, statuses: value })
   }
 
-  // 重置:仅恢复状态筛选为默认值(不动清单多选与搜索框),并刷新列表
+  // 重置:整个筛选栏恢复初始化状态(状态/清单/搜索全部清空),并重新拉取全部任务
   const handleResetFilter = () => {
+    debouncedSearch.cancel()
     const def = useTaskFilterStore.getState().resetStatusFilter(filterScopeKey)
     setCurrentStatus(def)
+    setCurrentTaskLists([])
+    setSearchQuery('')
     setPage(1)
-    fetchTasks({ page: 1, statuses: def })
+    fetchTasks({ page: 1, statuses: def, lists: [] })
   }
 
   // Handle task list filter change
@@ -147,8 +150,9 @@ export default function TaskList() {
     debouncedSearch(value)
   }
 
-  // Clear search
+  // Clear search(cancel 丢弃防抖中的旧关键词,避免清空后又延迟发出搜索)
   const clearSearch = () => {
+    debouncedSearch.cancel()
     setSearchQuery('')
     fetchTasks()
   }
@@ -486,9 +490,15 @@ export default function TaskList() {
       {/* Header */}
       <div className={styles.pageHeader}>
         <div className={styles.title}>{pageTitle}</div>
-        <Button theme="solid" type="primary" icon={<IconPlus />} onClick={openCreateDialog}>
-          新建任务
-        </Button>
+        <Tooltip content="新建任务">
+          <Button
+            theme="borderless"
+            type="tertiary"
+            icon={<IconPlus />}
+            aria-label="新建任务"
+            onClick={openCreateDialog}
+          />
+        </Tooltip>
       </div>
 
       {/* Filters */}
@@ -514,9 +524,6 @@ export default function TaskList() {
               onChange={(v) => handleTaskListChange((v as string[]) || [])}
             />
           )}
-          <Button onClick={handleResetFilter}>重置</Button>
-        </div>
-        <div>
           <Input
             value={searchQuery}
             placeholder="搜索任务..."
@@ -526,6 +533,7 @@ export default function TaskList() {
             onChange={onSearchInput}
             onClear={clearSearch}
           />
+          <Button onClick={handleResetFilter}>重置</Button>
         </div>
       </div>
 
