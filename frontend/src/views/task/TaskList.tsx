@@ -321,7 +321,6 @@ export default function TaskList() {
           <Button
             className={styles.inlineEditBtn}
             theme="borderless"
-            size="small"
             icon={<IconEdit />}
             onClick={() => startInlineEdit(row, 'title')}
           />
@@ -329,7 +328,6 @@ export default function TaskList() {
             <Button
               className={`${styles.inlineEditBtn} ${styles.inlineAddDescBtn}`}
               theme="borderless"
-              size="small"
               icon={<IconEdit />}
               onClick={() => startInlineEdit(row, 'description')}
             >
@@ -344,17 +342,16 @@ export default function TaskList() {
         >
           <Input
             value={inlineDraft}
-            size="small"
             maxLength={255}
             autoFocus
             style={{ flex: 1 }}
             onChange={setInlineDraft}
             onEnterPress={() => saveInlineEdit(row)}
           />
-          <Button theme="solid" type="primary" size="small" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
+          <Button theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
             保存
           </Button>
-          <Button size="small" onClick={cancelInlineEdit}>
+          <Button onClick={cancelInlineEdit}>
             取消
           </Button>
         </div>
@@ -366,7 +363,6 @@ export default function TaskList() {
           <Button
             className={styles.inlineEditBtn}
             theme="borderless"
-            size="small"
             icon={<IconEdit />}
             onClick={() => startInlineEdit(row, 'description')}
           />
@@ -381,10 +377,10 @@ export default function TaskList() {
             onChange={setInlineDraft}
           />
           <div className={styles.inlineEditActions}>
-            <Button theme="solid" type="primary" size="small" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
+            <Button theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
               保存
             </Button>
-            <Button size="small" onClick={cancelInlineEdit}>
+            <Button onClick={cancelInlineEdit}>
               取消
             </Button>
           </div>
