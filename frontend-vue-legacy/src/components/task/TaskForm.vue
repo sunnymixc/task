@@ -5,6 +5,7 @@ import type { FormRules } from 'tdesign-vue-next'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useTaskListStore } from '@/stores/taskList'
 import { taskAPI } from '@/api/task'
+import TaskLogList from './TaskLogList.vue'
 
 interface Props {
   task?: Task | null
@@ -22,6 +23,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const formRef = ref()
+// 基础 / 日志 tab
+const activeTab = ref('basic')
 // tdesign Input 实例在运行时暴露 focus(),但当前版本未导出实例类型
 const titleInputRef = ref<{ focus?: () => void } | null>(null)
 const taskListStore = useTaskListStore()
@@ -31,6 +34,7 @@ const form = reactive({
   description: '',
   result: '',
   priority: 'high' as TaskPriority,
+  sort_order: undefined as number | undefined,
   status: 'draft' as TaskStatus,
   execution_status: 'unplanned' as TaskExecutionStatus,
   execution_plan: '',
@@ -134,16 +138,27 @@ const formRules: FormRules = {
   ],
   description: [
     { max: 5000, message: '描述最多5000个字符', type: 'warning' }
+  ],
+  sort_order: [
+    {
+      validator: (val: unknown) =>
+        val === undefined || val === null ||
+        (Number.isInteger(val) && (val as number) >= 1 && (val as number) <= 100000000),
+      message: '序号应为1-100000000的整数'
+    }
   ]
 }
 
 // Watch for task changes (edit mode)
 watch(() => props.task, (task) => {
   if (task) {
+    activeTab.value = 'basic'
     form.title = task.title
     form.description = task.description || ''
     form.result = task.result || ''
     form.priority = task.priority
+    // 0 表示未设置,回填为空
+    form.sort_order = task.sort_order > 0 ? task.sort_order : undefined
     form.status = task.status
     form.execution_status = task.execution_status || 'unplanned'
     form.execution_plan = task.execution_plan || ''
@@ -159,10 +174,12 @@ watch(() => props.task, (task) => {
 // Reset form when dialog opens
 watch(() => props.task, (task) => {
   if (!task) {
+    activeTab.value = 'basic'
     form.title = ''
     form.description = ''
     form.result = ''
     form.priority = 'high'
+    form.sort_order = undefined
     form.status = 'draft'
     form.execution_status = 'unplanned'
     form.execution_plan = ''
@@ -209,6 +226,8 @@ const handleSubmit = async (keepOpen = false) => {
     execution_log: form.execution_log,
     execution_result: form.execution_result,
     priority: form.priority,
+    // 无条件携带:编辑时清空输入框提交 0 = 清除序号恢复默认(排最前)
+    sort_order: form.sort_order ?? 0,
     task_list_id: form.task_list_id || undefined,
     // 编辑模式无条件携带:空数组即清空(后端 nil=不动/[]=清空 语义)
     links: linkInputs
@@ -236,6 +255,10 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
 </script>
 
 <template>
+  <t-tabs v-model="activeTab">
+    <!-- destroy-on-hide 必须关闭:否则切 tab 会销毁表单丢失未保存输入,弹窗底部按钮经 defineExpose 调用也会失效 -->
+    <t-tab-panel value="basic" label="基础" :destroy-on-hide="false">
+      <div class="tab-body">
   <t-form
     ref="formRef"
     :data="form"
@@ -285,6 +308,18 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
         <t-radio value="medium">中</t-radio>
         <t-radio value="low">低</t-radio>
       </t-radio-group>
+    </t-form-item>
+
+    <t-form-item label="序号" name="sort_order">
+      <t-input-number
+        v-model="form.sort_order"
+        theme="normal"
+        :min="1"
+        :max="100000000"
+        :allow-input-over-limit="false"
+        placeholder="留空默认排在最前"
+        style="width: 100%"
+      />
     </t-form-item>
 
     <t-form-item label="任务状态" name="status">
@@ -382,11 +417,31 @@ defineExpose({ submit: () => handleSubmit(false), save: () => handleSubmit(true)
     </t-form-item>
 
   </t-form>
+      </div>
+    </t-tab-panel>
+    <!-- 日志面板默认销毁:每次激活重挂载重新拉取,保证保存后数据新鲜 -->
+    <t-tab-panel value="logs" label="日志">
+      <div class="tab-body">
+        <TaskLogList v-if="props.task?.id" :task-id="props.task.id" />
+        <div v-else class="log-placeholder">任务创建后可查看变更日志</div>
+      </div>
+    </t-tab-panel>
+  </t-tabs>
 </template>
 
 <style scoped>
 .t-form-item {
   margin-bottom: 24px;
+}
+
+.tab-body {
+  padding-top: 16px;
+}
+
+.log-placeholder {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--td-text-color-placeholder);
 }
 
 .link-rows {

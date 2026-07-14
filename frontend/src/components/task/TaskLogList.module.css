@@ -1,0 +1,45 @@
+.list {
+  width: 100%;
+  min-height: 120px;
+}
+
+.empty {
+  padding: 48px 0;
+  text-align: center;
+  color: var(--semi-color-text-3);
+}
+
+.line {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.operator {
+  font-weight: 600;
+}
+
+.diff {
+  margin-top: 4px;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.old {
+  color: var(--semi-color-text-3);
+  text-decoration: line-through;
+  word-break: break-all;
+}
+
+.arrow {
+  color: var(--semi-color-text-3);
+  flex-shrink: 0;
+}
+
+.new {
+  color: var(--semi-color-text-0);
+  word-break: break-all;
+}

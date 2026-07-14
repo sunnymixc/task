@@ -20,11 +20,13 @@ func Setup(cfg *config.Config) *gin.Engine {
 	userService := service.NewUserService(cfg)
 	taskService := service.NewTaskService()
 	taskListService := service.NewTaskListService()
+	settingsService := service.NewSettingsService()
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(userService)
 	taskHandler := handler.NewTaskHandler(taskService)
 	taskListHandler := handler.NewTaskListHandler(taskListService)
+	settingsHandler := handler.NewSettingsHandler(settingsService)
 
 	// Create router
 	r := gin.Default()
@@ -59,6 +61,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 			tasks.POST("", taskHandler.CreateTask)
 			tasks.GET("/search", taskHandler.SearchTasks)
 			tasks.GET("/:id", taskHandler.GetTask)
+			tasks.GET("/:id/logs", taskHandler.ListTaskLogs)
 			tasks.PUT("/:id", taskHandler.UpdateTask)
 			tasks.DELETE("/:id", taskHandler.DeleteTask)
 			tasks.PATCH("/:id/status", taskHandler.UpdateTaskStatus)
@@ -72,6 +75,13 @@ func Setup(cfg *config.Config) *gin.Engine {
 			taskLists.GET("/:id", taskListHandler.GetTaskList)
 			taskLists.PUT("/:id", taskListHandler.UpdateTaskList)
 			taskLists.DELETE("/:id", taskListHandler.DeleteTaskList)
+		}
+
+		// System settings routes（读：登录即可；写：仅管理员）
+		settings := v1.Group("/settings")
+		{
+			settings.GET("", settingsHandler.GetSettings)
+			settings.PUT("", middleware.RequireAdmin(userService), settingsHandler.UpdateSettings)
 		}
 	}
 

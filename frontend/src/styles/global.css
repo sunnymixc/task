@@ -1,0 +1,19 @@
+/* 全局 reset（自 Vue 版 App.vue 全局样式迁移） */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 固定视口布局（#root 100vh + 内部滚动），body 层面不允许出现页面滚动条 */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}

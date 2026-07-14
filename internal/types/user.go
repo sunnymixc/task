@@ -58,6 +58,8 @@ type User struct {
 	TenantID uint64 `json:"tenant_id" gorm:"index"`
 	// Whether the user is active
 	IsActive bool `json:"is_active" gorm:"default:true"`
+	// Whether the user is a global administrator (系统管理员)
+	IsAdmin bool `json:"is_admin" gorm:"not null;default:false"`
 	// Per-user UI/feature preferences
 	Preferences UserPreferences `json:"preferences" gorm:"type:jsonb;not null;default:'{}'"`
 	// Timestamps

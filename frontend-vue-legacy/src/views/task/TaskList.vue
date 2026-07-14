@@ -64,18 +64,21 @@ const pageTitle = computed(() => {
 })
 
 // Table columns(清单作用域下省略任务清单列)
+// 各列均为固定宽度,标题列取 420 避免宽屏下独占剩余空间;
+// 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
 const columns = computed<PrimaryTableCol[]>(() => [
-  { colKey: 'title', title: '标题和描述', width: 420, minWidth: 300 },
-  { colKey: 'status', title: '任务状态', width: 100 },
-  { colKey: 'execution_status', title: '执行状态', width: 100 },
-  { colKey: 'priority', title: '优先级', width: 100 },
-  { colKey: 'action', title: '操作', width: 280 },
-  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 140 }]),
-  { colKey: 'links', title: '链接', width: 200 },
-  { colKey: 'due_date', title: '截止时间', width: 180 },
-  { colKey: 'creator', title: '创建者', width: 120 },
-  { colKey: 'created_at', title: '创建时间', width: 180 },
-  { colKey: 'updated_at', title: '更新时间', width: 180 }
+  { colKey: 'sort_order', title: '序号', width: 64 },
+  { colKey: 'title', title: '标题和描述', width: 420 },
+  { colKey: 'status', title: '任务状态', width: 90 },
+  { colKey: 'execution_status', title: '执行状态', width: 90 },
+  { colKey: 'priority', title: '优先级', width: 80 },
+  { colKey: 'action', title: '操作', width: 316 },
+  ...(isListScoped.value ? [] : [{ colKey: 'task_list', title: '任务清单', width: 110, ellipsis: true }]),
+  { colKey: 'links', title: '链接', width: 140 },
+  { colKey: 'due_date', title: '截止时间', width: 110 },
+  { colKey: 'creator', title: '创建者', width: 90, ellipsis: true },
+  { colKey: 'created_at', title: '创建时间', width: 110 },
+  { colKey: 'updated_at', title: '更新时间', width: 110 }
 ])
 
 // Fetch tasks
@@ -189,6 +192,51 @@ const handleUpdateTask = async (data: any, keepOpen = false) => {
   }
 }
 
+// 原地编辑标题/描述:同一时刻只允许编辑一处(行 id + 字段),避免多处草稿状态
+const inlineEdit = ref<{ id: string; field: 'title' | 'description' } | null>(null)
+const inlineDraft = ref('')
+const inlineSaving = ref(false)
+
+const isInlineEditing = (row: Task, field: 'title' | 'description') =>
+  inlineEdit.value?.id === row.id && inlineEdit.value?.field === field
+
+const startInlineEdit = (task: Task, field: 'title' | 'description') => {
+  inlineEdit.value = { id: task.id, field }
+  inlineDraft.value = field === 'title' ? task.title : (task.description || '')
+}
+
+const cancelInlineEdit = () => {
+  inlineEdit.value = null
+}
+
+// 保存原地编辑:仅提交被编辑的单个字段;失败时保留编辑态与草稿
+const saveInlineEdit = async (task: Task) => {
+  if (!inlineEdit.value || inlineSaving.value) return
+  const field = inlineEdit.value.field
+  const value = field === 'title' ? inlineDraft.value.trim() : inlineDraft.value
+  if (field === 'title' && !value) {
+    MessagePlugin.warning('任务标题不能为空')
+    return
+  }
+  const original = field === 'title' ? task.title : (task.description || '')
+  if (value === original) {
+    inlineEdit.value = null
+    return
+  }
+  inlineSaving.value = true
+  try {
+    const updated = await taskStore.updateTask(
+      task.id,
+      field === 'title' ? { title: value } : { description: value }
+    )
+    if (updated) {
+      inlineEdit.value = null
+    }
+  } finally {
+    inlineSaving.value = false
+  }
+}
+
 // Handle delete task
 const handleDeleteTask = (task: Task) => {
   const dialog = DialogPlugin.confirm({
@@ -272,15 +320,13 @@ const handleStatusUpdate = async (taskId: string, status: TaskStatus) => {
   fetchTasks()
 }
 
-// Format date
+// Format date(列宽有限,只显示日期)
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    day: '2-digit'
   })
 }
 
@@ -376,9 +422,76 @@ onMounted(() => {
         hover
         @page-change="onPageChange"
       >
+        <template #sort_order="{ row }">
+          {{ row.sort_order > 0 ? row.sort_order : '-' }}
+        </template>
+
         <template #title="{ row }">
-          <div class="task-title">{{ row.title }}</div>
-          <div v-if="row.description" class="task-desc">{{ row.description }}</div>
+          <!-- 标题:展示态(末尾悬停显示编辑图标) / 编辑态(输入框 + 保存/取消) -->
+          <div v-if="!isInlineEditing(row, 'title')" class="task-title">
+            {{ row.title }}
+            <t-button
+              class="inline-edit-btn"
+              theme="default"
+              variant="text"
+              shape="square"
+              size="small"
+              @click="startInlineEdit(row, 'title')"
+            >
+              <t-icon name="edit" />
+            </t-button>
+            <t-button
+              v-if="!row.description && !isInlineEditing(row, 'description')"
+              class="inline-edit-btn inline-add-desc-btn"
+              theme="default"
+              variant="text"
+              shape="rectangle"
+              size="small"
+              @click="startInlineEdit(row, 'description')"
+            >
+              <t-icon name="edit" /><span>添加描述</span>
+            </t-button>
+          </div>
+          <div v-else class="inline-edit-box inline-edit-box--row" @keydown.esc="cancelInlineEdit">
+            <t-input
+              v-model="inlineDraft"
+              size="small"
+              :maxlength="255"
+              autofocus
+              style="flex: 1"
+              @enter="saveInlineEdit(row)"
+            />
+            <t-button theme="primary" size="small" :loading="inlineSaving" @click="saveInlineEdit(row)">保存</t-button>
+            <t-button theme="default" size="small" @click="cancelInlineEdit">取消</t-button>
+          </div>
+
+          <!-- 描述:有描述时文本末尾跟编辑图标;无描述时不渲染,"添加描述"入口在标题行 -->
+          <div
+            v-if="!isInlineEditing(row, 'description') && row.description"
+            class="task-desc"
+          >{{ row.description }}<t-button
+              class="inline-edit-btn"
+              theme="default"
+              variant="text"
+              shape="square"
+              size="small"
+              @click="startInlineEdit(row, 'description')"
+            >
+              <t-icon name="edit" />
+            </t-button>
+          </div>
+          <div v-else-if="isInlineEditing(row, 'description')" class="inline-edit-box" @keydown.esc="cancelInlineEdit">
+            <t-textarea
+              v-model="inlineDraft"
+              :maxlength="5000"
+              :autosize="{ minRows: 2, maxRows: 8 }"
+              autofocus
+            />
+            <div class="inline-edit-actions">
+              <t-button theme="primary" size="small" :loading="inlineSaving" @click="saveInlineEdit(row)">保存</t-button>
+              <t-button theme="default" size="small" @click="cancelInlineEdit">取消</t-button>
+            </div>
+          </div>
         </template>
 
         <template #status="{ row }">
@@ -418,24 +531,24 @@ onMounted(() => {
         </template>
 
         <template #action="{ row }">
-          <t-space size="medium">
+          <t-space size="small">
             <StatusActions
               v-if="hasStatusActions(row.status)"
               :task="row"
               @status-change="(status) => handleStatusUpdate(row.id, status)"
             />
-            <t-link theme="primary" hover="color" @click="handleCopyTask(row)">
+            <t-button theme="default" size="small" @click="handleCopyTask(row)">
               拷贝
-            </t-link>
-            <t-link theme="primary" hover="color" @click="handleDuplicateTask(row)">
+            </t-button>
+            <t-button theme="default" size="small" @click="handleDuplicateTask(row)">
               复制
-            </t-link>
-            <t-link theme="primary" hover="color" @click="openEditDialog(row)">
+            </t-button>
+            <t-button theme="default" size="small" @click="openEditDialog(row)">
               编辑
-            </t-link>
-            <t-link theme="primary" hover="color" @click="handleDeleteTask(row)">
+            </t-button>
+            <t-button theme="default" size="small" @click="handleDeleteTask(row)">
               删除
-            </t-link>
+            </t-button>
           </t-space>
         </template>
       </t-table>
@@ -582,9 +695,26 @@ onMounted(() => {
   background: var(--td-bg-color-container);
 }
 
+/* 兜底：窄窗口下保住各列宽度，此时才允许出现横向滚动。
+   1730 = 各列固定宽合计（其余列 1310 + 标题列 420） */
+.table-container :deep(.t-table__content > table),
+.table-container :deep(.t-table__affixed-header-elm-wrap table) {
+  min-width: 1730px;
+}
+
+/* 行分隔线调浅:仅覆盖单元格下边框,不影响单元格内输入框等组件边框 */
+.table-container :deep(.t-table th),
+.table-container :deep(.t-table td) {
+  border-bottom-color: var(--td-gray-color-2);
+}
+
 .task-title {
   font-weight: 500;
   color: var(--td-text-color-primary);
+}
+
+/* 仅当下方还有描述块/编辑框时才留间距,空描述时标题单独存在以保证垂直居中 */
+.task-title:not(:last-child) {
   margin-bottom: 4px;
 }
 
@@ -593,6 +723,47 @@ onMounted(() => {
   color: var(--td-text-color-secondary);
   white-space: pre-line;
   word-break: break-word;
+}
+
+/* 原地编辑入口:默认隐藏,悬停所在行或获得焦点时显示;不参与 pre-line 排版 */
+.inline-edit-btn {
+  white-space: nowrap;
+  vertical-align: middle;
+  margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.inline-add-desc-btn {
+  font-size: 12px;
+}
+
+/* 图标与文字垂直居中,对齐方式与描述行的编辑按钮一致 */
+.inline-add-desc-btn :deep(.t-button__text) {
+  align-items: center;
+}
+
+.table-container :deep(tr:hover) .inline-edit-btn,
+.inline-edit-btn:focus {
+  opacity: 1;
+}
+
+/* 原地编辑态:标题为一行(输入框+按钮),描述为纵向(文本域在上、按钮行在下) */
+.inline-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.inline-edit-box--row {
+  flex-direction: row;
+  align-items: center;
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .creator-info {

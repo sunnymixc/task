@@ -61,6 +61,7 @@ type CreateTaskRequest struct {
 	ExecutionLog    string                `json:"execution_log"`
 	ExecutionResult string                `json:"execution_result"`
 	Priority        string                `json:"priority" binding:"omitempty,oneof=low medium high"`
+	SortOrder       int                   `json:"sort_order" binding:"omitempty,min=1,max=100000000"`
 	TaskListID      string                `json:"task_list_id" binding:"omitempty,len=24,alpha"`
 	DueDate         *string               `json:"due_date"` // ISO 8601 date string
 	Links           []types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
@@ -77,8 +78,10 @@ type UpdateTaskRequest struct {
 	ExecutionLog    *string `json:"execution_log"`
 	ExecutionResult *string `json:"execution_result"`
 	Priority        *string `json:"priority" binding:"omitempty,oneof=low medium high"`
-	TaskListID      *string `json:"task_list_id" binding:"omitempty,len=24,alpha"`
-	DueDate         *string `json:"due_date"`
+	// 传 0 表示清除序号恢复默认（排最前），null 表示不修改
+	SortOrder  *int    `json:"sort_order" binding:"omitempty,min=0,max=100000000"`
+	TaskListID *string `json:"task_list_id" binding:"omitempty,len=24,alpha"`
+	DueDate    *string `json:"due_date"`
 	// Links 为 null 表示不修改；空数组表示清空；非空表示整体替换
 	Links *[]types.TaskLinkInput `json:"links" binding:"omitempty,dive"`
 }
@@ -116,6 +119,7 @@ func (h *TaskHandler) CreateTask(c *gin.Context) {
 		ExecutionPlan:   req.ExecutionPlan,
 		ExecutionLog:    req.ExecutionLog,
 		ExecutionResult: req.ExecutionResult,
+		SortOrder:       req.SortOrder,
 		TaskListID:      req.TaskListID,
 		Links:           req.Links,
 	}
@@ -220,6 +224,55 @@ func (h *TaskHandler) GetTask(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// ListTaskLogs lists change logs of a task
+// @Summary List task logs
+// @Description List change logs of a task (newest first)
+// @Tags tasks
+// @Produce json
+// @Security Bearer
+// @Param id path string true "Task ID"
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(50)
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/tasks/{id}/logs [get]
+func (h *TaskHandler) ListTaskLogs(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Task ID is required",
+		})
+		return
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "50"))
+
+	logs, total, err := h.taskService.ListTaskLogs(c.Request.Context(), id, page, pageSize)
+	if err != nil {
+		if err == service.ErrTaskNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": "Task not found",
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to list task logs: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":   true,
+		"data":      logs,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
+	})
+}
+
 // ListTasks lists tasks with pagination and filters
 // @Summary List tasks
 // @Description List tasks for the current user's tenant
@@ -316,6 +369,7 @@ func (h *TaskHandler) UpdateTask(c *gin.Context) {
 		ExecutionPlan:   req.ExecutionPlan,
 		ExecutionLog:    req.ExecutionLog,
 		ExecutionResult: req.ExecutionResult,
+		SortOrder:       req.SortOrder,
 		TaskListID:      req.TaskListID,
 		Links:           req.Links,
 	}

@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { MessagePlugin } from 'tdesign-vue-next'
+import { Toast } from '@douyinfe/semi-ui-19'
 
 // Create axios instance
 const request: AxiosInstance = axios.create({
@@ -102,7 +102,7 @@ request.interceptors.response.use(
         localStorage.removeItem('task_token')
         localStorage.removeItem('task_refresh_token')
         localStorage.removeItem('task_user')
-        MessagePlugin.error('登录已过期，请重新登录')
+        Toast.error('登录已过期，请重新登录')
         window.location.href = '/login'
         return Promise.reject(refreshError)
       } finally {
@@ -113,17 +113,17 @@ request.interceptors.response.use(
     // Handle other errors
     switch (status) {
       case 403:
-        MessagePlugin.error('没有权限访问')
+        Toast.error('没有权限访问')
         break
       case 404:
-        MessagePlugin.error('请求的资源不存在')
+        Toast.error('请求的资源不存在')
         break
       case 500:
-        MessagePlugin.error('服务器错误，请稍后重试')
+        Toast.error('服务器错误，请稍后重试')
         break
       default:
         if (message && status !== 401) {
-          MessagePlugin.error(message)
+          Toast.error(message)
         }
     }
 

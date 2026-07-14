@@ -1,0 +1,39 @@
+/* Semi 组件全局覆写（弹层 teleport 到 body，组件级 CSS Module 作用不到） */
+
+/* 侧边栏用户信息弹框：菜单项占满弹框宽度 */
+.sidebar-user-dropdown.semi-dropdown-menu {
+  width: 100%;
+}
+
+.sidebar-user-dropdown .semi-dropdown-item {
+  width: 100%;
+  max-width: none;
+}
+
+/* 任务表单弹窗:滚动收在 TaskForm 的 tab 内容区内部(见 TaskForm.module.css 的 .tabBody),
+   modal body 本身不滚动,左侧竖排 tab 栏与标题、底部按钮始终可见 */
+
+/* 默认字重 500(见 theme.css):Semi 在这些组件选择器里硬编码了 font-weight:400,
+   body 继承覆盖不到;input/textarea 则本身不继承字重。统一提升到默认字重。
+   每条加 body 前缀以稳压 Semi 原选择器的特异性(如 .semi-tabs-bar .semi-tabs-tab)。 */
+body .semi-select,
+body .semi-cascader,
+body .semi-tree-select,
+body .semi-tabs-bar .semi-tabs-tab,
+body .semi-tabs-tab-single.semi-tabs-tab,
+body .semi-navigation-item,
+body .semi-navigation-sub .semi-navigation-item,
+body .semi-navigation-sub-wrap .semi-navigation-sub-title,
+body .semi-page-item,
+body .semi-table-pagination-info,
+body .semi-card,
+body .semi-card-body,
+body .semi-breadcrumb-item,
+body .semi-badge-count,
+body .semi-typography-small,
+body .semi-notification-notice-content,
+body .semi-input,
+body .semi-input-textarea,
+body .semi-tagInput {
+  font-weight: var(--app-font-weight, 500);
+}

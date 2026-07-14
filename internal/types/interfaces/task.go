@@ -16,7 +16,10 @@ type TaskRepository interface {
 	SearchTasks(ctx context.Context, tenantID uint64, query string, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)
 	FilterTasks(ctx context.Context, tenantID uint64, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)
 	MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error
+	CountTasksByStatusPerList(ctx context.Context, tenantID uint64, status types.TaskStatus) (map[string]int64, error)
 	ReplaceTaskLinks(ctx context.Context, taskID string, links []*types.TaskLink) error
+	CreateTaskLogs(ctx context.Context, logs []*types.TaskLog) error
+	GetTaskLogsByTaskID(ctx context.Context, taskID string, offset, limit int) ([]*types.TaskLog, int64, error)
 }
 
 // TaskService defines the interface for task business logic
@@ -28,4 +31,5 @@ type TaskService interface {
 	DeleteTask(ctx context.Context, id string) error
 	UpdateTaskStatus(ctx context.Context, id string, status types.TaskStatus) (*types.TaskResponse, error)
 	SearchTasks(ctx context.Context, req *types.SearchTasksRequest) ([]*types.Task, int64, error)
+	ListTaskLogs(ctx context.Context, taskID string, page, pageSize int) ([]*types.TaskLogResponse, int64, error)
 }

@@ -197,5 +197,8 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    user,
+	})
 }

@@ -6,6 +6,7 @@ export interface User {
   avatar: string
   tenant_id: number
   is_active: boolean
+  is_admin: boolean
   preferences: UserPreferences
   created_at: string
   updated_at: string
@@ -55,6 +56,16 @@ export interface RefreshTokenRequest {
   refresh_token: string
 }
 
+// System Settings Types（服务端全局设置，仅管理员可写）
+export interface SystemSettings {
+  ui_radius: number
+}
+
+export interface SystemSettingsResponse {
+  success: boolean
+  data: SystemSettings
+}
+
 // Task Types
 export type TaskStatus = 'draft' | 'pending' | 'executing' | 'completed'
 // 执行状态(任务执行过程的细化管理)
@@ -73,6 +84,8 @@ export interface Task {
   execution_log: string
   execution_result: string
   priority: TaskPriority
+  // 序号(1-100000000),0 表示未设置(默认,排最前),列表按序号升序优先排序
+  sort_order: number
   creator_id: string
   task_list_id: string
   due_date?: string | null
@@ -128,6 +141,7 @@ export interface CreateTaskRequest {
   execution_log?: string
   execution_result?: string
   priority?: TaskPriority
+  sort_order?: number
   task_list_id?: string
   due_date?: string
   links?: TaskLinkInput[]
@@ -143,6 +157,8 @@ export interface UpdateTaskRequest {
   execution_log?: string
   execution_result?: string
   priority?: TaskPriority
+  // 0 表示清除序号恢复默认(排最前),缺省表示不修改
+  sort_order?: number
   task_list_id?: string
   due_date?: string
   // 缺省表示不修改链接;空数组表示清空;非空表示整体替换
@@ -151,6 +167,28 @@ export interface UpdateTaskRequest {
 
 export interface UpdateTaskStatusRequest {
   status: TaskStatus
+}
+
+// 任务变更日志
+export type TaskLogAction = 'create' | 'update' | 'status_change' | 'delete'
+
+export interface TaskLog {
+  id: number
+  task_id: string
+  action: TaskLogAction
+  field_name: string
+  old_value: string
+  new_value: string
+  operator?: UserInfo
+  created_at: string
+}
+
+export interface TaskLogListResponse {
+  success: boolean
+  data: TaskLog[]
+  total: number
+  page: number
+  page_size: number
 }
 
 export interface ListTasksRequest {
@@ -190,6 +228,8 @@ export interface TaskList {
   creator_id: string
   created_at: string
   updated_at: string
+  // 执行中任务数(列表接口动态返回)
+  executing_count?: number
   creator?: UserInfo
 }
 
@@ -216,6 +256,7 @@ export interface UpdateTaskListRequest {
 export interface ListTaskListsRequest {
   page?: number
   page_size?: number
+  keyword?: string
 }
 
 // 任务清单分页响应(区别于 TaskListResponse = 任务分页响应)

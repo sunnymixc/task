@@ -1,0 +1,42 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fff 60%, rgba(var(--semi-blue-0), 1) 100%);
+}
+
+.box {
+  width: 400px;
+  padding: 40px;
+  background: white;
+  border-radius: var(--semi-border-radius-medium);
+  border: 1px solid var(--app-gray-4);
+}
+
+.title {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.submitRow {
+  margin-top: 24px;
+}
+
+.footerLinks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: #666;
+}

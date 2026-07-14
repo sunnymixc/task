@@ -25,10 +25,12 @@ const menuItems: MenuItem[] = [
 
 // 任务清单子菜单(每个清单一项)
 const taskListChildren = computed(() =>
-  taskListStore.allLists.map(list => ({
+  taskListStore.allLists.map((list, index) => ({
+    seq: index + 1, // 纯展示序号,按侧边栏显示顺序编号
     title: list.title,
     path: `/task-lists/${list.id}/tasks`,
-    isDefault: list.is_default
+    isDefault: list.is_default,
+    executingCount: list.executing_count || 0
   }))
 )
 
@@ -103,17 +105,36 @@ const userDropdownPopupProps = {
         </t-tooltip>
 
         <!-- 任务清单子菜单 -->
-        <template v-if="item.path === '/task-lists' && !uiStore.sidebarCollapsed">
-          <div
+        <template v-if="item.path === '/task-lists'">
+          <t-tooltip
             v-for="child in taskListChildren"
             :key="child.path"
-            class="menu-item menu-item--sub"
-            :class="{ 'menu-item--active': route.path === child.path }"
-            @click="handleMenuClick(child.path)"
+            :content="child.title"
+            placement="right"
+            :disabled="!uiStore.sidebarCollapsed"
           >
-            <span class="menu-title">{{ child.title }}</span>
-            <t-tag v-if="child.isDefault" size="small" variant="light" class="menu-sub-tag">默认</t-tag>
-          </div>
+            <div
+              class="menu-item menu-item--sub"
+              :class="{ 'menu-item--active': route.path === child.path }"
+              @click="handleMenuClick(child.path)"
+            >
+              <template v-if="uiStore.sidebarCollapsed">
+                <span class="menu-sub-initial">{{ child.title.charAt(0) }}</span>
+              </template>
+              <template v-else>
+                <span class="menu-sub-index">{{ child.seq }}</span>
+                <span class="menu-title">{{ child.title }}</span>
+                <t-tag v-if="child.isDefault" size="small" variant="light" class="menu-sub-tag">默认</t-tag>
+                <t-tag
+                  v-if="child.executingCount > 0"
+                  size="small"
+                  variant="light"
+                  theme="primary"
+                  class="menu-sub-tag"
+                >{{ child.executingCount }}</t-tag>
+              </template>
+            </div>
+          </t-tooltip>
         </template>
       </div>
     </div>
@@ -300,6 +321,36 @@ const userDropdownPopupProps = {
 .menu-sub-tag {
   flex-shrink: 0;
   margin-left: 6px;
+}
+
+.menu-sub-index {
+  flex-shrink: 0;
+  margin-right: 6px;
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.menu-item--active .menu-sub-index {
+  color: var(--td-brand-color);
+}
+
+/* 收起态下清单首字符圆形徽标 */
+.menu-sub-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  background: var(--td-bg-color-secondarycontainer);
+  color: var(--td-text-color-secondary);
+  flex-shrink: 0;
+}
+
+.menu-item--active .menu-sub-initial {
+  background: var(--td-brand-color-light);
+  color: var(--td-brand-color);
 }
 
 .sidebar-toggle-collapsed {

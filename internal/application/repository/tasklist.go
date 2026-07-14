@@ -43,12 +43,18 @@ func (r *taskListRepository) GetTaskListByID(ctx context.Context, id string) (*t
 	return &list, nil
 }
 
-// GetTaskListsByTenantID retrieves task lists by tenant ID with pagination
-func (r *taskListRepository) GetTaskListsByTenantID(ctx context.Context, tenantID uint64, offset, limit int) ([]*types.TaskList, int64, error) {
+// GetTaskListsByTenantID retrieves task lists by tenant ID with pagination,
+// optionally filtered by keyword (title/description fuzzy match)
+func (r *taskListRepository) GetTaskListsByTenantID(ctx context.Context, tenantID uint64, keyword string, offset, limit int) ([]*types.TaskList, int64, error) {
 	var lists []*types.TaskList
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&types.TaskList{}).Where("tenant_id = ?", tenantID)
+
+	if keyword != "" {
+		pattern := "%" + keyword + "%"
+		query = query.Where("title ILIKE ? OR description ILIKE ?", pattern, pattern)
+	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err

@@ -27,6 +27,9 @@ type TaskList struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"deleted_at,omitempty" gorm:"index"`
 
+	// 执行中任务数（列表接口动态统计，不落库）
+	ExecutingCount int64 `json:"executing_count" gorm:"-"`
+
 	// Associations (not stored in DB)
 	Creator *User   `json:"creator,omitempty" gorm:"foreignKey:CreatorID"`
 	Tenant  *Tenant `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
@@ -56,6 +59,8 @@ type UpdateTaskListRequest struct {
 type ListTaskListsRequest struct {
 	Page     int `form:"page" binding:"min=1"`
 	PageSize int `form:"page_size" binding:"min=1,max=100"`
+	// 关键字，按标题/描述模糊匹配
+	Keyword string `form:"keyword"`
 }
 
 // TaskListDetailResponse represents the response for a task list

@@ -27,6 +27,26 @@ func (r *userRepository) CreateUser(ctx context.Context, user *types.User) error
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
+// firstAdminLockKey 是首管理员判定用的 advisory lock 键（区别于 migrate.go 的迁移锁）
+const firstAdminLockKey = 762001
+
+// CreateUserGrantingFirstAdmin creates the user; inside one transaction it takes an
+// advisory lock and counts existing users (including soft-deleted, so a deleted first
+// user never promotes a later one), setting IsAdmin=true only when the count is zero.
+func (r *userRepository) CreateUserGrantingFirstAdmin(ctx context.Context, user *types.User) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", firstAdminLockKey).Error; err != nil {
+			return err
+		}
+		var count int64
+		if err := tx.Unscoped().Model(&types.User{}).Count(&count).Error; err != nil {
+			return err
+		}
+		user.IsAdmin = count == 0
+		return tx.Create(user).Error
+	})
+}
+
 // GetUserByID retrieves a user by ID
 func (r *userRepository) GetUserByID(ctx context.Context, id string) (*types.User, error) {
 	var user types.User

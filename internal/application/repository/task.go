@@ -69,7 +69,7 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 		Preload("TaskList").
 		Preload("Links", orderLinks).
 		Preload("Links.TargetTask").
-		Order("status_priority ASC, created_at DESC").
+		Order("sort_order ASC, status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -111,7 +111,7 @@ func (r *taskRepository) SearchTasks(ctx context.Context, tenantID uint64, query
 		Preload("TaskList").
 		Preload("Links", orderLinks).
 		Preload("Links.TargetTask").
-		Order("status_priority ASC, created_at DESC").
+		Order("sort_order ASC, status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -137,7 +137,7 @@ func (r *taskRepository) FilterTasks(ctx context.Context, tenantID uint64, filte
 		Preload("TaskList").
 		Preload("Links", orderLinks).
 		Preload("Links.TargetTask").
-		Order("status_priority ASC, created_at DESC").
+		Order("sort_order ASC, status_priority ASC, created_at DESC").
 		Offset(offset).
 		Limit(limit).
 		Find(&tasks).Error
@@ -175,10 +175,64 @@ func (r *taskRepository) ReplaceTaskLinks(ctx context.Context, taskID string, li
 	})
 }
 
+// CreateTaskLogs 批量写入任务日志
+func (r *taskRepository) CreateTaskLogs(ctx context.Context, logs []*types.TaskLog) error {
+	if len(logs) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).Omit(clause.Associations).Create(&logs).Error
+}
+
+// GetTaskLogsByTaskID 分页查询任务日志（新的在前）
+func (r *taskRepository) GetTaskLogsByTaskID(ctx context.Context, taskID string, offset, limit int) ([]*types.TaskLog, int64, error) {
+	var logs []*types.TaskLog
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&types.TaskLog{}).Where("task_id = ?", taskID)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := query.
+		Preload("Operator").
+		Order("id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&logs).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return logs, total, nil
+}
+
 // MoveTasksToList reassigns all tasks in a list to another list (within a tenant)
 func (r *taskRepository) MoveTasksToList(ctx context.Context, tenantID uint64, fromListID, toListID string) error {
 	return r.db.WithContext(ctx).
 		Model(&types.Task{}).
 		Where("tenant_id = ? AND task_list_id = ?", tenantID, fromListID).
 		Update("task_list_id", toListID).Error
+}
+
+// CountTasksByStatusPerList 按清单分组统计租户下指定状态的任务数（软删除任务自动排除）
+func (r *taskRepository) CountTasksByStatusPerList(ctx context.Context, tenantID uint64, status types.TaskStatus) (map[string]int64, error) {
+	var rows []struct {
+		TaskListID string
+		Count      int64
+	}
+	err := r.db.WithContext(ctx).
+		Model(&types.Task{}).
+		Select("task_list_id, COUNT(*) AS count").
+		Where("tenant_id = ? AND status = ?", tenantID, status).
+		Group("task_list_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		counts[row.TaskListID] = row.Count
+	}
+	return counts, nil
 }

@@ -99,7 +99,8 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 		IsActive:     true,
 		Preferences:  types.UserPreferences{},
 	}
-	if err := s.userRepo.CreateUser(ctx, user); err != nil {
+	// 首个注册用户自动成为系统管理员
+	if err := s.userRepo.CreateUserGrantingFirstAdmin(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
