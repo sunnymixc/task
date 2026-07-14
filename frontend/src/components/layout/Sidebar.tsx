@@ -148,12 +148,12 @@ export default function Sidebar() {
                         <span className={styles.menuSubIndex}>{child.seq}</span>
                         <span className={styles.menuTitle}>{child.title}</span>
                         {child.isDefault && (
-                          <Tag size="small" color="grey" className={styles.menuSubTag}>
+                          <Tag size="small" color="grey" shape="circle" className={styles.menuSubTag}>
                             默认
                           </Tag>
                         )}
                         {child.executingCount > 0 && (
-                          <Tag size="small" color="blue" className={styles.menuSubTag}>
+                          <Tag size="small" color="blue" shape="circle" className={styles.menuSubTag}>
                             {child.executingCount}
                           </Tag>
                         )}
