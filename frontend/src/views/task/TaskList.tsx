@@ -35,7 +35,7 @@ const formatDate = (dateStr: string) => {
   })
 }
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 100
 
 export default function TaskList() {
   // useModal 渲染在组件树内,避免静态 Modal.confirm 在 React 19 下同步卸载 root 的告警

@@ -37,7 +37,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
   total: 0,
   loading: false,
   currentPage: 1,
-  pageSize: 20,
+  pageSize: 100,
 
   fetchTasks: async (params) => {
     set({ loading: true })

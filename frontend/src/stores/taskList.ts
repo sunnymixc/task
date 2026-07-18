@@ -38,7 +38,7 @@ export const useTaskListStore = create<TaskListState>()((set, get) => ({
   total: 0,
   loading: false,
   currentPage: 1,
-  pageSize: 20,
+  pageSize: 100,
 
   // Fetch task lists (paginated, for the manage page)
   fetchLists: async (params) => {
