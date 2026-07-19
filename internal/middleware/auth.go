@@ -1,24 +1,17 @@
 package middleware
 
 import (
-	"errors"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/task-management/task/internal/application/service"
 	"github.com/task-management/task/internal/config"
+	"github.com/task-management/task/internal/util"
 )
-
-// JWTClaims represents JWT claims
-type JWTClaims struct {
-	UserID   string `json:"user_id"`
-	Email    string `json:"email"`
-	TenantID uint64 `json:"tenant_id"`
-	jwt.RegisteredClaims
-}
 
 // noAuthAPI is a list of API endpoints that don't require authentication
 var noAuthAPI = map[string][]string{
@@ -86,7 +79,7 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 		}
 
 		// Parse and validate token
-		claims, err := parseToken(tokenString, cfg.Auth.JWTSecret)
+		claims, err := util.ParseToken(tokenString, cfg.Auth.JWTSecret)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
@@ -94,6 +87,14 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			})
 			c.Abort()
 			return
+		}
+
+		// 滑动续期:token 已消耗过半时签发新 token,通过响应头下发。
+		// WebSocket 升级后连接被 hijack,响应头不可达,跳过。
+		if !isWebSocketUpgrade(c.Request) {
+			if newToken, ok := maybeRenewToken(claims, cfg); ok {
+				c.Header("X-New-Token", newToken)
+			}
 		}
 
 		// Set user info in context
@@ -137,24 +138,19 @@ func extractWSToken(c *gin.Context) string {
 	return c.Query("token")
 }
 
-// parseToken parses and validates a JWT token
-func parseToken(tokenString, secret string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("unexpected signing method")
-		}
-		return []byte(secret), nil
-	})
+// maybeRenewToken 在 token 剩余有效期不足配置生命周期一半时,用相同 claims 签发新 token。
+func maybeRenewToken(claims *util.JWTClaims, cfg *config.Config) (string, bool) {
+	lifetime := time.Duration(cfg.Auth.JWTExpiration) * time.Minute
+	if claims.ExpiresAt == nil || time.Until(claims.ExpiresAt.Time) >= lifetime/2 {
+		return "", false
+	}
 
+	newToken, err := util.GenerateToken(cfg.Auth.JWTSecret, lifetime, claims.UserID, claims.Email, claims.TenantID)
 	if err != nil {
-		return nil, err
+		log.Printf("token renewal failed for user %s: %v", claims.UserID, err)
+		return "", false
 	}
-
-	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, errors.New("invalid token claims")
+	return newToken, true
 }
 
 // RequireTenant checks if tenant_id is set in context
@@ -179,7 +175,7 @@ func CORS() gin.HandlerFunc {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-		c.Header("Access-Control-Expose-Headers", "Content-Length")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, X-New-Token")
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method == "OPTIONS" {

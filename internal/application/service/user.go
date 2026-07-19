@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/task-management/task/internal/config"
 	"github.com/task-management/task/internal/types"
 	"github.com/task-management/task/internal/types/interfaces"
+	"github.com/task-management/task/internal/util"
 )
 
 // userService implements interfaces.UserService
@@ -33,14 +33,6 @@ var (
 	// ErrUserExists is returned when a user already exists
 	ErrUserExists = errors.New("user already exists")
 )
-
-// JWTClaims represents JWT claims
-type JWTClaims struct {
-	UserID   string `json:"user_id"`
-	Email    string `json:"email"`
-	TenantID uint64 `json:"tenant_id"`
-	jwt.RegisteredClaims
-}
 
 // NewUserService creates a new user service
 func NewUserService(cfg *config.Config) interfaces.UserService {
@@ -337,38 +329,13 @@ func (s *userService) GetCurrentTenant(ctx context.Context) (*types.Tenant, erro
 
 // generateToken generates a JWT token for a user
 func (s *userService) generateToken(userID, email string, tenantID uint64) (string, error) {
-	claims := &JWTClaims{
-		UserID:   userID,
-		Email:    email,
-		TenantID: tenantID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(s.config.Auth.JWTExpiration) * time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.config.Auth.JWTSecret))
+	lifetime := time.Duration(s.config.Auth.JWTExpiration) * time.Minute
+	return util.GenerateToken(s.config.Auth.JWTSecret, lifetime, userID, email, tenantID)
 }
 
 // parseToken parses and validates a JWT token
-func (s *userService) parseToken(tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(s.config.Auth.JWTSecret), nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, errors.New("invalid token")
+func (s *userService) parseToken(tokenString string) (*util.JWTClaims, error) {
+	return util.ParseToken(tokenString, s.config.Auth.JWTSecret)
 }
 
 // getMemberships gets all memberships for a user
