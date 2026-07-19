@@ -3,6 +3,7 @@ import { settingsAPI } from '@/api/settings'
 import type { SystemSettings } from '@/types'
 
 const STORAGE_KEY = 'sidebar-collapsed'
+const RIGHT_STORAGE_KEY = 'right-sidebar-collapsed'
 const RADIUS_KEY = 'task_radius'
 
 // 圆角档位（px 值同时写入四个 --semi-border-radius-* 变量，全局统一）
@@ -54,9 +55,12 @@ const applyRadiusToDom = (px: number) => {
 
 interface UiState {
   sidebarCollapsed: boolean
+  rightSidebarCollapsed: boolean
   radius: number
   setSidebarCollapsed: (value: boolean) => void
   toggleSidebar: () => void
+  setRightSidebarCollapsed: (value: boolean) => void
+  toggleRightSidebar: () => void
   setRadius: (px: number) => void
   fetchSystemSettings: () => Promise<void>
   updateSystemSettings: (patch: Partial<SystemSettings>) => Promise<boolean>
@@ -68,6 +72,8 @@ applyRadiusToDom(initialRadius)
 
 export const useUiStore = create<UiState>()((set, get) => ({
   sidebarCollapsed: localStorage.getItem(STORAGE_KEY) === 'true',
+  // 右侧工作台栏默认收起,加入任务时自动展开
+  rightSidebarCollapsed: localStorage.getItem(RIGHT_STORAGE_KEY) !== 'false',
   radius: initialRadius,
 
   setSidebarCollapsed: (value) => {
@@ -77,6 +83,15 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   toggleSidebar: () => {
     get().setSidebarCollapsed(!get().sidebarCollapsed)
+  },
+
+  setRightSidebarCollapsed: (value) => {
+    set({ rightSidebarCollapsed: value })
+    localStorage.setItem(RIGHT_STORAGE_KEY, String(value))
+  },
+
+  toggleRightSidebar: () => {
+    get().setRightSidebarCollapsed(!get().rightSidebarCollapsed)
   },
 
   setRadius: (px) => {

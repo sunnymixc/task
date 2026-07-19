@@ -1,0 +1,100 @@
+.asideBox {
+  display: flex;
+  flex-direction: column;
+  width: 520px;
+  min-width: 520px;
+  height: 100%;
+  flex-shrink: 0;
+  background: var(--app-bg-sidebar);
+  border-left: 1px solid var(--app-gray-3);
+  box-sizing: border-box;
+  transition: width 0.25s ease, min-width 0.25s ease;
+  overflow: hidden;
+}
+
+.asideBoxCollapsed {
+  width: 48px;
+  min-width: 48px;
+}
+
+/* 收起态竖条:仅收起时显示 */
+.railBox {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 8px;
+}
+
+.asideBoxCollapsed .railBox {
+  display: flex;
+}
+
+.railItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--semi-border-radius-medium);
+  cursor: pointer;
+  color: var(--semi-color-text-2);
+  transition: background-color 0.2s ease;
+}
+
+.railItem:hover {
+  background: var(--app-bg-container-hover);
+  color: var(--semi-color-primary);
+}
+
+/* 展开态面板:收起时 CSS 隐藏(不卸载,保留面板中未保存的编辑) */
+.panelBox {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 520px; /* 收起动画期间内容不换行挤压 */
+}
+
+.asideBoxCollapsed .panelBox {
+  display: none;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 50px;
+  flex-shrink: 0;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--app-gray-3);
+}
+
+.panelTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--semi-color-text-0);
+}
+
+.collapseToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--semi-border-radius-medium);
+  cursor: pointer;
+  color: var(--semi-color-text-2);
+  transition: background-color 0.2s ease;
+}
+
+.collapseToggle:hover {
+  background: var(--app-bg-container-hover);
+}
+
+.panelBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

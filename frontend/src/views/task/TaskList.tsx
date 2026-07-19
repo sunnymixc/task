@@ -13,6 +13,7 @@ import { useTableScrollY } from '@/hooks/useTableScrollY'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
 import TaskTerminal, { type TaskTerminalHandle } from '@/components/task/TaskTerminal'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkbenchStore } from '@/stores/workbench'
 import StatusBadge from '@/components/task/StatusBadge'
 import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge'
 import PriorityBadge from '@/components/task/PriorityBadge'
@@ -453,8 +454,8 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/删除 +（管理员）AI终端
-      width: isAdmin ? 520 : 430,
+      // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除 +（管理员）AI终端
+      width: isAdmin ? 620 : 530,
       render: (_: unknown, row: Task) => (
         <Space spacing={8}>
           {hasStatusActions(row.status) && (
@@ -468,6 +469,9 @@ export default function TaskList() {
           </Button>
           <Button onClick={() => openEditDialog(row)}>
             编辑
+          </Button>
+          <Button onClick={() => useWorkbenchStore.getState().addTask(row)}>
+            加入工作台
           </Button>
           <Button onClick={() => handleDeleteTask(row)}>
             删除
@@ -503,9 +507,12 @@ export default function TaskList() {
     { title: '更新时间', dataIndex: 'updated_at', width: 110, render: (v: string) => formatDate(v) }
   ]
 
-  const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void) => (
+  const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void, task?: Task | null) => (
     <>
       <Button onClick={onClose}>关闭</Button>
+      {task && (
+        <Button onClick={() => useWorkbenchStore.getState().addTask(task)}>加入工作台</Button>
+      )}
       <Button onClick={() => handleCopyForm(formRef)}>拷贝</Button>
       <Button type="primary" onClick={() => formRef.current?.save()}>
         保存
@@ -621,7 +628,7 @@ export default function TaskList() {
         width="min(92vw, 760px)"
         className="task-form-dialog"
         onCancel={closeEditDialog}
-        footer={dialogFooter(editFormRef, closeEditDialog)}
+        footer={dialogFooter(editFormRef, closeEditDialog, editingTask)}
       >
         <TaskForm key={editingTask?.id || 'edit'} ref={editFormRef} task={editingTask} onSubmit={handleUpdateTask} />
       </Modal>
