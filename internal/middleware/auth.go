@@ -69,9 +69,14 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			return
 		}
 
-		// Get Authorization header
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		// Extract the JWT. Normal requests carry it in the Authorization header;
+		// WebSocket handshakes can't set headers from the browser, so fall back to
+		// the Sec-WebSocket-Protocol subprotocol / ?token= query for upgrade requests.
+		tokenString := extractBearerToken(c.GetHeader("Authorization"))
+		if tokenString == "" && isWebSocketUpgrade(c.Request) {
+			tokenString = extractWSToken(c)
+		}
+		if tokenString == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"message": "Authorization header is required",
@@ -79,19 +84,6 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
-		// Parse Bearer token
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"message": "Invalid authorization header format",
-			})
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
 
 		// Parse and validate token
 		claims, err := parseToken(tokenString, cfg.Auth.JWTSecret)
@@ -114,6 +106,35 @@ func Auth(cfg *config.Config) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// extractBearerToken returns the token from an "Authorization: Bearer <token>" header, or "".
+func extractBearerToken(authHeader string) string {
+	if authHeader == "" {
+		return ""
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return ""
+	}
+	return parts[1]
+}
+
+// isWebSocketUpgrade reports whether the request is a WebSocket handshake.
+func isWebSocketUpgrade(r *http.Request) bool {
+	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+}
+
+// extractWSToken reads the JWT for a WebSocket handshake. The browser WebSocket API
+// can't set an Authorization header, so the token arrives via the Sec-WebSocket-Protocol
+// subprotocol (preferred — kept out of access logs) or the ?token= query (fallback).
+func extractWSToken(c *gin.Context) string {
+	if proto := c.GetHeader("Sec-WebSocket-Protocol"); proto != "" {
+		if first := strings.TrimSpace(strings.Split(proto, ",")[0]); first != "" {
+			return first
+		}
+	}
+	return c.Query("token")
 }
 
 // parseToken parses and validates a JWT token

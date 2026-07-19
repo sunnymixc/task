@@ -26,6 +26,13 @@ export default defineConfig({
     port: 5000,
     allowedHosts: ['task.sunnymix.com', 'task-dev.sunnymix.com'],
     proxy: {
+      // AI 终端 WebSocket:需 ws:true 才会转发 upgrade 请求(放在 /api 之前,更具体的前缀优先)
+      '/api/v1/terminal': {
+        target: 'ws://localhost:5001',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: 'http://localhost:5001',
         changeOrigin: true,

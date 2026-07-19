@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -13,6 +14,14 @@ type Config struct {
 	Server   *ServerConfig
 	Database *DatabaseConfig
 	Auth     *AuthConfig
+	Terminal *TerminalConfig
+}
+
+// TerminalConfig AI 终端(Web PTY)配置
+type TerminalConfig struct {
+	Enabled bool   // 是否启用终端功能
+	Shell   string // 启动的 shell，默认 bash
+	WorkDir string // 会话初始工作目录，空则继承服务器进程 cwd(项目根目录)
 }
 
 // ServerConfig 服务器配置
@@ -69,6 +78,11 @@ func Load() (*Config, error) {
 			JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-this"),
 			JWTExpiration: getEnvAsInt("JWT_EXPIRATION", 1440), // 24 hours
 		},
+		Terminal: &TerminalConfig{
+			Enabled: getEnvAsBool("TERMINAL_ENABLED", true),
+			Shell:   getEnv("TERMINAL_SHELL", "bash"),
+			WorkDir: getEnv("TERMINAL_WORKDIR", ""),
+		},
 	}
 
 	// 验证必需配置
@@ -93,6 +107,19 @@ func getEnvAsInt(key string, defaultVal int) int {
 		var intVal int
 		if _, err := fmt.Sscanf(value, "%d", &intVal); err == nil {
 			return intVal
+		}
+	}
+	return defaultVal
+}
+
+// getEnvAsBool 获取环境变量并转换为布尔值
+func getEnvAsBool(key string, defaultVal bool) bool {
+	if value := os.Getenv(key); value != "" {
+		switch strings.ToLower(value) {
+		case "1", "true", "yes", "on":
+			return true
+		case "0", "false", "no", "off":
+			return false
 		}
 	}
 	return defaultVal
