@@ -11,8 +11,6 @@ import { copyToClipboard } from '@/utils/clipboard'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
-import TaskTerminal, { type TaskTerminalHandle } from '@/components/task/TaskTerminal'
-import { useAuthStore } from '@/stores/auth'
 import { useWorkbenchStore } from '@/stores/workbench'
 import StatusBadge from '@/components/task/StatusBadge'
 import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge'
@@ -54,8 +52,6 @@ export default function TaskList() {
   const loading = useTaskStore((s) => s.loading)
   const total = useTaskStore((s) => s.total)
   const allLists = useTaskListStore((s) => s.allLists)
-  // AI 终端为 root shell,仅管理员可见/可用(真正的访问控制在后端 RequireAdmin)
-  const isAdmin = useAuthStore((s) => s.user?.is_admin === true)
 
   // Filter states(状态筛选初始值从缓存恢复,覆盖刷新/直达路由场景)
   const [currentStatus, setCurrentStatus] = useState<TaskStatus[]>(() =>
@@ -198,33 +194,6 @@ export default function TaskList() {
   const closeEditDialog = () => {
     setShowEditDialog(false)
     setEditingTask(null)
-  }
-
-  // AI 终端弹窗:每次打开新建一个到服务器的 PTY 会话;关闭/终止即结束该进程
-  const terminalRef = useRef<TaskTerminalHandle>(null)
-  const [terminalTask, setTerminalTask] = useState<Task | null>(null)
-  const [showTerminal, setShowTerminal] = useState(false)
-  const openTerminal = (task: Task) => {
-    setTerminalTask(task)
-    setShowTerminal(true)
-  }
-  const closeTerminal = () => {
-    setShowTerminal(false)
-    setTerminalTask(null)
-  }
-  // 终止:二次确认后通知后端结束会话并关闭弹窗(弹窗关闭时组件卸载也会断开连接)
-  const confirmTerminate = () => {
-    modal.confirm({
-      title: '确认终止',
-      content: '终止后将结束当前终端会话并关闭连接,确定继续吗?',
-      okText: '终止',
-      okButtonProps: { type: 'danger' },
-      cancelText: '取消',
-      onOk: () => {
-        terminalRef.current?.terminate()
-        closeTerminal()
-      }
-    })
   }
 
   // Handle update task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
@@ -454,8 +423,8 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除 +（管理员）AI终端
-      width: isAdmin ? 620 : 530,
+      // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除
+      width: 530,
       render: (_: unknown, row: Task) => (
         <Space spacing={8}>
           {hasStatusActions(row.status) && (
@@ -476,11 +445,6 @@ export default function TaskList() {
           <Button onClick={() => handleDeleteTask(row)}>
             删除
           </Button>
-          {isAdmin && (
-            <Button type="tertiary" onClick={() => openTerminal(row)}>
-              AI终端
-            </Button>
-          )}
         </Space>
       )
     },
@@ -577,7 +541,7 @@ export default function TaskList() {
       </div>
 
       {/* Task Table */}
-      <div className={`${styles.tableContainer}${isAdmin ? ` ${styles.adminCols}` : ''}`} ref={containerRef}>
+      <div className={styles.tableContainer} ref={containerRef}>
         <Table
           dataSource={tasks}
           columns={columns}
@@ -631,26 +595,6 @@ export default function TaskList() {
         footer={dialogFooter(editFormRef, closeEditDialog, editingTask)}
       >
         <TaskForm key={editingTask?.id || 'edit'} ref={editFormRef} task={editingTask} onSubmit={handleUpdateTask} />
-      </Modal>
-
-      {/* AI Terminal Dialog（root PTY,仅管理员）。key 强制每次打开重挂载,关闭即卸载并断开连接 */}
-      <Modal
-        visible={showTerminal}
-        title={terminalTask ? `AI终端 · ${terminalTask.title}` : 'AI终端'}
-        centered
-        width="min(94vw, 960px)"
-        maskClosable={false}
-        onCancel={closeTerminal}
-        footer={
-          <>
-            <Button onClick={closeTerminal}>关闭</Button>
-            <Button type="danger" theme="solid" onClick={confirmTerminate}>
-              终止
-            </Button>
-          </>
-        }
-      >
-        {showTerminal && <TaskTerminal key={terminalTask?.id || 'terminal'} ref={terminalRef} />}
       </Modal>
     </div>
   )

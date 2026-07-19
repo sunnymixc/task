@@ -5,6 +5,25 @@ import type { SystemSettings } from '@/types'
 const STORAGE_KEY = 'sidebar-collapsed'
 const RIGHT_STORAGE_KEY = 'right-sidebar-collapsed'
 const RADIUS_KEY = 'task_radius'
+const WORKBENCH_WIDTH_KEY = 'task_workbench_width'
+
+// 右侧工作台栏宽度(px):拖拽调整,浏览器端缓存
+export const WORKBENCH_WIDTH_MIN = 360
+export const WORKBENCH_WIDTH_MAX = 900
+export const WORKBENCH_WIDTH_DEFAULT = 520
+
+const clampWorkbenchWidth = (px: number): number =>
+  Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, Math.round(px)))
+
+const loadWorkbenchWidth = (): number => {
+  const raw = localStorage.getItem(WORKBENCH_WIDTH_KEY)
+  if (raw === null) return WORKBENCH_WIDTH_DEFAULT
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value < WORKBENCH_WIDTH_MIN || value > WORKBENCH_WIDTH_MAX) {
+    return WORKBENCH_WIDTH_DEFAULT
+  }
+  return Math.round(value)
+}
 
 // 圆角档位（px 值同时写入四个 --semi-border-radius-* 变量，全局统一）
 export const RADIUS_OPTIONS = [
@@ -56,11 +75,13 @@ const applyRadiusToDom = (px: number) => {
 interface UiState {
   sidebarCollapsed: boolean
   rightSidebarCollapsed: boolean
+  workbenchWidth: number
   radius: number
   setSidebarCollapsed: (value: boolean) => void
   toggleSidebar: () => void
   setRightSidebarCollapsed: (value: boolean) => void
   toggleRightSidebar: () => void
+  setWorkbenchWidth: (px: number) => void
   setRadius: (px: number) => void
   fetchSystemSettings: () => Promise<void>
   updateSystemSettings: (patch: Partial<SystemSettings>) => Promise<boolean>
@@ -74,6 +95,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
   sidebarCollapsed: localStorage.getItem(STORAGE_KEY) === 'true',
   // 右侧工作台栏默认收起,加入任务时自动展开
   rightSidebarCollapsed: localStorage.getItem(RIGHT_STORAGE_KEY) !== 'false',
+  workbenchWidth: loadWorkbenchWidth(),
   radius: initialRadius,
 
   setSidebarCollapsed: (value) => {
@@ -92,6 +114,12 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   toggleRightSidebar: () => {
     get().setRightSidebarCollapsed(!get().rightSidebarCollapsed)
+  },
+
+  setWorkbenchWidth: (px) => {
+    const value = clampWorkbenchWidth(px)
+    set({ workbenchWidth: value })
+    localStorage.setItem(WORKBENCH_WIDTH_KEY, String(value))
   },
 
   setRadius: (px) => {

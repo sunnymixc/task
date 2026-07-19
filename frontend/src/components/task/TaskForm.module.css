@@ -7,6 +7,24 @@
   padding: 4px 8px 4px 16px;
 }
 
+/* 终端面板:与 tabBody 同高保证切 tab 时高度不跳变,但内部不滚动,
+   终端自身(flex:1)填满剩余高度,由 FitAddon 依容器尺寸计算行列数 */
+.terminalBody {
+  height: min(62vh, calc(100vh - 220px));
+  padding: 4px 8px 4px 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.terminalActions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 6px;
+  flex: none;
+}
+
 .logPlaceholder {
   padding: 48px 0;
   text-align: center;

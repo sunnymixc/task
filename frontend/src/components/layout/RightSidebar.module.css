@@ -1,4 +1,6 @@
+/* 展开态宽度由内联样式驱动(拖拽调整,缓存于 localStorage),520px 仅为兜底 */
 .asideBox {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 520px;
@@ -15,6 +17,39 @@
 .asideBoxCollapsed {
   width: 48px;
   min-width: 48px;
+}
+
+/* 拖拽中关闭过渡,宽度实时跟手 */
+.asideBoxDragging {
+  transition: none;
+}
+
+/* 左缘拖拽手柄:8px 命中区,悬停/拖拽时显示 3px 高亮条 */
+.resizeHandle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.resizeHandle:hover::after,
+.asideBoxDragging .resizeHandle::after {
+  background: var(--semi-color-primary);
 }
 
 /* 收起态竖条:仅收起时显示 */
@@ -52,7 +87,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-width: 520px; /* 收起动画期间内容不换行挤压 */
+  /* min-width 由内联样式给出(= 当前侧栏宽),收起动画期间内容不换行挤压 */
 }
 
 .asideBoxCollapsed .panelBox {

@@ -1,7 +1,9 @@
+/* 高度由宿主决定:在 flex 列容器(TaskForm .terminalBody)内填满剩余空间 */
 .wrapper {
   display: flex;
   flex-direction: column;
-  height: min(62vh, 640px);
+  flex: 1;
+  min-height: 0;
   background: #1e1e1e;
   border-radius: var(--semi-border-radius-medium, 6px);
   overflow: hidden;

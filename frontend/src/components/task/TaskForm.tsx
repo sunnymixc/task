@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
-import { Button, Form, Input, Radio, Select, Tabs, TabPane, Toast } from '@douyinfe/semi-ui-19'
+import { Button, Form, Input, Modal, Radio, Select, Tabs, TabPane, Toast } from '@douyinfe/semi-ui-19'
 import type { FormApi } from '@douyinfe/semi-ui-19/lib/es/form'
 import { IconDelete, IconPlus } from '@douyinfe/semi-icons'
 import type {
@@ -12,9 +12,11 @@ import type {
   TaskLinkInput
 } from '@/types'
 import { useTaskListStore } from '@/stores/taskList'
+import { useAuthStore } from '@/stores/auth'
 import { taskAPI } from '@/api/task'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import TaskLogList from './TaskLogList'
+import TaskTerminal, { type TaskTerminalHandle } from './TaskTerminal'
 import styles from './TaskForm.module.css'
 
 export interface TaskFormHandle {
@@ -82,9 +84,17 @@ const linksFromTask = (task?: Task | null): LinkRow[] =>
 export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Props) {
   const formApiRef = useRef<FormApi | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  // 基础 / 日志 tab
+  // 基础 / AI终端 / 日志 tab
   const [activeTab, setActiveTab] = useState('basic')
   const allLists = useTaskListStore((s) => s.allLists)
+
+  // AI 终端为 root shell,仅管理员可见/可用(真正的访问控制在后端 RequireAdmin)
+  const isAdmin = useAuthStore((s) => s.user?.is_admin === true)
+  // useModal 渲染在组件树内,避免静态 Modal.confirm 在 React 19 下同步卸载 root 的告警
+  const [modal, modalContextHolder] = Modal.useModal()
+  const terminalRef = useRef<TaskTerminalHandle>(null)
+  // 首次激活终端 tab 才建连,之后切走不卸载(keepDOM,会话保持);本组件卸载时随之断开
+  const [terminalMounted, setTerminalMounted] = useState(false)
 
   const [links, setLinks] = useState<LinkRow[]>(() => linksFromTask(task))
 
@@ -222,6 +232,23 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     onSubmit(data, keepOpen)
   }
 
+  const handleTabChange = (key: string) => {
+    setActiveTab(key)
+    if (key === 'terminal') setTerminalMounted(true)
+  }
+
+  // 终止:二次确认后通知后端结束终端会话(连接断开后面板显示"已断开")
+  const confirmTerminate = () => {
+    modal.confirm({
+      title: '确认终止',
+      content: '终止后将结束当前终端会话并关闭连接,确定继续吗?',
+      okText: '终止',
+      okButtonProps: { type: 'danger' },
+      cancelText: '取消',
+      onOk: () => terminalRef.current?.terminate()
+    })
+  }
+
   useImperativeHandle(ref, () => ({
     submit: () => handleSubmit(false),
     save: () => handleSubmit(true),
@@ -236,7 +263,8 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
 
   return (
     <div ref={containerRef}>
-      <Tabs tabPosition="left" activeKey={activeTab} onChange={setActiveTab}>
+      {modalContextHolder}
+      <Tabs tabPosition="left" activeKey={activeTab} onChange={handleTabChange}>
         {/* Semi Tabs 默认 keepDOM:切 tab 不销毁表单,未保存输入与命令式句柄均保持有效 */}
         <TabPane tab="基础" itemKey="basic">
           <div className={styles.tabBody}>
@@ -407,6 +435,24 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
             </Form>
           </div>
         </TabPane>
+        {/* AI 终端:仅管理员且任务已保存时显示(语义同旧任务列表的 AI终端 按钮,后端 RequireAdmin 兜底)。
+            与日志面板不同,首次激活后保持挂载,切 tab 不中断会话 */}
+        {isAdmin && task?.id && (
+          <TabPane tab="AI终端" itemKey="terminal">
+            <div className={styles.terminalBody}>
+              {terminalMounted && (
+                <>
+                  <div className={styles.terminalActions}>
+                    <Button type="danger" size="small" onClick={confirmTerminate}>
+                      终止
+                    </Button>
+                  </div>
+                  <TaskTerminal ref={terminalRef} />
+                </>
+              )}
+            </div>
+          </TabPane>
+        )}
         {/* 日志面板每次激活重新挂载(条件渲染),保证保存后数据新鲜 */}
         <TabPane tab="日志" itemKey="logs">
           <div className={styles.tabBody}>

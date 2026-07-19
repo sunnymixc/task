@@ -90,11 +90,6 @@
   min-width: 1830px;
 }
 
-/* 管理员多一个 AI终端 按钮,操作列 +90(530→620),整表随之 +90 */
-.tableContainer.adminCols :global(.semi-table table) {
-  min-width: 1920px;
-}
-
 /* 行分隔线调浅:仅覆盖单元格下边框,不影响单元格内输入框等组件边框 */
 .tableContainer :global(.semi-table tbody td),
 .tableContainer :global(.semi-table thead th) {
