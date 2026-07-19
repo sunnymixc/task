@@ -27,6 +27,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 	taskHandler := handler.NewTaskHandler(taskService)
 	taskListHandler := handler.NewTaskListHandler(taskListService)
 	settingsHandler := handler.NewSettingsHandler(settingsService)
+	terminalHandler := handler.NewTerminalHandler(cfg)
 
 	// Create router
 	r := gin.Default()
@@ -82,6 +83,12 @@ func Setup(cfg *config.Config) *gin.Engine {
 		{
 			settings.GET("", settingsHandler.GetSettings)
 			settings.PUT("", middleware.RequireAdmin(userService), settingsHandler.UpdateSettings)
+		}
+
+		// AI 终端（PTY over WebSocket）：root shell，仅管理员可用
+		terminal := v1.Group("/terminal")
+		{
+			terminal.GET("/ws", middleware.RequireAdmin(userService), terminalHandler.HandleWS)
 		}
 	}
 

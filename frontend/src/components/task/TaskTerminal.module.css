@@ -1,0 +1,55 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: min(62vh, 640px);
+  background: #1e1e1e;
+  border-radius: var(--semi-border-radius-medium, 6px);
+  overflow: hidden;
+}
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #cfcfcf;
+  background: #2a2a2a;
+  border-bottom: 1px solid #000;
+  flex: none;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #888;
+}
+
+.dot.connecting {
+  background: #e6a23c;
+}
+
+.dot.open {
+  background: #2ecc71;
+}
+
+.dot.closed {
+  background: #999;
+}
+
+.statusText {
+  user-select: none;
+}
+
+/* xterm 挂载容器:占满剩余高度,FitAddon 依据此尺寸计算行列数 */
+.term {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 8px;
+}
+
+.term :global(.xterm),
+.term :global(.xterm-viewport) {
+  height: 100%;
+}
