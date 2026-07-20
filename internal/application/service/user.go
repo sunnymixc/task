@@ -118,6 +118,10 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
+	refreshToken, err := s.generateRefreshToken(user.ID, user.Email, tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
 
 	// Get memberships for response
 	memberships, err := s.getMemberships(ctx, user.ID)
@@ -132,6 +136,7 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 		ActiveTenant: tenant,
 		Memberships:  memberships,
 		Token:        token,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
@@ -170,6 +175,10 @@ func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*type
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
+	refreshToken, err := s.generateRefreshToken(user.ID, user.Email, tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
 
 	// Get memberships for response
 	memberships, err := s.getMemberships(ctx, user.ID)
@@ -184,13 +193,15 @@ func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*type
 		ActiveTenant: tenant,
 		Memberships:  memberships,
 		Token:        token,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
-// RefreshToken refreshes a JWT token
+// RefreshToken exchanges a valid refresh token for a new access token,
+// rotating the refresh token as well (sliding window).
 func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*types.LoginResponse, error) {
-	// Parse and validate the token
-	claims, err := s.parseToken(refreshToken)
+	// Parse and validate the refresh token
+	claims, err := util.ParseRefreshToken(refreshToken, s.config.Auth.JWTSecret)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
@@ -203,6 +214,9 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*t
 	if user == nil {
 		return nil, ErrUserNotFound
 	}
+	if !user.IsActive {
+		return nil, errors.New("user account is inactive")
+	}
 
 	// Get tenant
 	tenant, err := s.tenantRepo.GetTenantByID(ctx, claims.TenantID)
@@ -213,10 +227,14 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*t
 		return nil, errors.New("tenant not found")
 	}
 
-	// Generate new token
+	// Generate new token pair
 	token, err := s.generateToken(user.ID, user.Email, tenant.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+	newRefreshToken, err := s.generateRefreshToken(user.ID, user.Email, tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
 	// Get memberships
@@ -232,6 +250,7 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*t
 		ActiveTenant: tenant,
 		Memberships:  memberships,
 		Token:        token,
+		RefreshToken: newRefreshToken,
 	}, nil
 }
 
@@ -327,15 +346,16 @@ func (s *userService) GetCurrentTenant(ctx context.Context) (*types.Tenant, erro
 	return nil, errors.New("not implemented")
 }
 
-// generateToken generates a JWT token for a user
+// generateToken generates an access JWT for a user
 func (s *userService) generateToken(userID, email string, tenantID uint64) (string, error) {
 	lifetime := time.Duration(s.config.Auth.JWTExpiration) * time.Minute
 	return util.GenerateToken(s.config.Auth.JWTSecret, lifetime, userID, email, tenantID)
 }
 
-// parseToken parses and validates a JWT token
-func (s *userService) parseToken(tokenString string) (*util.JWTClaims, error) {
-	return util.ParseToken(tokenString, s.config.Auth.JWTSecret)
+// generateRefreshToken generates a long-lived refresh JWT for a user
+func (s *userService) generateRefreshToken(userID, email string, tenantID uint64) (string, error) {
+	lifetime := time.Duration(s.config.Auth.JWTRefreshExpiration) * time.Minute
+	return util.GenerateRefreshToken(s.config.Auth.JWTSecret, lifetime, userID, email, tenantID)
 }
 
 // getMemberships gets all memberships for a user

@@ -94,8 +94,10 @@ request.interceptors.response.use(
         if (response.data.success && response.data.token) {
           const newToken = response.data.token
           localStorage.setItem('task_token', newToken)
+          useAuthStore.setState({ token: newToken })
           if (response.data.refresh_token) {
             localStorage.setItem('task_refresh_token', response.data.refresh_token)
+            useAuthStore.setState({ refreshToken: response.data.refresh_token })
           }
 
           processQueue(null, newToken)

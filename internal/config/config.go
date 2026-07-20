@@ -47,8 +47,9 @@ type DatabaseConfig struct {
 
 // AuthConfig 认证配置
 type AuthConfig struct {
-	JWTSecret     string
-	JWTExpiration int // minutes
+	JWTSecret            string
+	JWTExpiration        int // access token 有效期(分钟)
+	JWTRefreshExpiration int // refresh token 有效期(分钟)
 }
 
 // Load 从环境变量加载配置
@@ -75,8 +76,9 @@ func Load() (*Config, error) {
 			ConnMaxLifetime: 1 * time.Hour,
 		},
 		Auth: &AuthConfig{
-			JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-this"),
-			JWTExpiration: getEnvAsInt("JWT_EXPIRATION", 1440), // 24 hours
+			JWTSecret:            getEnv("JWT_SECRET", "your-secret-key-change-this"),
+			JWTExpiration:        getEnvAsInt("JWT_EXPIRATION", 1440),          // 24 hours
+			JWTRefreshExpiration: getEnvAsInt("JWT_REFRESH_EXPIRATION", 10080), // 7 days
 		},
 		Terminal: &TerminalConfig{
 			Enabled: getEnvAsBool("TERMINAL_ENABLED", true),
