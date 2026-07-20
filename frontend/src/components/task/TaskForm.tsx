@@ -17,6 +17,7 @@ import { taskAPI } from '@/api/task'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import TaskLogList from './TaskLogList'
 import TaskTerminal, { type TaskTerminalHandle } from './TaskTerminal'
+import { hasSession } from '@/terminal/sessionRegistry'
 import styles from './TaskForm.module.css'
 
 export interface TaskFormHandle {
@@ -67,6 +68,9 @@ const executionStatusOptions: { value: TaskExecutionStatus; label: string }[] = 
   { value: 'completed', label: '已完成' }
 ]
 
+// 任务 id → 上次停留的 tab,跨组件重挂载保留(仅本次会话内存)
+const lastActiveTab = new Map<string, string>()
+
 // 编辑模式回填链接行;丢弃目标任务已被删除的行(原样提交会被后端拒绝)
 const linksFromTask = (task?: Task | null): LinkRow[] =>
   (task?.links ?? [])
@@ -84,8 +88,10 @@ const linksFromTask = (task?: Task | null): LinkRow[] =>
 export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Props) {
   const formApiRef = useRef<FormApi | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  // 基础 / AI终端 / 日志 tab
-  const [activeTab, setActiveTab] = useState('basic')
+  // 基础 / AI终端 / 日志 tab。
+  // 本组件会被外部操作(工作台保存后换 key、弹窗关闭重开)强制重挂载,
+  // 用模块级记忆恢复 tab 位置,使终端会话常驻的同时视觉上也"没被打断"
+  const [activeTab, setActiveTab] = useState(() => (task?.id && lastActiveTab.get(task.id)) || 'basic')
   const allLists = useTaskListStore((s) => s.allLists)
 
   // AI 终端为 root shell,仅管理员可见/可用(真正的访问控制在后端 RequireAdmin)
@@ -93,8 +99,8 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
   // useModal 渲染在组件树内,避免静态 Modal.confirm 在 React 19 下同步卸载 root 的告警
   const [modal, modalContextHolder] = Modal.useModal()
   const terminalRef = useRef<TaskTerminalHandle>(null)
-  // 首次激活终端 tab 才建连,之后切走不卸载(keepDOM,会话保持);本组件卸载时随之断开
-  const [terminalMounted, setTerminalMounted] = useState(false)
+  // 首次激活终端 tab 才建连;已有常驻会话时(本组件被重挂载)立即恢复显示
+  const [terminalMounted, setTerminalMounted] = useState(() => !!task?.id && hasSession(task.id))
 
   const [links, setLinks] = useState<LinkRow[]>(() => linksFromTask(task))
 
@@ -234,10 +240,11 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
 
   const handleTabChange = (key: string) => {
     setActiveTab(key)
+    if (task?.id) lastActiveTab.set(task.id, key)
     if (key === 'terminal') setTerminalMounted(true)
   }
 
-  // 终止:二次确认后通知后端结束终端会话(连接断开后面板显示"已断开")
+  // 终止:二次确认后通知后端结束终端会话(连接断开后面板显示"已断开",历史保留可重连)
   const confirmTerminate = () => {
     modal.confirm({
       title: '确认终止',
@@ -436,7 +443,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
           </div>
         </TabPane>
         {/* AI 终端:仅管理员且任务已保存时显示(语义同旧任务列表的 AI终端 按钮,后端 RequireAdmin 兜底)。
-            与日志面板不同,首次激活后保持挂载,切 tab 不中断会话 */}
+            终端实例常驻 sessionRegistry:切 tab、保存、关弹窗、面板重挂载都不中断会话 */}
         {isAdmin && task?.id && (
           <TabPane tab="AI终端" itemKey="terminal">
             <div className={styles.terminalBody}>
@@ -447,7 +454,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                       终止
                     </Button>
                   </div>
-                  <TaskTerminal ref={terminalRef} />
+                  <TaskTerminal sessionKey={task.id} ref={terminalRef} />
                 </>
               )}
             </div>
