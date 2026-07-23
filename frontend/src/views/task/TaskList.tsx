@@ -576,7 +576,7 @@ export default function TaskList() {
         visible={showCreateDialog}
         title="新建任务"
         centered
-        width="min(92vw, 760px)"
+        width="60vw"
         className="task-form-dialog"
         onCancel={() => setShowCreateDialog(false)}
         footer={dialogFooter(createFormRef, () => setShowCreateDialog(false))}
@@ -589,7 +589,7 @@ export default function TaskList() {
         visible={showEditDialog}
         title="编辑任务"
         centered
-        width="min(92vw, 760px)"
+        width="60vw"
         className="task-form-dialog"
         onCancel={closeEditDialog}
         footer={dialogFooter(editFormRef, closeEditDialog, editingTask)}

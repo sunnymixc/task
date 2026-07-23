@@ -7,22 +7,19 @@ const RIGHT_STORAGE_KEY = 'right-sidebar-collapsed'
 const RADIUS_KEY = 'task_radius'
 const WORKBENCH_WIDTH_KEY = 'task_workbench_width'
 
-// 右侧工作台栏宽度(px):拖拽调整,浏览器端缓存
+// 右侧工作台栏宽度(px):拖拽调整,浏览器端缓存;上限为当前窗口宽度
 export const WORKBENCH_WIDTH_MIN = 360
-export const WORKBENCH_WIDTH_MAX = 900
 export const WORKBENCH_WIDTH_DEFAULT = 520
 
 const clampWorkbenchWidth = (px: number): number =>
-  Math.min(WORKBENCH_WIDTH_MAX, Math.max(WORKBENCH_WIDTH_MIN, Math.round(px)))
+  Math.min(window.innerWidth, Math.max(WORKBENCH_WIDTH_MIN, Math.round(px)))
 
 const loadWorkbenchWidth = (): number => {
   const raw = localStorage.getItem(WORKBENCH_WIDTH_KEY)
   if (raw === null) return WORKBENCH_WIDTH_DEFAULT
   const value = Number(raw)
-  if (!Number.isFinite(value) || value < WORKBENCH_WIDTH_MIN || value > WORKBENCH_WIDTH_MAX) {
-    return WORKBENCH_WIDTH_DEFAULT
-  }
-  return Math.round(value)
+  if (!Number.isFinite(value)) return WORKBENCH_WIDTH_DEFAULT
+  return clampWorkbenchWidth(value)
 }
 
 // 圆角档位（px 值同时写入四个 --semi-border-radius-* 变量，全局统一）
