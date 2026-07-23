@@ -49,10 +49,10 @@
   padding: 0;
 }
 
-/* 窄窗口下保住各定宽列(合计 460)并给标题列留 ≥300,此时允许横向滚动;
+/* 窄窗口下保住各定宽列(合计 540)并给标题列留 ≥300,此时允许横向滚动;
    注意 semi-table 类就在 table 元素本身上,并需盖过 semi 的 .semi-table-fixed { min-width: 100% } */
 .tableContainer :global(table.semi-table) {
-  min-width: 760px;
+  min-width: 840px;
 }
 
 .tableContainer :global(.semi-table-body) {
@@ -166,4 +166,11 @@
 .emptyState p {
   margin: 16px 0;
   font-size: 14px;
+}
+
+/* 任务弹窗 footer:左侧删除按钮、右侧原有操作按钮组(按钮间距沿用 Semi 的 .semi-modal-footer .semi-button 规则) */
+.dialogFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }

@@ -54,7 +54,7 @@ export default function TaskWorkbench() {
         ) : (
           <>
             <IconInfoCircle style={{ fontSize: 40 }} />
-            <p>暂无任务，点击「工作台」添加</p>
+            <p>暂无任务，点击「工作」添加</p>
           </>
         )}
       </div>

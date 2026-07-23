@@ -50,6 +50,9 @@ export default function TaskList() {
   // 表体固定高度:容器剩余空间减去表头/分页条,窗口变化时自动调整
   const { containerRef, scrollY } = useTableScrollY<HTMLDivElement>()
 
+  // React 19 下不能用静态 Modal.confirm,需组件内 useModal + contextHolder
+  const [modal, modalContextHolder] = Modal.useModal()
+
   // fetch 参数显式传入,避免 setState 异步导致读到旧值
   const fetchTasks = (opts?: { page?: number; statuses?: TaskStatus[]; lists?: string[] }) => {
     const params: ListTasksRequest = {
@@ -148,10 +151,18 @@ export default function TaskList() {
   const createFormRef = useRef<TaskFormHandle>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   // "保存"(不关窗)后记住已入库的任务,后续保存/确定改走更新,避免重复建单
+  // ref 供提交逻辑同步读写;createdTask state 仅供 footer 感知"已入库"以显示删除按钮
   const createdTaskRef = useRef<Task | null>(null)
+  const [createdTask, setCreatedTask] = useState<Task | null>(null)
   const openCreateDialog = () => {
     createdTaskRef.current = null
+    setCreatedTask(null)
     setShowCreateDialog(true)
+  }
+  const closeCreateDialog = () => {
+    setShowCreateDialog(false)
+    createdTaskRef.current = null
+    setCreatedTask(null)
   }
 
   // Handle create task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
@@ -162,10 +173,10 @@ export default function TaskList() {
       : await store.createTask(data as CreateTaskRequest)
     if (!saved) return
     createdTaskRef.current = saved
+    setCreatedTask(saved)
     fetchTasks()
     if (!keepOpen) {
-      setShowCreateDialog(false)
-      createdTaskRef.current = null
+      closeCreateDialog()
     }
   }
 
@@ -390,8 +401,8 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // small 尺寸按钮:拷贝/复制/编辑/工作台,在 170px 内自动换行
-      width: 170,
+      // small 尺寸按钮:拷贝/复制/编辑/工作,260px 内单行放下(需 ≥252px:4×52 按钮 + 3×4 间距 + 2×16 内边距)
+      width: 260,
       render: (_: unknown, row: Task) => (
         <Space spacing={4} wrap>
           <Button size="small" onClick={() => handleCopyTask(row)}>
@@ -404,31 +415,60 @@ export default function TaskList() {
             编辑
           </Button>
           <Button size="small" onClick={() => useWorkbenchStore.getState().addTask(row)}>
-            工作台
+            工作
           </Button>
         </Space>
       )
     }
   ]
 
+  // 删除弹窗中的任务:二次确认后删除并关闭弹窗(成功/失败 Toast 由 store 的 deleteTask 负责)
+  const handleDeleteTask = (task: Task, onClose: () => void) => {
+    modal.confirm({
+      title: '确认删除',
+      content: `确定要删除任务 "${task.title}" 吗？`,
+      okText: '删除',
+      okButtonProps: { type: 'danger' },
+      cancelText: '取消',
+      onOk: async () => {
+        const success = await useTaskStore.getState().deleteTask(task.id)
+        if (success) {
+          onClose()
+          fetchTasks()
+        }
+      }
+    })
+  }
+
+  // footer 左右分布:左侧删除(仅已入库任务:编辑弹窗/新建弹窗"保存"后),右侧为原有按钮组
   const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void, task?: Task | null) => (
-    <>
-      <Button onClick={onClose}>关闭</Button>
-      {task && (
-        <Button onClick={() => useWorkbenchStore.getState().addTask(task)}>工作台</Button>
-      )}
-      <Button onClick={() => handleCopyForm(formRef)}>拷贝</Button>
-      <Button type="primary" onClick={() => formRef.current?.save()}>
-        保存
-      </Button>
-      <Button theme="solid" type="primary" onClick={() => formRef.current?.submit()}>
-        确定
-      </Button>
-    </>
+    <div className={styles.dialogFooter}>
+      <div>
+        {task && (
+          <Button type="danger" style={{ marginLeft: 0 }} onClick={() => handleDeleteTask(task, onClose)}>
+            删除
+          </Button>
+        )}
+      </div>
+      <div>
+        <Button onClick={onClose}>关闭</Button>
+        {task && (
+          <Button onClick={() => useWorkbenchStore.getState().addTask(task)}>工作</Button>
+        )}
+        <Button onClick={() => handleCopyForm(formRef)}>拷贝</Button>
+        <Button type="primary" onClick={() => formRef.current?.save()}>
+          保存
+        </Button>
+        <Button theme="solid" type="primary" onClick={() => formRef.current?.submit()}>
+          确定
+        </Button>
+      </div>
+    </div>
   )
 
   return (
     <div className={styles.container}>
+      {modalContextHolder}
       {/* Header */}
       <div className={styles.pageHeader}>
         <div className={styles.title}>{pageTitle}</div>
@@ -517,8 +557,8 @@ export default function TaskList() {
         centered
         width="60vw"
         className="task-form-dialog"
-        onCancel={() => setShowCreateDialog(false)}
-        footer={dialogFooter(createFormRef, () => setShowCreateDialog(false))}
+        onCancel={closeCreateDialog}
+        footer={dialogFooter(createFormRef, closeCreateDialog, createdTask)}
       >
         <TaskForm ref={createFormRef} defaultTaskListId={taskListId} onSubmit={handleCreateTask} />
       </Modal>
