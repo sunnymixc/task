@@ -16,6 +16,8 @@ type TaskList struct {
 	Title string `json:"title" gorm:"type:varchar(255);not null"`
 	// Description of the task list
 	Description string `json:"description" gorm:"type:text"`
+	// 项目路径：任务的 AI 终端初始化时默认进入该目录，为空时进入主目录 ~
+	ProjectPath string `json:"project_path" gorm:"type:varchar(1024);not null;default:''"`
 	// Whether this is the tenant's default list (不可删除)
 	IsDefault bool `json:"is_default" gorm:"not null;default:false"`
 	// 序号（1-10000000），列表按序号升序排列；默认清单恒排最先，不参与序号排序
@@ -44,6 +46,7 @@ func (TaskList) TableName() string {
 type CreateTaskListRequest struct {
 	Title       string `json:"title" binding:"required,min=1,max=255"`
 	Description string `json:"description" binding:"max=5000"`
+	ProjectPath string `json:"project_path" binding:"max=1024"`
 	// 序号，0 表示未提供，自动取当前租户最大序号+1
 	SortOrder int `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
@@ -52,6 +55,7 @@ type CreateTaskListRequest struct {
 type UpdateTaskListRequest struct {
 	Title       *string `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string `json:"description" binding:"omitempty,max=5000"`
+	ProjectPath *string `json:"project_path" binding:"omitempty,max=1024"`
 	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
 
@@ -69,6 +73,7 @@ type TaskListDetailResponse struct {
 	TenantID    uint64    `json:"tenant_id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
+	ProjectPath string    `json:"project_path"`
 	IsDefault   bool      `json:"is_default"`
 	SortOrder   int       `json:"sort_order"`
 	CreatorID   string    `json:"creator_id"`
@@ -81,9 +86,10 @@ type TaskListDetailResponse struct {
 
 // TaskListInfo represents a simplified task list info (embedded in task responses)
 type TaskListInfo struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	IsDefault bool   `json:"is_default"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	IsDefault   bool   `json:"is_default"`
+	ProjectPath string `json:"project_path"`
 }
 
 // ToResponse converts a TaskList to TaskListDetailResponse
@@ -93,6 +99,7 @@ func (l *TaskList) ToResponse() *TaskListDetailResponse {
 		TenantID:    l.TenantID,
 		Title:       l.Title,
 		Description: l.Description,
+		ProjectPath: l.ProjectPath,
 		IsDefault:   l.IsDefault,
 		SortOrder:   l.SortOrder,
 		CreatorID:   l.CreatorID,

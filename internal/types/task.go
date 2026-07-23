@@ -268,9 +268,10 @@ func (t *Task) ToResponse() *TaskResponse {
 
 	if t.TaskList != nil {
 		resp.TaskList = &TaskListInfo{
-			ID:        t.TaskList.ID,
-			Title:     t.TaskList.Title,
-			IsDefault: t.TaskList.IsDefault,
+			ID:          t.TaskList.ID,
+			Title:       t.TaskList.Title,
+			IsDefault:   t.TaskList.IsDefault,
+			ProjectPath: t.TaskList.ProjectPath,
 		}
 	}
 

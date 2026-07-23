@@ -20,6 +20,7 @@ export default function TaskListForm({ list, onSubmit, ref }: Props) {
   const initValues = {
     title: list?.title ?? '',
     description: list?.description ?? '',
+    project_path: list?.project_path ?? '',
     sort_order: list?.sort_order ?? undefined
   }
 
@@ -35,6 +36,8 @@ export default function TaskListForm({ list, onSubmit, ref }: Props) {
     onSubmit({
       title: values.title,
       description: values.description || undefined,
+      // 始终带上该键(空串而非 undefined),使清空路径也能提交生效
+      project_path: (values.project_path ?? '').trim(),
       sort_order: values.sort_order ?? undefined
     })
   }
@@ -75,6 +78,14 @@ export default function TaskListForm({ list, onSubmit, ref }: Props) {
             message: '序号应为1-10000000的整数'
           }
         ]}
+      />
+
+      <Form.Input
+        field="project_path"
+        label="项目路径"
+        placeholder="/path/to/project(留空则终端进入主目录 ~)"
+        maxLength={1024}
+        rules={[{ max: 1024, message: '项目路径最多1024个字符' }]}
       />
 
       <Form.TextArea

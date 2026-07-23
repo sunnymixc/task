@@ -22,17 +22,23 @@ export interface TaskTerminalHandle {
 interface Props {
   // 会话标识,当前为 task.id:每个任务一个独立的常驻终端会话
   sessionKey: string
+  // 初始工作目录(所属清单的项目路径,空路径时传 '~')
+  cwd?: string
   ref?: Ref<TaskTerminalHandle>
 }
 
 // 终端本体(xterm + WebSocket + DOM 节点)常驻在 sessionRegistry 中,本组件只负责:
 // 挂载时把常驻 DOM 搬进来、卸载时搬回去,以及渲染状态栏。
-export default function TaskTerminal({ sessionKey, ref }: Props) {
+export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   // 稳定的实例标识,用于向注册表声明 host 的所有权
   const ownerRef = useRef({})
 
-  const subscribe = useCallback((cb: () => void) => subscribeSession(sessionKey, cb), [sessionKey])
+  // subscribe 可能是会话的创建者(先于挂载 effect 执行),cwd 必须在此传入
+  const subscribe = useCallback(
+    (cb: () => void) => subscribeSession(sessionKey, cb, cwd),
+    [sessionKey, cwd]
+  )
   // 快照形如 "open|3":连接状态 + 所有权序号,任一变化都触发重渲染
   const snapshot = useSyncExternalStore(subscribe, () => getSessionSnapshot(sessionKey))
   const state = snapshot.split('|')[0] as TermConnState
@@ -40,9 +46,9 @@ export default function TaskTerminal({ sessionKey, ref }: Props) {
 
   const attach = useCallback(() => {
     if (!containerRef.current) return
-    acquireSession(sessionKey)
-    mountSession(sessionKey, containerRef.current, ownerRef.current)
-  }, [sessionKey])
+    acquireSession(sessionKey, cwd)
+    mountSession(sessionKey, containerRef.current, ownerRef.current, cwd)
+  }, [sessionKey, cwd])
 
   useEffect(() => {
     const owner = ownerRef.current
@@ -71,7 +77,7 @@ export default function TaskTerminal({ sessionKey, ref }: Props) {
           {state === 'connecting' ? '连接中…' : state === 'open' ? '已连接 (root)' : '已断开'}
         </span>
         {state === 'closed' && (
-          <Button size="small" theme="borderless" onClick={() => reconnectSession(sessionKey)}>
+          <Button size="small" theme="borderless" onClick={() => reconnectSession(sessionKey, cwd)}>
             重连
           </Button>
         )}

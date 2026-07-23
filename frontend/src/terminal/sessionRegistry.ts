@@ -24,6 +24,8 @@ interface TerminalSession {
   host: HTMLDivElement
   ws: WebSocket | null
   state: TermConnState
+  // 初始工作目录(任务所属清单的项目路径,空路径时为 '~');连接与重连时以 ?cwd= 传给后端
+  cwd?: string
   // 当前占有 host 的组件实例标识(同一任务可能同时出现在工作台面板与编辑弹窗)
   owner: object | null
   // 所有权每变更一次自增,参与快照,使 useSyncExternalStore 能感知"被别处抢占"
@@ -56,7 +58,8 @@ const sendResize = (session: TerminalSession) => {
 const connect = (session: TerminalSession) => {
   const token = localStorage.getItem('task_token')
   const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${proto}://${window.location.host}/api/v1/terminal/ws`
+  const cwdQuery = session.cwd ? `?cwd=${encodeURIComponent(session.cwd)}` : ''
+  const url = `${proto}://${window.location.host}/api/v1/terminal/ws${cwdQuery}`
   const ws = token ? new WebSocket(url, [token]) : new WebSocket(url)
   ws.binaryType = 'arraybuffer'
   session.ws = ws
@@ -85,9 +88,13 @@ const connect = (session: TerminalSession) => {
 }
 
 // get-or-create:term 与 onData 只在首次创建时注册一次
-export function acquireSession(key: string): TerminalSession {
+// cwd 仅在显式传入(!== undefined)时更新已有会话,内部无 cwd 的调用不会覆盖已存值
+export function acquireSession(key: string, cwd?: string): TerminalSession {
   const existing = sessions.get(key)
-  if (existing) return existing
+  if (existing) {
+    if (cwd !== undefined) existing.cwd = cwd
+    return existing
+  }
 
   const term = new Terminal({
     cursorBlink: true,
@@ -111,6 +118,7 @@ export function acquireSession(key: string): TerminalSession {
     host,
     ws: null,
     state: 'connecting',
+    cwd,
     owner: null,
     ownerSeq: 0,
     listeners: new Set()
@@ -133,8 +141,8 @@ export function hasSession(key: string): boolean {
 }
 
 // 把常驻 host 节点搬进容器并接管所有权(后挂载者抢占,原持有者转为占位提示)
-export function mountSession(key: string, container: HTMLElement, owner: object) {
-  const session = acquireSession(key)
+export function mountSession(key: string, container: HTMLElement, owner: object, cwd?: string) {
+  const session = acquireSession(key, cwd)
   container.appendChild(session.host)
   if (session.owner !== owner) {
     session.owner = owner
@@ -179,8 +187,8 @@ export function fitSession(key: string) {
 }
 
 // 复用同一 term(保留历史滚动缓冲),重新拨 WS 建一个新 shell
-export function reconnectSession(key: string) {
-  const session = acquireSession(key)
+export function reconnectSession(key: string, cwd?: string) {
+  const session = acquireSession(key, cwd)
   if (session.ws) return
   session.term.write('\r\n\x1b[36m[正在重连…]\x1b[0m\r\n')
   connect(session)
@@ -227,8 +235,9 @@ export function destroyAllSessions() {
 }
 
 // useSyncExternalStore 订阅:状态或所有权变化时触发重渲染
-export function subscribeSession(key: string, cb: () => void) {
-  const session = acquireSession(key)
+// subscribe 先于挂载 effect 执行且可能是会话的创建者,因此必须带上 cwd,否则首连丢参
+export function subscribeSession(key: string, cb: () => void, cwd?: string) {
+  const session = acquireSession(key, cwd)
   session.listeners.add(cb)
   return () => {
     session.listeners.delete(cb)

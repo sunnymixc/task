@@ -457,7 +457,11 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                         终止
                       </Button>
                     </div>
-                    <TaskTerminal sessionKey={task.id} ref={terminalRef} />
+                    <TaskTerminal
+                      sessionKey={task.id}
+                      cwd={task.task_list?.project_path?.trim() || '~'}
+                      ref={terminalRef}
+                    />
                   </>
                 )}
               </div>

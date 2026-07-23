@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -57,6 +58,30 @@ func defaultShellFor(goos string) string {
 	return "bash"
 }
 
+// resolveWorkDir 决定 PTY 的初始工作目录，返回 (目录, 是否因目录无效回退主目录)。
+// cwdParam 为空（未传参）时沿用配置的 WorkDir（旧行为）；否则展开开头的 ~ 为主目录，
+// 目录有效则使用，不存在/无效则回退主目录 —— 对应「清单项目路径为空时进入 ~」的产品语义
+// （前端在路径为空时显式传 ~）。
+func resolveWorkDir(cwdParam, cfgWorkDir string) (string, bool) {
+	if cwdParam == "" {
+		return cfgWorkDir, false
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return cfgWorkDir, false
+	}
+	dir := cwdParam
+	if dir == "~" {
+		dir = home
+	} else if strings.HasPrefix(dir, "~/") {
+		dir = filepath.Join(home, dir[2:])
+	}
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
+		return dir, false
+	}
+	return home, true
+}
+
 // checkTerminalOrigin 收敛 WS 来源：同源、本地开发、以及可信生产域名。
 // CORS 的 Allow-Origin:* 不作用于 WebSocket，必须在此显式判断。
 func checkTerminalOrigin(r *http.Request) bool {
@@ -104,13 +129,16 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 	defer conn.Close()
 
 	shell := defaultShellFor(runtime.GOOS)
-	workDir := ""
+	cfgWorkDir := ""
 	if h.cfg.Terminal != nil {
 		if h.cfg.Terminal.Shell != "" {
 			shell = h.cfg.Terminal.Shell
 		}
-		workDir = h.cfg.Terminal.WorkDir
+		cfgWorkDir = h.cfg.Terminal.WorkDir
 	}
+	// cwd 由前端传入（任务所属清单的项目路径，空则 ~）；优先于配置的 WorkDir
+	cwdParam := c.Query("cwd")
+	workDir, cwdFellBack := resolveWorkDir(cwdParam, cfgWorkDir)
 
 	// pty.Start 会为子进程设置 Setsid+Setctty（成为会话/进程组首进程），
 	// 因此后续可用 Kill(-pid) 回收整组。WorkDir 为空时继承服务器进程的 cwd（项目根目录）。
@@ -129,7 +157,10 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 
 	userID := c.GetString("user_id")
 	pid := cmd.Process.Pid
-	log.Printf("[terminal] session started user=%s pid=%d shell=%s", userID, pid, shell)
+	log.Printf("[terminal] session started user=%s pid=%d shell=%s workdir=%q", userID, pid, shell, workDir)
+	if cwdFellBack {
+		_ = conn.WriteMessage(websocket.BinaryMessage, []byte("\x1b[33m[项目路径 "+cwdParam+" 不存在，已进入主目录]\x1b[0m\r\n"))
+	}
 
 	// 统一收尾：杀掉整个进程组、关闭 pty、关闭连接。任一方向出错都触发，且只执行一次。
 	var closeOnce sync.Once

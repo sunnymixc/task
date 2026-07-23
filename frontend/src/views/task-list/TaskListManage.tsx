@@ -148,6 +148,12 @@ export default function TaskListManage() {
       render: (v: string) => <span className={styles.listDesc}>{v || '-'}</span>
     },
     {
+      title: '项目路径',
+      dataIndex: 'project_path',
+      width: 240,
+      render: (v: string) => <span className={styles.listPath}>{v || '-'}</span>
+    },
+    {
       title: '创建者',
       dataIndex: 'creator',
       width: 120,
