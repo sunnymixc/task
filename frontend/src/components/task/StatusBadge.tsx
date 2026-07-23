@@ -2,7 +2,7 @@ import { Tag } from '@douyinfe/semi-ui-19'
 import type { TagColor } from '@douyinfe/semi-ui-19/lib/es/tag'
 import type { TaskStatus } from '@/types'
 
-const statusConfig: Record<TaskStatus, { label: string; color: TagColor }> = {
+export const statusConfig: Record<TaskStatus, { label: string; color: TagColor }> = {
   draft: { label: '草稿', color: 'grey' },
   pending: { label: '待执行', color: 'orange' },
   executing: { label: '执行中', color: 'blue' },

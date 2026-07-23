@@ -12,10 +12,7 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
 import { useWorkbenchStore } from '@/stores/workbench'
-import StatusBadge from '@/components/task/StatusBadge'
-import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge'
-import PriorityBadge from '@/components/task/PriorityBadge'
-import StatusActions, { hasStatusActions } from '@/components/task/StatusActions'
+import StatusSelect from '@/components/task/StatusSelect'
 import TaskLinkList from '@/components/task/TaskLinkList'
 import styles from './TaskList.module.css'
 
@@ -385,31 +382,18 @@ export default function TaskList() {
     {
       title: '任务状态',
       dataIndex: 'status',
-      width: 100,
-      render: (_: unknown, row: Task) => <StatusBadge status={row.status} />
-    },
-    {
-      title: '执行状态',
-      dataIndex: 'execution_status',
-      width: 100,
-      render: (_: unknown, row: Task) => <ExecutionStatusBadge status={row.execution_status} />
-    },
-    {
-      title: '优先级',
-      dataIndex: 'priority',
-      width: 100,
-      render: (_: unknown, row: Task) => <PriorityBadge priority={row.priority} />
+      width: 120,
+      render: (_: unknown, row: Task) => (
+        <StatusSelect status={row.status} onChange={(status) => handleStatusUpdate(row.id, status)} />
+      )
     },
     {
       title: '操作',
       dataIndex: 'action',
-      // small 尺寸按钮,含状态操作 + 拷贝/复制/编辑/工作台,在 200px 内自动换行
-      width: 200,
+      // small 尺寸按钮:拷贝/复制/编辑/工作台,在 170px 内自动换行
+      width: 170,
       render: (_: unknown, row: Task) => (
         <Space spacing={4} wrap>
-          {hasStatusActions(row.status) && (
-            <StatusActions task={row} size="small" onStatusChange={(status) => handleStatusUpdate(row.id, status)} />
-          )}
           <Button size="small" onClick={() => handleCopyTask(row)}>
             拷贝
           </Button>

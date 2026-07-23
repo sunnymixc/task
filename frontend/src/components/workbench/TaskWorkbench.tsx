@@ -5,7 +5,7 @@ import { useWorkbenchStore } from '@/stores/workbench'
 import { useTaskStore } from '@/stores/task'
 import type { Task, UpdateTaskRequest } from '@/types'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
-import StatusActions, { hasStatusActions } from '@/components/task/StatusActions'
+import StatusSelect from '@/components/task/StatusSelect'
 import { copyToClipboard } from '@/utils/clipboard'
 import styles from './TaskWorkbench.module.css'
 
@@ -77,13 +77,10 @@ export default function TaskWorkbench() {
               {task.title}
             </span>
             <Space spacing={4} wrap className={styles.panelActions}>
-              {hasStatusActions(task.status) && (
-                <StatusActions
-                  task={task}
-                  size="small"
-                  onStatusChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
-                />
-              )}
+              <StatusSelect
+                status={task.status}
+                onChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
+              />
               <Button size="small" onClick={() => handleCopyTask(task)}>
                 拷贝
               </Button>
