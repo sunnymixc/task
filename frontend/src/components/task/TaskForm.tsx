@@ -88,7 +88,7 @@ const linksFromTask = (task?: Task | null): LinkRow[] =>
 export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Props) {
   const formApiRef = useRef<FormApi | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  // 基础 / AI终端 / 日志 tab。
+  // 基础 / 详情 / AI终端 / 日志 tab。
   // 本组件会被外部操作(工作台保存后换 key、弹窗关闭重开)强制重挂载,
   // 用模块级记忆恢复 tab 位置,使终端会话常驻的同时视觉上也"没被打断"
   const [activeTab, setActiveTab] = useState(() => (task?.id && lastActiveTab.get(task.id)) || 'basic')
@@ -271,17 +271,18 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
   return (
     <div ref={containerRef}>
       {modalContextHolder}
-      <Tabs tabPosition="left" activeKey={activeTab} onChange={handleTabChange}>
-        {/* Semi Tabs 默认 keepDOM:切 tab 不销毁表单,未保存输入与命令式句柄均保持有效 */}
-        <TabPane tab="基础" itemKey="basic">
-          <div className={styles.tabBody}>
-            <Form
-              getFormApi={(api) => (formApiRef.current = api)}
-              initValues={initValues}
-              labelPosition="left"
-              labelWidth={80}
-              onSubmit={() => handleSubmit()}
-            >
+      {/* Form 包裹整个 Tabs:基础/详情两个 tab 的字段共用同一表单与 formApi */}
+      <Form
+        getFormApi={(api) => (formApiRef.current = api)}
+        initValues={initValues}
+        labelPosition="left"
+        labelWidth={80}
+        onSubmit={() => handleSubmit()}
+      >
+        <Tabs tabPosition="left" activeKey={activeTab} onChange={handleTabChange}>
+          {/* Semi Tabs 默认 keepDOM:切 tab 不销毁表单,未保存输入与命令式句柄均保持有效 */}
+          <TabPane tab="基础" itemKey="basic">
+            <div className={styles.tabBody}>
               <Form.Input
                 field="title"
                 label="标题"
@@ -302,13 +303,6 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 rules={[{ max: 5000, message: '描述最多5000个字符' }]}
               />
 
-              <Form.TextArea
-                field="result"
-                label="结果"
-                placeholder="请输入任务结果"
-                autosize={{ minRows: 1, maxRows: 14 }}
-              />
-
               <Form.Select
                 field="task_list_id"
                 label="任务清单"
@@ -322,23 +316,6 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 <Radio value="medium">中</Radio>
                 <Radio value="low">低</Radio>
               </Form.RadioGroup>
-
-              <Form.InputNumber
-                field="sort_order"
-                label="序号"
-                min={1}
-                max={100000000}
-                placeholder="留空默认排在最前"
-                style={{ width: '100%' }}
-                rules={[
-                  {
-                    validator: (_rule: unknown, val: unknown) =>
-                      val === undefined || val === null || val === '' ||
-                      (Number.isInteger(val) && (val as number) >= 1 && (val as number) <= 100000000),
-                    message: '序号应为1-100000000的整数'
-                  }
-                ]}
-              />
 
               <Form.RadioGroup field="status" label="任务状态">
                 {statusSteps.map((step) => (
@@ -355,35 +332,6 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                   </Radio>
                 ))}
               </Form.RadioGroup>
-
-              <Form.TextArea
-                field="execution_plan"
-                label="执行计划"
-                placeholder="请输入执行计划"
-                autosize={{ minRows: 1, maxRows: 14 }}
-              />
-
-              <Form.TextArea
-                field="execution_log"
-                label="执行日志"
-                placeholder="请输入执行日志"
-                autosize={{ minRows: 1, maxRows: 14 }}
-              />
-
-              <Form.TextArea
-                field="execution_result"
-                label="执行结果"
-                placeholder="请输入执行结果"
-                autosize={{ minRows: 1, maxRows: 14 }}
-              />
-
-              <Form.DatePicker
-                field="due_date"
-                label="截止日期"
-                placeholder="请选择截止日期"
-                showClear
-                style={{ width: '100%' }}
-              />
 
               <Form.Slot label="链接">
                 <div className={styles.linkRows}>
@@ -439,39 +387,95 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                   </Button>
                 </div>
               </Form.Slot>
-            </Form>
-          </div>
-        </TabPane>
-        {/* AI 终端:仅管理员且任务已保存时显示(语义同旧任务列表的 AI终端 按钮,后端 RequireAdmin 兜底)。
-            终端实例常驻 sessionRegistry:切 tab、保存、关弹窗、面板重挂载都不中断会话 */}
-        {isAdmin && task?.id && (
-          <TabPane tab="AI终端" itemKey="terminal">
-            <div className={styles.terminalBody}>
-              {terminalMounted && (
-                <>
-                  <div className={styles.terminalActions}>
-                    <Button type="danger" size="small" onClick={confirmTerminate}>
-                      终止
-                    </Button>
-                  </div>
-                  <TaskTerminal sessionKey={task.id} ref={terminalRef} />
-                </>
-              )}
             </div>
           </TabPane>
-        )}
-        {/* 日志面板每次激活重新挂载(条件渲染),保证保存后数据新鲜 */}
-        <TabPane tab="日志" itemKey="logs">
-          <div className={styles.tabBody}>
-            {activeTab === 'logs' &&
-              (task?.id ? (
-                <TaskLogList taskId={task.id} />
-              ) : (
-                <div className={styles.logPlaceholder}>任务创建后可查看变更日志</div>
-              ))}
-          </div>
-        </TabPane>
-      </Tabs>
+          <TabPane tab="详情" itemKey="detail">
+            <div className={styles.tabBody}>
+              <Form.TextArea
+                field="result"
+                label="结果"
+                placeholder="请输入任务结果"
+                autosize={{ minRows: 1, maxRows: 14 }}
+              />
+
+              <Form.InputNumber
+                field="sort_order"
+                label="序号"
+                min={1}
+                max={100000000}
+                placeholder="留空默认排在最前"
+                style={{ width: '100%' }}
+                rules={[
+                  {
+                    validator: (_rule: unknown, val: unknown) =>
+                      val === undefined || val === null || val === '' ||
+                      (Number.isInteger(val) && (val as number) >= 1 && (val as number) <= 100000000),
+                    message: '序号应为1-100000000的整数'
+                  }
+                ]}
+              />
+
+              <Form.TextArea
+                field="execution_plan"
+                label="执行计划"
+                placeholder="请输入执行计划"
+                autosize={{ minRows: 1, maxRows: 14 }}
+              />
+
+              <Form.TextArea
+                field="execution_log"
+                label="执行日志"
+                placeholder="请输入执行日志"
+                autosize={{ minRows: 1, maxRows: 14 }}
+              />
+
+              <Form.TextArea
+                field="execution_result"
+                label="执行结果"
+                placeholder="请输入执行结果"
+                autosize={{ minRows: 1, maxRows: 14 }}
+              />
+
+              <Form.DatePicker
+                field="due_date"
+                label="截止日期"
+                placeholder="请选择截止日期"
+                showClear
+                style={{ width: '100%' }}
+              />
+            </div>
+          </TabPane>
+          {/* AI 终端:仅管理员且任务已保存时显示(语义同旧任务列表的 AI终端 按钮,后端 RequireAdmin 兜底)。
+              终端实例常驻 sessionRegistry:切 tab、保存、关弹窗、面板重挂载都不中断会话 */}
+          {isAdmin && task?.id && (
+            <TabPane tab="AI终端" itemKey="terminal">
+              <div className={styles.terminalBody}>
+                {terminalMounted && (
+                  <>
+                    <div className={styles.terminalActions}>
+                      <Button type="danger" size="small" onClick={confirmTerminate}>
+                        终止
+                      </Button>
+                    </div>
+                    <TaskTerminal sessionKey={task.id} ref={terminalRef} />
+                  </>
+                )}
+              </div>
+            </TabPane>
+          )}
+          {/* 日志面板每次激活重新挂载(条件渲染),保证保存后数据新鲜 */}
+          <TabPane tab="日志" itemKey="logs">
+            <div className={styles.tabBody}>
+              {activeTab === 'logs' &&
+                (task?.id ? (
+                  <TaskLogList taskId={task.id} />
+                ) : (
+                  <div className={styles.logPlaceholder}>任务创建后可查看变更日志</div>
+                ))}
+            </div>
+          </TabPane>
+        </Tabs>
+      </Form>
     </div>
   )
 }
