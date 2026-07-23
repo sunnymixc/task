@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -42,6 +43,18 @@ type TerminalHandler struct {
 
 func NewTerminalHandler(cfg *config.Config) *TerminalHandler {
 	return &TerminalHandler{cfg: cfg}
+}
+
+// defaultShellFor 按服务器操作系统选择默认 shell。
+// macOS 默认 zsh —— oh-my-zsh 是 zsh 的配置框架,交互式 zsh 启动时经 ~/.zshrc 自动加载;
+// 找不到 zsh 时回退 bash。其余系统默认 bash。
+func defaultShellFor(goos string) string {
+	if goos == "darwin" {
+		if _, err := exec.LookPath("zsh"); err == nil {
+			return "zsh"
+		}
+	}
+	return "bash"
 }
 
 // checkTerminalOrigin 收敛 WS 来源：同源、本地开发、以及可信生产域名。
@@ -90,7 +103,7 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	shell := "bash"
+	shell := defaultShellFor(runtime.GOOS)
 	workDir := ""
 	if h.cfg.Terminal != nil {
 		if h.cfg.Terminal.Shell != "" {

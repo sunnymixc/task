@@ -20,7 +20,7 @@ type Config struct {
 // TerminalConfig AI 终端(Web PTY)配置
 type TerminalConfig struct {
 	Enabled bool   // 是否启用终端功能
-	Shell   string // 启动的 shell，默认 bash
+	Shell   string // 启动的 shell，空则按服务器 OS 自动选择(macOS→zsh,其余→bash)
 	WorkDir string // 会话初始工作目录，空则继承服务器进程 cwd(项目根目录)
 }
 
@@ -82,7 +82,7 @@ func Load() (*Config, error) {
 		},
 		Terminal: &TerminalConfig{
 			Enabled: getEnvAsBool("TERMINAL_ENABLED", true),
-			Shell:   getEnv("TERMINAL_SHELL", "bash"),
+			Shell:   getEnv("TERMINAL_SHELL", ""),
 			WorkDir: getEnv("TERMINAL_WORKDIR", ""),
 		},
 	}
