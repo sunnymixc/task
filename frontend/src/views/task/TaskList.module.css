@@ -85,9 +85,9 @@
 }
 
 /* 兜底：窄窗口下保住各列宽度，此时才允许出现横向滚动。
-   1830 = 各列固定宽合计（其余列 1410 + 标题列 420，操作列含 加入工作台 按钮） */
+   1740 = 各列固定宽合计（其余列 900 + 标题列 840，操作列含 加入工作台 按钮） */
 .tableContainer :global(.semi-table table) {
-  min-width: 1830px;
+  min-width: 1740px;
 }
 
 /* 行分隔线调浅:仅覆盖单元格下边框,不影响单元格内输入框等组件边框 */
@@ -111,6 +111,11 @@
   color: var(--semi-color-text-2);
   white-space: pre-line;
   word-break: break-word;
+}
+
+/* 链接块并入标题单元格,与上方标题/描述留间距 */
+.taskLinks {
+  margin-top: 4px;
 }
 
 /* 原地编辑入口:默认隐藏,悬停所在行或获得焦点时显示;不参与 pre-line 排版 */
@@ -147,11 +152,6 @@
 .inlineEditActions {
   display: flex;
   gap: 8px;
-}
-
-.creatorInfo {
-  font-size: 13px;
-  color: var(--semi-color-text-0);
 }
 
 .emptyState {

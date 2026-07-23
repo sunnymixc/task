@@ -27,15 +27,6 @@ const statusOptions = [
   { label: '已完成', value: 'completed' }
 ]
 
-// Format date(列宽有限,只显示日期)
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
-
 const PAGE_SIZE = 100
 
 export default function TaskList() {
@@ -387,11 +378,17 @@ export default function TaskList() {
           </div>
         </div>
       ) : null}
+
+      {!!row.links?.length && (
+        <div className={styles.taskLinks}>
+          <TaskLinkList links={row.links} />
+        </div>
+      )}
     </>
   )
 
   // Table columns
-  // 各列均为固定宽度,标题列取 420 避免宽屏下独占剩余空间;
+  // 各列均为固定宽度,标题列取 840 避免宽屏下独占剩余空间;
   // 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
   const columns: ColumnProps<Task>[] = [
     {
@@ -401,7 +398,7 @@ export default function TaskList() {
       ellipsis: true,
       render: (_: unknown, row: Task) => row.task_list?.title || '-'
     },
-    { title: '标题和描述', dataIndex: 'title', width: 420, render: (_: unknown, row: Task) => renderTitleCell(row) },
+    { title: '标题&描述&链接', dataIndex: 'title', width: 840, render: (_: unknown, row: Task) => renderTitleCell(row) },
     {
       title: '任务状态',
       dataIndex: 'status',
@@ -447,28 +444,7 @@ export default function TaskList() {
           </Button>
         </Space>
       )
-    },
-    {
-      title: '链接',
-      dataIndex: 'links',
-      width: 140,
-      render: (_: unknown, row: Task) => <TaskLinkList links={row.links} />
-    },
-    {
-      title: '截止时间',
-      dataIndex: 'due_date',
-      width: 110,
-      render: (v: string) => (v ? formatDate(v) : '-')
-    },
-    {
-      title: '创建者',
-      dataIndex: 'creator',
-      width: 90,
-      ellipsis: true,
-      render: (_: unknown, row: Task) => <span className={styles.creatorInfo}>{row.creator?.username || '-'}</span>
-    },
-    { title: '创建时间', dataIndex: 'created_at', width: 110, render: (v: string) => formatDate(v) },
-    { title: '更新时间', dataIndex: 'updated_at', width: 110, render: (v: string) => formatDate(v) }
+    }
   ]
 
   const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void, task?: Task | null) => (
