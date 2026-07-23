@@ -49,6 +49,12 @@
   padding: 0;
 }
 
+/* 窄窗口下保住各定宽列(合计 860)并给标题列留 ≥300,此时允许横向滚动;
+   注意 semi-table 类就在 table 元素本身上,并需盖过 semi 的 .semi-table-fixed { min-width: 100% } */
+.tableContainer :global(table.semi-table) {
+  min-width: 1160px;
+}
+
 .tableContainer :global(.semi-table-body) {
   scrollbar-width: thin;
   scrollbar-color: var(--app-gray-4) transparent;
@@ -82,12 +88,6 @@
 
 .tableContainer :global(.semi-table-thead > tr > th) {
   background: var(--app-bg-container);
-}
-
-/* 兜底：窄窗口下保住各列宽度，此时才允许出现横向滚动。
-   1740 = 各列固定宽合计（其余列 900 + 标题列 840，操作列含 加入工作台 按钮） */
-.tableContainer :global(.semi-table table) {
-  min-width: 1740px;
 }
 
 /* 行分隔线调浅:仅覆盖单元格下边框,不影响单元格内输入框等组件边框 */

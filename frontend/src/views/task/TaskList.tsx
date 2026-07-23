@@ -388,42 +388,43 @@ export default function TaskList() {
   )
 
   // Table columns
-  // 各列均为固定宽度,标题列取 840 避免宽屏下独占剩余空间;
-  // 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
+  // scroll.y 下 Semi 表格为 table-layout: fixed,列宽由 colgroup 决定,且 Chrome 会忽略
+  // 混合单位的 max()/calc(),因此定宽列直接给 px 保底;标题列不设宽度,吸收全部剩余空间。
+  // 窄窗口由 CSS 的 .semi-table table { min-width } 兜底出横向滚动(见 module.css)
   const columns: ColumnProps<Task>[] = [
     {
       title: '任务清单',
       dataIndex: 'task_list',
-      width: 110,
+      width: 160,
       ellipsis: true,
       render: (_: unknown, row: Task) => row.task_list?.title || '-'
     },
-    { title: '标题&描述&链接', dataIndex: 'title', width: 840, render: (_: unknown, row: Task) => renderTitleCell(row) },
+    { title: '标题&描述&链接', dataIndex: 'title', render: (_: unknown, row: Task) => renderTitleCell(row) },
     {
       title: '任务状态',
       dataIndex: 'status',
-      width: 90,
+      width: 100,
       render: (_: unknown, row: Task) => <StatusBadge status={row.status} />
     },
     {
       title: '执行状态',
       dataIndex: 'execution_status',
-      width: 90,
+      width: 100,
       render: (_: unknown, row: Task) => <ExecutionStatusBadge status={row.execution_status} />
     },
     {
       title: '优先级',
       dataIndex: 'priority',
-      width: 80,
+      width: 100,
       render: (_: unknown, row: Task) => <PriorityBadge priority={row.priority} />
     },
     {
       title: '操作',
       dataIndex: 'action',
       // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除
-      width: 530,
+      width: 400,
       render: (_: unknown, row: Task) => (
-        <Space spacing={8}>
+        <Space spacing={8} wrap>
           {hasStatusActions(row.status) && (
             <StatusActions task={row} onStatusChange={(status) => handleStatusUpdate(row.id, status)} />
           )}
