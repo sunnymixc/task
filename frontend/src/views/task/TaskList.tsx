@@ -401,15 +401,12 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // small 尺寸按钮:拷贝/复制/编辑/工作,260px 内单行放下(需 ≥252px:4×52 按钮 + 3×4 间距 + 2×16 内边距)
-      width: 260,
+      // small 尺寸按钮:拷贝/编辑/工作,200px 内单行放下(需 ≥196px:3×52 按钮 + 2×4 间距 + 2×16 内边距)
+      width: 200,
       render: (_: unknown, row: Task) => (
         <Space spacing={4} wrap>
           <Button size="small" onClick={() => handleCopyTask(row)}>
             拷贝
-          </Button>
-          <Button size="small" onClick={() => handleDuplicateTask(row)}>
-            复制
           </Button>
           <Button size="small" onClick={() => openEditDialog(row)}>
             编辑
@@ -440,14 +437,25 @@ export default function TaskList() {
     })
   }
 
-  // footer 左右分布:左侧删除(仅已入库任务:编辑弹窗/新建弹窗"保存"后),右侧为原有按钮组
+  // footer 左右分布:左侧复制/删除(仅已入库任务:编辑弹窗/新建弹窗"保存"后),右侧为原有按钮组
   const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void, task?: Task | null) => (
     <div className={styles.dialogFooter}>
       <div>
         {task && (
-          <Button type="danger" style={{ marginLeft: 0 }} onClick={() => handleDeleteTask(task, onClose)}>
-            删除
-          </Button>
+          <>
+            <Button
+              style={{ marginLeft: 0 }}
+              onClick={() => {
+                onClose()
+                handleDuplicateTask(task)
+              }}
+            >
+              复制
+            </Button>
+            <Button type="danger" onClick={() => handleDeleteTask(task, onClose)}>
+              删除
+            </Button>
+          </>
         )}
       </div>
       <div>

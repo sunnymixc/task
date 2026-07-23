@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
-import { Button, Space, Spin, Toast } from '@douyinfe/semi-ui-19'
-import { IconInfoCircle } from '@douyinfe/semi-icons'
+import { useEffect, useRef, useState } from 'react'
+import { Button, Space, Spin, Toast, Tooltip } from '@douyinfe/semi-ui-19'
+import { IconChevronDown, IconChevronUp, IconInfoCircle } from '@douyinfe/semi-icons'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useTaskStore } from '@/stores/task'
 import type { Task, UpdateTaskRequest } from '@/types'
@@ -18,9 +18,28 @@ export default function TaskWorkbench() {
   const panelRefs = useRef(new Map<string, HTMLDivElement>())
   const formRefs = useRef(new Map<string, TaskFormHandle>())
 
+  // 已折叠面板的任务 id;仅会话内有效(工作台任务来自服务端,折叠是轻量视图偏好,不持久化)
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+
+  const toggleCollapsed = (taskId: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
+  }
+
   // 加入任务后滚动到对应面板;延迟等待右栏 0.25s 展开动画结束后再测量位置
   useEffect(() => {
     if (!scrollTargetId) return
+    // 定位目标若处于折叠态则先展开,再滚动
+    setCollapsedIds((prev) => {
+      if (!prev.has(scrollTargetId)) return prev
+      const next = new Set(prev)
+      next.delete(scrollTargetId)
+      return next
+    })
     const timer = setTimeout(() => {
       panelRefs.current.get(scrollTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       // 滚动后清空目标,同一任务再次加入时 null → id 的变化能再次触发本效果
@@ -63,49 +82,58 @@ export default function TaskWorkbench() {
 
   return (
     <div className={styles.stack}>
-      {tasks.map((task) => (
-        <div
-          key={task.id}
-          className={styles.panel}
-          ref={(el) => {
-            if (el) panelRefs.current.set(task.id, el)
-            else panelRefs.current.delete(task.id)
-          }}
-        >
-          <div className={styles.panelHeader}>
-            <span className={styles.panelTitle} title={task.title}>
-              {task.title}
-            </span>
-            <Space spacing={4} wrap className={styles.panelActions}>
-              <StatusSelect
-                status={task.status}
-                onChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
+      {tasks.map((task) => {
+        const collapsed = collapsedIds.has(task.id)
+        return (
+          <div
+            key={task.id}
+            className={styles.panel}
+            ref={(el) => {
+              if (el) panelRefs.current.set(task.id, el)
+              else panelRefs.current.delete(task.id)
+            }}
+          >
+            <div className={collapsed ? `${styles.panelHeader} ${styles.panelHeaderCollapsed}` : styles.panelHeader}>
+              <span className={styles.panelTitle} title={task.title}>
+                {task.title}
+              </span>
+              <Space spacing={4} wrap className={styles.panelActions}>
+                <StatusSelect
+                  status={task.status}
+                  onChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
+                />
+                <Button size="small" onClick={() => handleCopyTask(task)}>
+                  拷贝
+                </Button>
+                <Button size="small" type="primary" onClick={() => formRefs.current.get(task.id)?.save()}>
+                  保存
+                </Button>
+                <Button size="small" onClick={() => useWorkbenchStore.getState().removeTask(task.id)}>
+                  移除
+                </Button>
+                <Tooltip content={collapsed ? '展开' : '折叠'}>
+                  <div className={styles.panelToggle} onClick={() => toggleCollapsed(task.id)}>
+                    {collapsed ? <IconChevronDown /> : <IconChevronUp />}
+                  </div>
+                </Tooltip>
+              </Space>
+            </div>
+            {/* 折叠时仅隐藏不卸载,保留 TaskForm 未保存的编辑 */}
+            <div className={collapsed ? `${styles.panelBody} ${styles.panelBodyCollapsed}` : styles.panelBody}>
+              {/* key 含 updated_at:任务在他处保存后面板重挂载取最新数据(未保存的面板编辑随之丢弃,预期行为) */}
+              <TaskForm
+                key={`${task.id}:${task.updated_at}`}
+                ref={(h) => {
+                  if (h) formRefs.current.set(task.id, h)
+                  else formRefs.current.delete(task.id)
+                }}
+                task={task}
+                onSubmit={(data) => handleSave(task.id, data as UpdateTaskRequest)}
               />
-              <Button size="small" onClick={() => handleCopyTask(task)}>
-                拷贝
-              </Button>
-              <Button size="small" type="primary" onClick={() => formRefs.current.get(task.id)?.save()}>
-                保存
-              </Button>
-              <Button size="small" onClick={() => useWorkbenchStore.getState().removeTask(task.id)}>
-                移除
-              </Button>
-            </Space>
+            </div>
           </div>
-          <div className={styles.panelBody}>
-            {/* key 含 updated_at:任务在他处保存后面板重挂载取最新数据(未保存的面板编辑随之丢弃,预期行为) */}
-            <TaskForm
-              key={`${task.id}:${task.updated_at}`}
-              ref={(h) => {
-                if (h) formRefs.current.set(task.id, h)
-                else formRefs.current.delete(task.id)
-              }}
-              task={task}
-              onSubmit={(data) => handleSave(task.id, data as UpdateTaskRequest)}
-            />
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

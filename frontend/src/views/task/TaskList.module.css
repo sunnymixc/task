@@ -49,10 +49,10 @@
   padding: 0;
 }
 
-/* 窄窗口下保住各定宽列(合计 540)并给标题列留 ≥300,此时允许横向滚动;
+/* 窄窗口下保住各定宽列(合计 480)并给标题列留 ≥300,此时允许横向滚动;
    注意 semi-table 类就在 table 元素本身上,并需盖过 semi 的 .semi-table-fixed { min-width: 100% } */
 .tableContainer :global(table.semi-table) {
-  min-width: 840px;
+  min-width: 780px;
 }
 
 .tableContainer :global(.semi-table-body) {

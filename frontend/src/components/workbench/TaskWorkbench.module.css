@@ -44,9 +44,31 @@
   border-bottom: 1px solid var(--app-gray-2);
 }
 
+/* 折叠态:面板只剩标题栏,去掉下边框避免与面板边框叠成双线 */
+.panelHeaderCollapsed {
+  border-bottom: none;
+}
+
 /* header 操作按钮组:窄面板(最窄 360px)下允许换行,换行后各行保持右对齐 */
 .panelActions {
   justify-content: flex-end;
+}
+
+/* 标题栏最右侧的折叠/展开开关,形态与右栏 collapseToggle 一致 */
+.panelToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--semi-border-radius-medium);
+  cursor: pointer;
+  color: var(--semi-color-text-2);
+  transition: background-color 0.2s ease;
+}
+
+.panelToggle:hover {
+  background: var(--app-bg-container-hover);
 }
 
 .panelTitle {
@@ -62,6 +84,10 @@
 
 .panelBody {
   padding: 4px 12px 12px;
+}
+
+.panelBodyCollapsed {
+  display: none;
 }
 
 .emptyState {
