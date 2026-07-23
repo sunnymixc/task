@@ -364,7 +364,7 @@ export default function TaskList() {
           <TextArea
             value={inlineDraft}
             maxLength={5000}
-            autosize={{ minRows: 2, maxRows: 8 }}
+            autosize={{ minRows: 2 }}
             autoFocus
             onChange={setInlineDraft}
           />
@@ -421,26 +421,26 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除
-      width: 400,
+      // small 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除,在 200px 内自动换行
+      width: 200,
       render: (_: unknown, row: Task) => (
-        <Space spacing={8} wrap>
+        <Space spacing={4} wrap>
           {hasStatusActions(row.status) && (
-            <StatusActions task={row} onStatusChange={(status) => handleStatusUpdate(row.id, status)} />
+            <StatusActions task={row} size="small" onStatusChange={(status) => handleStatusUpdate(row.id, status)} />
           )}
-          <Button onClick={() => handleCopyTask(row)}>
+          <Button size="small" onClick={() => handleCopyTask(row)}>
             拷贝
           </Button>
-          <Button onClick={() => handleDuplicateTask(row)}>
+          <Button size="small" onClick={() => handleDuplicateTask(row)}>
             复制
           </Button>
-          <Button onClick={() => openEditDialog(row)}>
+          <Button size="small" onClick={() => openEditDialog(row)}>
             编辑
           </Button>
-          <Button onClick={() => useWorkbenchStore.getState().addTask(row)}>
+          <Button size="small" onClick={() => useWorkbenchStore.getState().addTask(row)}>
             加入工作台
           </Button>
-          <Button onClick={() => handleDeleteTask(row)}>
+          <Button size="small" onClick={() => handleDeleteTask(row)}>
             删除
           </Button>
         </Space>

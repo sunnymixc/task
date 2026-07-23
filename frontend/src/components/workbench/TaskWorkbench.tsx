@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
-import { Button, Space, Spin } from '@douyinfe/semi-ui-19'
+import { Button, Modal, Space, Spin, Toast } from '@douyinfe/semi-ui-19'
 import { IconInfoCircle } from '@douyinfe/semi-icons'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useTaskStore } from '@/stores/task'
-import type { UpdateTaskRequest } from '@/types'
+import type { Task, UpdateTaskRequest } from '@/types'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
+import StatusActions, { hasStatusActions } from '@/components/task/StatusActions'
+import { copyToClipboard } from '@/utils/clipboard'
 import styles from './TaskWorkbench.module.css'
 
 // 任务工作台:垂直平铺的任务面板列表,每个面板复用 TaskForm(任务窗口组件)。
@@ -15,6 +17,7 @@ export default function TaskWorkbench() {
 
   const panelRefs = useRef(new Map<string, HTMLDivElement>())
   const formRefs = useRef(new Map<string, TaskFormHandle>())
+  const [modal, contextHolder] = Modal.useModal()
 
   // 加入任务后滚动到对应面板;延迟等待右栏 0.25s 展开动画结束后再测量位置
   useEffect(() => {
@@ -31,6 +34,30 @@ export default function TaskWorkbench() {
   // 并经 task.ts 的钩子回写本 store 副本(updated_at 变化触发面板重挂载取新值)
   const handleSave = (id: string, data: UpdateTaskRequest) => {
     void useTaskStore.getState().updateTask(id, data)
+  }
+
+  // 与任务列表操作列一致的拷贝逻辑:复制已保存的标题+描述(两个换行分隔)
+  const handleCopyTask = async (task: Task) => {
+    const text = task.description ? `${task.title}\n\n${task.description}` : task.title
+    try {
+      await copyToClipboard(text)
+      Toast.success('已复制到剪贴板')
+    } catch {
+      Toast.error('复制失败')
+    }
+  }
+
+  // 删除任务本身(非移除出工作台);task store 会回收面板副本与终端会话
+  const handleDeleteTask = (task: Task) => {
+    modal.confirm({
+      title: '确认删除',
+      content: `确定要删除任务 "${task.title}" 吗？`,
+      okText: '确定',
+      cancelText: '取消',
+      onOk: async () => {
+        await useTaskStore.getState().deleteTask(task.id)
+      }
+    })
   }
 
   if (!tasks.length) {
@@ -50,6 +77,7 @@ export default function TaskWorkbench() {
 
   return (
     <div className={styles.stack}>
+      {contextHolder}
       {tasks.map((task) => (
         <div
           key={task.id}
@@ -63,7 +91,20 @@ export default function TaskWorkbench() {
             <span className={styles.panelTitle} title={task.title}>
               {task.title}
             </span>
-            <Space spacing={8}>
+            <Space spacing={4} wrap className={styles.panelActions}>
+              {hasStatusActions(task.status) && (
+                <StatusActions
+                  task={task}
+                  size="small"
+                  onStatusChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
+                />
+              )}
+              <Button size="small" onClick={() => handleCopyTask(task)}>
+                拷贝
+              </Button>
+              <Button size="small" onClick={() => handleDeleteTask(task)}>
+                删除
+              </Button>
               <Button size="small" type="primary" onClick={() => formRefs.current.get(task.id)?.save()}>
                 保存
               </Button>

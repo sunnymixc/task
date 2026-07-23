@@ -298,7 +298,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 label="描述"
                 placeholder="请输入任务描述"
                 maxCount={5000}
-                autosize={{ minRows: 2, maxRows: 14 }}
+                autosize={{ minRows: 2 }}
                 rules={[{ max: 5000, message: '描述最多5000个字符' }]}
               />
 

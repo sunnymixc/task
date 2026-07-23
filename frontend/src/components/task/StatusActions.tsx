@@ -26,16 +26,17 @@ export function hasStatusActions(status: TaskStatus): boolean {
 interface Props {
   task: Task
   onStatusChange: (status: TaskStatus) => void
+  size?: 'default' | 'small' | 'large'
 }
 
-export default function StatusActions({ task, onStatusChange }: Props) {
+export default function StatusActions({ task, onStatusChange, size }: Props) {
   const availableActions = statusActions[task.status] || []
   if (!availableActions.length) return null
 
   return (
-    <Space spacing={8}>
+    <Space spacing={size === 'small' ? 4 : 8}>
       {availableActions.map((action) => (
-        <Button key={action.value} onClick={() => onStatusChange(action.value)}>
+        <Button key={action.value} size={size} onClick={() => onStatusChange(action.value)}>
           {action.label}
         </Button>
       ))}
