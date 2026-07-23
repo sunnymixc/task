@@ -383,14 +383,6 @@ export default function TaskList() {
   // 窄窗口由 CSS 的 .semi-table table { min-width } 兜底出横向滚动(见 module.css)
   const columns: ColumnProps<Task>[] = [
     {
-      title: '任务清单',
-      dataIndex: 'task_list',
-      width: 160,
-      ellipsis: true,
-      render: (_: unknown, row: Task) => row.task_list?.title || '-'
-    },
-    { title: '标题&描述&链接', dataIndex: 'title', render: (_: unknown, row: Task) => renderTitleCell(row) },
-    {
       title: '任务状态',
       dataIndex: 'status',
       width: 120,
@@ -398,6 +390,14 @@ export default function TaskList() {
         <StatusSelect status={row.status} onChange={(status) => handleStatusUpdate(row.id, status)} />
       )
     },
+    {
+      title: '任务清单',
+      dataIndex: 'task_list',
+      width: 160,
+      ellipsis: true,
+      render: (_: unknown, row: Task) => row.task_list?.title || '-'
+    },
+    { title: '标题&描述&链接', dataIndex: 'title', render: (_: unknown, row: Task) => renderTitleCell(row) },
     {
       title: '操作',
       dataIndex: 'action',

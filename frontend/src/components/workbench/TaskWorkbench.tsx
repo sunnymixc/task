@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Space, Spin, Toast, Tooltip } from '@douyinfe/semi-ui-19'
+import { Button, Space, Spin, Tag, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import { IconChevronDown, IconChevronUp, IconInfoCircle } from '@douyinfe/semi-icons'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useTaskStore } from '@/stores/task'
@@ -94,14 +94,21 @@ export default function TaskWorkbench() {
             }}
           >
             <div className={collapsed ? `${styles.panelHeader} ${styles.panelHeaderCollapsed}` : styles.panelHeader}>
+              <StatusSelect
+                status={task.status}
+                onChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
+              />
+              {task.task_list?.title && (
+                <span className={styles.listTag} title={task.task_list.title}>
+                  <Tag color="grey" style={{ maxWidth: '100%' }}>
+                    {task.task_list.title}
+                  </Tag>
+                </span>
+              )}
               <span className={styles.panelTitle} title={task.title}>
                 {task.title}
               </span>
               <Space spacing={4} wrap className={styles.panelActions}>
-                <StatusSelect
-                  status={task.status}
-                  onChange={(status) => void useTaskStore.getState().updateStatus(task.id, status)}
-                />
                 <Button size="small" onClick={() => handleCopyTask(task)}>
                   拷贝
                 </Button>

@@ -71,6 +71,13 @@
   background: var(--app-bg-container-hover);
 }
 
+/* 标题左侧的所属清单徽标:限宽省略,避免长清单名挤压任务标题 */
+.listTag {
+  display: inline-flex;
+  flex-shrink: 0;
+  max-width: 140px;
+}
+
 .panelTitle {
   flex: 1;
   min-width: 0;

@@ -12,7 +12,7 @@ export const statusConfig: Record<TaskStatus, { label: string; color: TagColor }
 export default function StatusBadge({ status }: { status: TaskStatus }) {
   const config = statusConfig[status] ?? { label: status, color: 'grey' as TagColor }
   return (
-    <Tag type="solid" color={config.color} size="large" shape="circle" style={{ minWidth: 56, textAlign: 'center' }}>
+    <Tag type="solid" color={config.color} shape="circle" style={{ minWidth: 56, textAlign: 'center' }}>
       {config.label}
     </Tag>
   )
