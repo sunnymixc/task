@@ -30,8 +30,6 @@ const statusOptions = [
 const PAGE_SIZE = 100
 
 export default function TaskList() {
-  // useModal 渲染在组件树内,避免静态 Modal.confirm 在 React 19 下同步卸载 root 的告警
-  const [modal, modalContextHolder] = Modal.useModal()
   // 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
   const { listId } = useParams<{ listId: string }>()
   const taskListId = listId
@@ -240,22 +238,6 @@ export default function TaskList() {
     }
   }
 
-  // Handle delete task
-  const handleDeleteTask = (task: Task) => {
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除任务 "${task.title}" 吗？`,
-      okText: '确定',
-      cancelText: '取消',
-      onOk: async () => {
-        const success = await useTaskStore.getState().deleteTask(task.id)
-        if (success) {
-          fetchTasks()
-        }
-      }
-    })
-  }
-
   // Copy task title + description to clipboard (title/description separated by 2 newlines)
   const handleCopyTask = async (task: Task) => {
     const text = task.description ? `${task.title}\n\n${task.description}` : task.title
@@ -421,7 +403,7 @@ export default function TaskList() {
     {
       title: '操作',
       dataIndex: 'action',
-      // small 尺寸按钮,含状态操作 + 拷贝/复制/编辑/加入工作台/删除,在 200px 内自动换行
+      // small 尺寸按钮,含状态操作 + 拷贝/复制/编辑/工作台,在 200px 内自动换行
       width: 200,
       render: (_: unknown, row: Task) => (
         <Space spacing={4} wrap>
@@ -438,10 +420,7 @@ export default function TaskList() {
             编辑
           </Button>
           <Button size="small" onClick={() => useWorkbenchStore.getState().addTask(row)}>
-            加入工作台
-          </Button>
-          <Button size="small" onClick={() => handleDeleteTask(row)}>
-            删除
+            工作台
           </Button>
         </Space>
       )
@@ -452,7 +431,7 @@ export default function TaskList() {
     <>
       <Button onClick={onClose}>关闭</Button>
       {task && (
-        <Button onClick={() => useWorkbenchStore.getState().addTask(task)}>加入工作台</Button>
+        <Button onClick={() => useWorkbenchStore.getState().addTask(task)}>工作台</Button>
       )}
       <Button onClick={() => handleCopyForm(formRef)}>拷贝</Button>
       <Button type="primary" onClick={() => formRef.current?.save()}>
@@ -466,7 +445,6 @@ export default function TaskList() {
 
   return (
     <div className={styles.container}>
-      {modalContextHolder}
       {/* Header */}
       <div className={styles.pageHeader}>
         <div className={styles.title}>{pageTitle}</div>

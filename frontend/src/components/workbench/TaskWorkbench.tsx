@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Button, Modal, Space, Spin, Toast } from '@douyinfe/semi-ui-19'
+import { Button, Space, Spin, Toast } from '@douyinfe/semi-ui-19'
 import { IconInfoCircle } from '@douyinfe/semi-icons'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useTaskStore } from '@/stores/task'
@@ -17,7 +17,6 @@ export default function TaskWorkbench() {
 
   const panelRefs = useRef(new Map<string, HTMLDivElement>())
   const formRefs = useRef(new Map<string, TaskFormHandle>())
-  const [modal, contextHolder] = Modal.useModal()
 
   // 加入任务后滚动到对应面板;延迟等待右栏 0.25s 展开动画结束后再测量位置
   useEffect(() => {
@@ -47,19 +46,6 @@ export default function TaskWorkbench() {
     }
   }
 
-  // 删除任务本身(非移除出工作台);task store 会回收面板副本与终端会话
-  const handleDeleteTask = (task: Task) => {
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除任务 "${task.title}" 吗？`,
-      okText: '确定',
-      cancelText: '取消',
-      onOk: async () => {
-        await useTaskStore.getState().deleteTask(task.id)
-      }
-    })
-  }
-
   if (!tasks.length) {
     return (
       <div className={styles.emptyState}>
@@ -68,7 +54,7 @@ export default function TaskWorkbench() {
         ) : (
           <>
             <IconInfoCircle style={{ fontSize: 40 }} />
-            <p>暂无任务，点击「加入工作台」添加</p>
+            <p>暂无任务，点击「工作台」添加</p>
           </>
         )}
       </div>
@@ -77,7 +63,6 @@ export default function TaskWorkbench() {
 
   return (
     <div className={styles.stack}>
-      {contextHolder}
       {tasks.map((task) => (
         <div
           key={task.id}
@@ -101,9 +86,6 @@ export default function TaskWorkbench() {
               )}
               <Button size="small" onClick={() => handleCopyTask(task)}>
                 拷贝
-              </Button>
-              <Button size="small" onClick={() => handleDeleteTask(task)}>
-                删除
               </Button>
               <Button size="small" type="primary" onClick={() => formRefs.current.get(task.id)?.save()}>
                 保存

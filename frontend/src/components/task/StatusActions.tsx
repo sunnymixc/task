@@ -1,20 +1,11 @@
 import { Button, Space } from '@douyinfe/semi-ui-19'
 import type { Task, TaskStatus } from '@/types'
 
-// Define available status transitions based on current status
+// 每个状态仅保留一个"推进到下一状态"的操作按钮
 const statusActions: Record<TaskStatus, { label: string; value: TaskStatus }[]> = {
-  draft: [
-    { label: '确认', value: 'pending' },
-    { label: '执行', value: 'executing' }
-  ],
-  pending: [
-    { label: '执行', value: 'executing' },
-    { label: '草稿', value: 'draft' }
-  ],
-  executing: [
-    { label: '完成', value: 'completed' },
-    { label: '暂停', value: 'pending' }
-  ],
+  draft: [{ label: '确认', value: 'pending' }],
+  pending: [{ label: '执行', value: 'executing' }],
+  executing: [{ label: '完成', value: 'completed' }],
   completed: []
 }
 
