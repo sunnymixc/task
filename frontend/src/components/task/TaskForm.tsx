@@ -306,7 +306,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 field="result"
                 label="结果"
                 placeholder="请输入任务结果"
-                autosize={{ minRows: 2, maxRows: 14 }}
+                autosize={{ minRows: 1, maxRows: 14 }}
               />
 
               <Form.Select
@@ -360,21 +360,21 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 field="execution_plan"
                 label="执行计划"
                 placeholder="请输入执行计划"
-                autosize={{ minRows: 2, maxRows: 14 }}
+                autosize={{ minRows: 1, maxRows: 14 }}
               />
 
               <Form.TextArea
                 field="execution_log"
                 label="执行日志"
                 placeholder="请输入执行日志"
-                autosize={{ minRows: 2, maxRows: 14 }}
+                autosize={{ minRows: 1, maxRows: 14 }}
               />
 
               <Form.TextArea
                 field="execution_result"
                 label="执行结果"
                 placeholder="请输入执行结果"
-                autosize={{ minRows: 2, maxRows: 14 }}
+                autosize={{ minRows: 1, maxRows: 14 }}
               />
 
               <Form.DatePicker
