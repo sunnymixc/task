@@ -1,7 +1,8 @@
 import { useEffect, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Tooltip } from '@douyinfe/semi-ui-19'
-import { IconApps, IconChevronRight } from '@douyinfe/semi-icons'
+import { IconApps, IconChevronRight, IconRefresh } from '@douyinfe/semi-icons'
 import { useUiStore, WORKBENCH_WIDTH_DEFAULT } from '@/stores/ui'
+import { useWorkbenchStore } from '@/stores/workbench'
 import TaskWorkbench from '@/components/workbench/TaskWorkbench'
 import styles from './RightSidebar.module.css'
 
@@ -98,7 +99,17 @@ export default function RightSidebar() {
       {/* 展开态:头部 + 面板主体。收起时仅 CSS 隐藏不卸载,保留面板中未保存的编辑 */}
       <div className={styles.panelBox} style={{ minWidth: width }}>
         <div className={styles.panelHeader}>
-          <span className={styles.panelTitle}>{activePanel.title}</span>
+          <div className={styles.panelTitleGroup}>
+            <span className={styles.panelTitle}>{activePanel.title}</span>
+            <Tooltip content="刷新" position="left">
+              <div
+                className={styles.collapseToggle}
+                onClick={() => useWorkbenchStore.getState().fetchWorkbench()}
+              >
+                <IconRefresh />
+              </div>
+            </Tooltip>
+          </div>
           <Tooltip content="收起工作台" position="left">
             <div className={styles.collapseToggle} onClick={toggle}>
               <IconChevronRight />

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import { Button, Input, Modal, Select, Space, Table, TextArea, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
-import { IconEdit, IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
+import { IconEdit, IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskStore } from '@/stores/task'
 import { useTaskListStore } from '@/stores/taskList'
 import { useTaskFilterStore } from '@/stores/taskFilter'
@@ -115,6 +115,16 @@ export default function TaskList() {
     setSearchQuery('')
     setPage(1)
     fetchTasks({ page: 1, statuses: def, lists: [] })
+  }
+
+  // 刷新:按当前筛选/搜索条件重新拉取当前页
+  const handleRefresh = () => {
+    const q = searchQuery.trim()
+    if (q) {
+      useTaskStore.getState().searchTasks(q, page)
+    } else {
+      fetchTasks()
+    }
   }
 
   // Handle task list filter change
@@ -524,6 +534,15 @@ export default function TaskList() {
             onClear={clearSearch}
           />
           <Button onClick={handleResetFilter}>重置</Button>
+          <Tooltip content="刷新">
+            <Button
+              theme="borderless"
+              type="tertiary"
+              icon={<IconRefresh />}
+              aria-label="刷新"
+              onClick={handleRefresh}
+            />
+          </Tooltip>
         </div>
       </div>
 
