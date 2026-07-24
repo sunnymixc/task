@@ -6,6 +6,7 @@ import { useTaskStore } from '@/stores/task'
 import type { Task, UpdateTaskRequest } from '@/types'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
 import StatusSelect from '@/components/task/StatusSelect'
+import TerminalStatusDot from '@/components/task/TerminalStatusDot'
 import { copyToClipboard } from '@/utils/clipboard'
 import styles from './TaskWorkbench.module.css'
 
@@ -94,6 +95,14 @@ export default function TaskWorkbench() {
                   </Tag>
                 </span>
               )}
+              <TerminalStatusDot
+                taskId={task.id}
+                onClick={() => {
+                  // 展开面板并切到 AI终端 tab
+                  useWorkbenchStore.getState().setCollapsed(task.id, false)
+                  formRefs.current.get(task.id)?.showTerminalTab()
+                }}
+              />
               <span className={styles.panelTitle} title={task.title}>
                 {task.title}
               </span>

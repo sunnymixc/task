@@ -10,7 +10,8 @@ import type { CreateTaskRequest, ListTasksRequest, Task, TaskStatus, UpdateTaskR
 import { copyToClipboard } from '@/utils/clipboard'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
-import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
+import TaskForm, { presetTaskFormTab, type TaskFormHandle } from '@/components/task/TaskForm'
+import TerminalStatusDot from '@/components/task/TerminalStatusDot'
 import { useWorkbenchStore } from '@/stores/workbench'
 import StatusSelect from '@/components/task/StatusSelect'
 import TaskLinkList from '@/components/task/TaskLinkList'
@@ -365,6 +366,13 @@ export default function TaskList() {
       {!isInlineEditing(row, 'title') ? (
         <div className={styles.taskTitle}>
           {row.title}
+          <TerminalStatusDot
+            taskId={row.id}
+            onClick={() => {
+              presetTaskFormTab(row.id, 'terminal')
+              openEditDialog(row)
+            }}
+          />
           <Button
             className={styles.inlineEditBtn}
             theme="borderless"

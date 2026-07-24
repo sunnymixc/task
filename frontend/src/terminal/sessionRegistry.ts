@@ -16,6 +16,9 @@ import '@xterm/xterm/css/xterm.css'
 
 export type TermConnState = 'connecting' | 'open' | 'closed'
 
+// 对外的运行状态(任务列表/工作台的状态圆点用):在连接状态之上叠加"近几秒是否有 PTY 输出"
+export type TerminalActivityStatus = 'none' | 'connecting' | 'running' | 'idle' | 'closed'
+
 interface TerminalSession {
   key: string
   term: Terminal
@@ -36,6 +39,10 @@ interface TerminalSession {
   outputListeners: Set<() => void>
   // 最近一次真实键盘/粘贴输入时间(仅 term.onData 更新;sendSessionText 不算)
   lastUserInputAt: number
+  // 活动检测(任务列表/工作台状态圆点):最近一帧 PTY 输出时间与"输出中"标记
+  lastOutputAt: number
+  active: boolean
+  idleTimer: number | null
 }
 
 const sessions = new Map<string, TerminalSession>()
@@ -45,10 +52,53 @@ const notify = (session: TerminalSession) => {
   session.listeners.forEach((fn) => fn())
 }
 
+// 全局(跨会话)订阅:仅在状态边沿触发(连接状态变迁、会话创建/销毁、idle↔running),
+// 供任务列表/工作台的状态圆点用 useSyncExternalStore 订阅;ownerSeq 变化不在此列
+const globalListeners = new Set<() => void>()
+
+const notifyGlobal = () => {
+  globalListeners.forEach((fn) => fn())
+}
+
 const setState = (session: TerminalSession, state: TermConnState) => {
   if (session.state === state) return
   session.state = state
+  // 离开 open 即清掉活动检测:防定时器泄漏,并保证重连后从 idle 起步
+  if (state !== 'open') {
+    if (session.idleTimer !== null) {
+      window.clearTimeout(session.idleTimer)
+      session.idleTimer = null
+    }
+    session.active = false
+  }
   notify(session)
+  notifyGlobal()
+}
+
+// 输出活动检测:高频输出时每帧只更新时间戳,定时器到期按剩余时间续期而非每帧重置,
+// notifyGlobal 只发生在 idle→running / running→idle 两个边沿
+const IDLE_AFTER_MS = 2500
+
+const checkIdle = (session: TerminalSession) => {
+  const remain = session.lastOutputAt + IDLE_AFTER_MS - Date.now()
+  if (remain > 0) {
+    session.idleTimer = window.setTimeout(() => checkIdle(session), remain)
+  } else {
+    session.idleTimer = null
+    session.active = false
+    notifyGlobal()
+  }
+}
+
+const markOutput = (session: TerminalSession) => {
+  session.lastOutputAt = Date.now()
+  if (!session.active) {
+    session.active = true
+    notifyGlobal()
+  }
+  if (session.idleTimer === null) {
+    session.idleTimer = window.setTimeout(() => checkIdle(session), IDLE_AFTER_MS)
+  }
 }
 
 // 键盘输入走二进制帧,控制消息(resize/terminate)走文本 JSON 帧,两者分离避免歧义
@@ -81,6 +131,7 @@ const connect = (session: TerminalSession) => {
     } else {
       session.term.write(new Uint8Array(ev.data as ArrayBuffer))
     }
+    markOutput(session)
     session.outputListeners.forEach((fn) => fn())
   }
   ws.onclose = () => {
@@ -129,9 +180,13 @@ export function acquireSession(key: string, cwd?: string): TerminalSession {
     ownerSeq: 0,
     listeners: new Set(),
     outputListeners: new Set(),
-    lastUserInputAt: 0
+    lastUserInputAt: 0,
+    lastOutputAt: 0,
+    active: false,
+    idleTimer: null
   }
   sessions.set(key, session)
+  notifyGlobal()
 
   term.onData((d) => {
     session.lastUserInputAt = Date.now()
@@ -237,6 +292,8 @@ export function destroySession(key: string) {
   session.ownerSeq += 1
   sessions.delete(key)
   notify(session)
+  // 必须在 delete 之后:让全局订阅者的快照读到 none,圆点消失
+  notifyGlobal()
 }
 
 export function destroyAllSessions() {
@@ -300,6 +357,25 @@ export function getSessionScreenLines(key: string): string[] {
 
 export function getSessionLastUserInputAt(key: string): number {
   return sessions.get(key)?.lastUserInputAt ?? 0
+}
+
+// 全局订阅终端运行状态(任务列表/工作台状态圆点用)。
+// 纯注册,绝不创建会话 —— 与 subscribeSession(内部 acquireSession 会建连)刻意区分
+export function subscribeTerminalStatus(cb: () => void): () => void {
+  globalListeners.add(cb)
+  return () => {
+    globalListeners.delete(cb)
+  }
+}
+
+// 运行状态快照(原始字符串,useSyncExternalStore 按值比较):
+// 无会话→none;connecting→connecting;closed→closed;open 且近 IDLE_AFTER_MS 有输出→running,否则 idle
+export function getTerminalStatus(key: string): TerminalActivityStatus {
+  const session = sessions.get(key)
+  if (!session) return 'none'
+  if (session.state === 'connecting') return 'connecting'
+  if (session.state === 'closed') return 'closed'
+  return session.active ? 'running' : 'idle'
 }
 
 // 确保会话就绪:closed 时经 reconnectSession 自动重连(保留滚动缓冲),等待进入 open;

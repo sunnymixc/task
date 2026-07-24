@@ -29,6 +29,8 @@ export interface TaskFormHandle {
   focusTitle: () => void
   // 弹窗底部"拷贝"用:取表单当前标题+描述,格式与列表操作列的拷贝一致
   getCopyText: () => string
+  // 切到 AI终端 tab(工作台面板头的终端状态圆点用)
+  showTerminalTab: () => void
 }
 
 interface Props {
@@ -71,6 +73,12 @@ const executionStatusOptions: { value: TaskExecutionStatus; label: string }[] = 
 
 // 任务 id → 上次停留的 tab,跨组件重挂载保留(仅本次会话内存)
 const lastActiveTab = new Map<string, string>()
+
+// 供外部(任务列表的终端状态圆点)在打开编辑弹窗前预置初始 tab,
+// 使弹窗直接落在 AI终端 tab;有会话时 terminalMounted 初值为 true,终端立即恢复显示
+export function presetTaskFormTab(taskId: string, tab: string) {
+  lastActiveTab.set(taskId, tab)
+}
 
 // 编辑模式回填链接行;丢弃目标任务已被删除的行(原样提交会被后端拒绝)
 const linksFromTask = (task?: Task | null): LinkRow[] =>
@@ -297,7 +305,8 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     focusTitle: () => {
       containerRef.current?.querySelector('input')?.focus()
     },
-    getCopyText: buildCopyText
+    getCopyText: buildCopyText,
+    showTerminalTab: () => handleTabChange('terminal')
   }))
 
   return (
