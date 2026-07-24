@@ -1,0 +1,153 @@
+.stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.stack::-webkit-scrollbar {
+  width: 8px;
+}
+
+.stack::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.stack::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+}
+
+/* 每个任务占满一行(横向铺满) */
+.panel {
+  /* 面板总高 ≈ 45vh:tab 内容区 = 45vh 减标题栏(10+28+10+1=49px)与 body 上下 padding(4+12=16px),
+     再减 2px 补偿上下边框由 1px 加宽到 2px 的增量,共 67px。
+     拖拽底边调高后由内联样式覆写(ui store workbenchPanelHeight,同样减 67px)。
+     该高度在工作台仅是下限:max-height 放开为 none,内容(尤其无行数上限的任务描述)
+     超过基线时面板随内容自动增高,基础信息完整可见,滚动交给外层 .stack */
+  --taskform-tab-height: calc(45vh - 67px);
+  --taskform-tab-max-height: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  background: var(--app-bg-container);
+  border: 2px solid var(--app-gray-3);
+  border-radius: var(--semi-border-radius-large);
+  transition: border-color 0.2s ease;
+  /* scrollIntoView(block:'start') 时与容器顶部留出间隙 */
+  scroll-margin-top: 12px;
+}
+
+/* Hover 高亮:边框变主色,宽度常态即 2px 不变,避免布局抖动 */
+.panel:hover {
+  border-color: var(--semi-color-primary);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--app-gray-2);
+}
+
+/* 折叠态:面板只剩标题栏,去掉下边框避免与面板边框叠成双线 */
+.panelHeaderCollapsed {
+  border-bottom: none;
+}
+
+/* header 操作按钮组:窄面板(最窄 360px)下允许换行,换行后各行保持右对齐 */
+.panelActions {
+  justify-content: flex-end;
+}
+
+/* 标题栏最右侧的折叠/展开开关,形态与右栏 collapseToggle 一致 */
+.panelToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--semi-border-radius-medium);
+  cursor: pointer;
+  color: var(--semi-color-text-2);
+  transition: background-color 0.2s ease;
+}
+
+.panelToggle:hover {
+  background: var(--app-bg-container-hover);
+}
+
+/* 标题左侧的所属清单徽标:限宽省略,避免长清单名挤压任务标题 */
+.listTag {
+  display: inline-flex;
+  flex-shrink: 0;
+  max-width: 140px;
+}
+
+.panelTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--semi-color-text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panelBody {
+  padding: 4px 12px 12px;
+}
+
+.panelBodyCollapsed {
+  display: none;
+}
+
+/* 面板底缘拖拽手柄:调整所有面板高度,双击恢复默认;放面板内部,不侵入面板间 gap */
+.resizeHandle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  cursor: row-resize;
+  touch-action: none;
+  z-index: 2;
+}
+
+/* 手柄命中区 8px,高亮横条 3px 贴底,两角跟随面板圆角 */
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 0 0 var(--semi-border-radius-large) var(--semi-border-radius-large);
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.resizeHandle:hover::after,
+.resizeHandleActive::after {
+  background: var(--semi-color-primary);
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--semi-color-text-2);
+  font-size: 14px;
+}

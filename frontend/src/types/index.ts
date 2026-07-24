@@ -222,6 +222,8 @@ export interface TaskList {
   tenant_id: number
   title: string
   description: string
+  // 项目路径:任务的 AI 终端初始化时默认进入该目录,为空时进入主目录 ~
+  project_path: string
   is_default: boolean
   // 序号(1-10000000),列表按序号升序;默认清单恒排最先
   sort_order: number
@@ -238,11 +240,13 @@ export interface TaskListInfo {
   id: string
   title: string
   is_default: boolean
+  project_path: string
 }
 
 export interface CreateTaskListRequest {
   title: string
   description?: string
+  project_path?: string
   // 不传则后端自动取当前租户最大序号+1
   sort_order?: number
 }
@@ -250,6 +254,7 @@ export interface CreateTaskListRequest {
 export interface UpdateTaskListRequest {
   title?: string
   description?: string
+  project_path?: string
   sort_order?: number
 }
 

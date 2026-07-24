@@ -1,23 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
-import { Button, Input, Modal, Select, Space, Table, TextArea, Toast, Tooltip } from '@douyinfe/semi-ui-19'
+import { Button, Input, Modal, Select, Space, Table, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
-import { IconEdit, IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
+import { IconChevronDown, IconChevronUp, IconEdit, IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskStore } from '@/stores/task'
 import { useTaskListStore } from '@/stores/taskList'
 import { useTaskFilterStore } from '@/stores/taskFilter'
 import type { CreateTaskRequest, ListTasksRequest, Task, TaskStatus, UpdateTaskRequest } from '@/types'
 import { copyToClipboard } from '@/utils/clipboard'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { useRefreshShortcut } from '@/hooks/useRefreshShortcut'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
-import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
-import TaskTerminal, { type TaskTerminalHandle } from '@/components/task/TaskTerminal'
-import { useAuthStore } from '@/stores/auth'
-import StatusBadge from '@/components/task/StatusBadge'
-import ExecutionStatusBadge from '@/components/task/ExecutionStatusBadge'
-import PriorityBadge from '@/components/task/PriorityBadge'
-import StatusActions, { hasStatusActions } from '@/components/task/StatusActions'
+import TaskForm, { presetTaskFormTab, type TaskFormHandle } from '@/components/task/TaskForm'
+import TerminalStatusDot from '@/components/task/TerminalStatusDot'
+import { useWorkbenchStore } from '@/stores/workbench'
+import StatusSelect from '@/components/task/StatusSelect'
 import TaskLinkList from '@/components/task/TaskLinkList'
+import InlineEditable from '@/components/common/InlineEditable'
 import styles from './TaskList.module.css'
 
 // Status filter options
@@ -28,20 +27,63 @@ const statusOptions = [
   { label: '已完成', value: 'completed' }
 ]
 
-// Format date(列宽有限,只显示日期)
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
-
 const PAGE_SIZE = 100
 
+// 描述自动折叠阈值:超过 ON 折叠;铅笔按钮在"行内 ↔ 工具行"间移动会改变被测高度,
+// 用低于 ON 的 OFF 作退出阈值,避免临界高度时经 ResizeObserver 展开/折叠无限振荡
+const DESC_OVERFLOW_ON = 80
+const DESC_OVERFLOW_OFF = 64
+
+// 描述展示:超高自动折叠(点击文本或「展开」展开,「收起」按钮收起),不持久化展开状态。
+// 铅笔编辑按钮不溢出时留在文本行尾(与短描述一致),溢出时移到底部工具行以免被裁剪
+function CollapsibleDesc({ text, editButton }: { text: string; editButton: ReactNode }) {
+  const textRef = useRef<HTMLDivElement>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const collapsed = overflowing && !expanded
+
+  useLayoutEffect(() => {
+    const el = textRef.current
+    if (!el) return
+    // scrollHeight 在 max-height + overflow:hidden 下仍是完整内容高度,折叠态也能正确测量
+    const check = () =>
+      setOverflowing((prev) => (prev ? el.scrollHeight > DESC_OVERFLOW_OFF : el.scrollHeight > DESC_OVERFLOW_ON))
+    check()
+    const ro = new ResizeObserver(check) // 列宽随窗口变化 → 换行数变化 → 重判
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [text])
+
+  return (
+    <div className={styles.taskDesc}>
+      <div
+        ref={textRef}
+        className={collapsed ? styles.taskDescClamp : undefined}
+        onClick={collapsed ? () => setExpanded(true) : undefined}
+      >
+        {text}
+        {!overflowing && editButton}
+      </div>
+      {overflowing && (
+        <div className={styles.taskDescToggleRow}>
+          <Button
+            size="small"
+            theme="borderless"
+            type="tertiary"
+            className={styles.taskDescToggleBtn}
+            icon={collapsed ? <IconChevronDown /> : <IconChevronUp />}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {collapsed ? '展开' : '收起'}
+          </Button>
+          {editButton}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TaskList() {
-  // useModal 渲染在组件树内,避免静态 Modal.confirm 在 React 19 下同步卸载 root 的告警
-  const [modal, modalContextHolder] = Modal.useModal()
   // 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
   const { listId } = useParams<{ listId: string }>()
   const taskListId = listId
@@ -53,8 +95,6 @@ export default function TaskList() {
   const loading = useTaskStore((s) => s.loading)
   const total = useTaskStore((s) => s.total)
   const allLists = useTaskListStore((s) => s.allLists)
-  // AI 终端为 root shell,仅管理员可见/可用(真正的访问控制在后端 RequireAdmin)
-  const isAdmin = useAuthStore((s) => s.user?.is_admin === true)
 
   // Filter states(状态筛选初始值从缓存恢复,覆盖刷新/直达路由场景)
   const [currentStatus, setCurrentStatus] = useState<TaskStatus[]>(() =>
@@ -66,6 +106,9 @@ export default function TaskList() {
 
   // 表体固定高度:容器剩余空间减去表头/分页条,窗口变化时自动调整
   const { containerRef, scrollY } = useTableScrollY<HTMLDivElement>()
+
+  // React 19 下不能用静态 Modal.confirm,需组件内 useModal + contextHolder
+  const [modal, modalContextHolder] = Modal.useModal()
 
   // fetch 参数显式传入,避免 setState 异步导致读到旧值
   const fetchTasks = (opts?: { page?: number; statuses?: TaskStatus[]; lists?: string[] }) => {
@@ -131,6 +174,16 @@ export default function TaskList() {
     fetchTasks({ page: 1, statuses: def, lists: [] })
   }
 
+  // 刷新:按当前筛选/搜索条件重新拉取当前页;返回 Promise 供全局刷新快捷键等待完成
+  const handleRefresh = () => {
+    const q = searchQuery.trim()
+    if (q) {
+      return useTaskStore.getState().searchTasks(q, page)
+    }
+    return fetchTasks()
+  }
+  useRefreshShortcut(handleRefresh)
+
   // Handle task list filter change
   const handleTaskListChange = (value: string[]) => {
     setCurrentTaskLists(value)
@@ -165,10 +218,18 @@ export default function TaskList() {
   const createFormRef = useRef<TaskFormHandle>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   // "保存"(不关窗)后记住已入库的任务,后续保存/确定改走更新,避免重复建单
+  // ref 供提交逻辑同步读写;createdTask state 仅供 footer 感知"已入库"以显示删除按钮
   const createdTaskRef = useRef<Task | null>(null)
+  const [createdTask, setCreatedTask] = useState<Task | null>(null)
   const openCreateDialog = () => {
     createdTaskRef.current = null
+    setCreatedTask(null)
     setShowCreateDialog(true)
+  }
+  const closeCreateDialog = () => {
+    setShowCreateDialog(false)
+    createdTaskRef.current = null
+    setCreatedTask(null)
   }
 
   // Handle create task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
@@ -179,10 +240,10 @@ export default function TaskList() {
       : await store.createTask(data as CreateTaskRequest)
     if (!saved) return
     createdTaskRef.current = saved
+    setCreatedTask(saved)
     fetchTasks()
     if (!keepOpen) {
-      setShowCreateDialog(false)
-      createdTaskRef.current = null
+      closeCreateDialog()
     }
   }
 
@@ -197,33 +258,6 @@ export default function TaskList() {
   const closeEditDialog = () => {
     setShowEditDialog(false)
     setEditingTask(null)
-  }
-
-  // AI 终端弹窗:每次打开新建一个到服务器的 PTY 会话;关闭/终止即结束该进程
-  const terminalRef = useRef<TaskTerminalHandle>(null)
-  const [terminalTask, setTerminalTask] = useState<Task | null>(null)
-  const [showTerminal, setShowTerminal] = useState(false)
-  const openTerminal = (task: Task) => {
-    setTerminalTask(task)
-    setShowTerminal(true)
-  }
-  const closeTerminal = () => {
-    setShowTerminal(false)
-    setTerminalTask(null)
-  }
-  // 终止:二次确认后通知后端结束会话并关闭弹窗(弹窗关闭时组件卸载也会断开连接)
-  const confirmTerminate = () => {
-    modal.confirm({
-      title: '确认终止',
-      content: '终止后将结束当前终端会话并关闭连接,确定继续吗?',
-      okText: '终止',
-      okButtonProps: { type: 'danger' },
-      cancelText: '取消',
-      onOk: () => {
-        terminalRef.current?.terminate()
-        closeTerminal()
-      }
-    })
   }
 
   // Handle update task（keepOpen=true 仅保存入库不关窗；保存成功才关闭弹窗，失败保留弹窗与已填内容）
@@ -277,22 +311,6 @@ export default function TaskList() {
     } finally {
       setInlineSaving(false)
     }
-  }
-
-  // Handle delete task
-  const handleDeleteTask = (task: Task) => {
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除任务 "${task.title}" 吗？`,
-      okText: '确定',
-      cancelText: '取消',
-      onOk: async () => {
-        const success = await useTaskStore.getState().deleteTask(task.id)
-        if (success) {
-          fetchTasks()
-        }
-      }
-    })
   }
 
   // Copy task title + description to clipboard (title/description separated by 2 newlines)
@@ -349,6 +367,13 @@ export default function TaskList() {
       {!isInlineEditing(row, 'title') ? (
         <div className={styles.taskTitle}>
           {row.title}
+          <TerminalStatusDot
+            taskId={row.id}
+            onClick={() => {
+              presetTaskFormTab(row.id, 'terminal')
+              openEditDialog(row)
+            }}
+          />
           <Button
             className={styles.inlineEditBtn}
             theme="borderless"
@@ -367,153 +392,165 @@ export default function TaskList() {
           )}
         </div>
       ) : (
-        <div
-          className={`${styles.inlineEditBox} ${styles.inlineEditBoxRow}`}
-          onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}
-        >
-          <Input
-            value={inlineDraft}
+        <div className={styles.inlineEditBox} onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}>
+          <InlineEditable
+            defaultValue={inlineDraft}
+            className={styles.taskTitle}
             maxLength={255}
-            autoFocus
-            style={{ flex: 1 }}
-            onChange={setInlineDraft}
-            onEnterPress={() => saveInlineEdit(row)}
+            ariaLabel="编辑任务标题"
+            onInput={setInlineDraft}
+            onSubmit={() => saveInlineEdit(row)}
+            onCancel={cancelInlineEdit}
           />
-          <Button theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
-            保存
-          </Button>
-          <Button onClick={cancelInlineEdit}>
-            取消
-          </Button>
+          <div className={styles.inlineEditActions}>
+            <Button size="small" theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
+              保存
+            </Button>
+            <Button size="small" onClick={cancelInlineEdit}>
+              取消
+            </Button>
+          </div>
         </div>
       )}
 
       {!isInlineEditing(row, 'description') && row.description ? (
-        <div className={styles.taskDesc}>
-          {row.description}
-          <Button
-            className={styles.inlineEditBtn}
-            theme="borderless"
-            icon={<IconEdit />}
-            onClick={() => startInlineEdit(row, 'description')}
-          />
-        </div>
+        <CollapsibleDesc
+          text={row.description}
+          editButton={
+            <Button
+              className={styles.inlineEditBtn}
+              theme="borderless"
+              icon={<IconEdit />}
+              onClick={() => startInlineEdit(row, 'description')}
+            />
+          }
+        />
       ) : isInlineEditing(row, 'description') ? (
         <div className={styles.inlineEditBox} onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}>
-          <TextArea
-            value={inlineDraft}
+          <InlineEditable
+            defaultValue={inlineDraft}
+            multiline
+            className={styles.taskDesc}
             maxLength={5000}
-            autosize={{ minRows: 2, maxRows: 8 }}
-            autoFocus
-            onChange={setInlineDraft}
+            placeholder="添加描述"
+            ariaLabel="编辑任务描述"
+            onInput={setInlineDraft}
+            onCancel={cancelInlineEdit}
           />
           <div className={styles.inlineEditActions}>
-            <Button theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
+            <Button size="small" theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
               保存
             </Button>
-            <Button onClick={cancelInlineEdit}>
+            <Button size="small" onClick={cancelInlineEdit}>
               取消
             </Button>
           </div>
         </div>
       ) : null}
+
+      {!!row.links?.length && (
+        <div className={styles.taskLinks}>
+          <TaskLinkList links={row.links} />
+        </div>
+      )}
     </>
   )
 
   // Table columns
-  // 各列均为固定宽度,标题列取 420 避免宽屏下独占剩余空间;
-  // 容器更宽时剩余宽度由浏览器按各列宽度比例分摊
+  // scroll.y 下 Semi 表格为 table-layout: fixed,列宽由 colgroup 决定,且 Chrome 会忽略
+  // 混合单位的 max()/calc(),因此定宽列直接给 px 保底;标题列不设宽度,吸收全部剩余空间。
+  // 窄窗口由 CSS 的 .semi-table table { min-width } 兜底出横向滚动(见 module.css)
   const columns: ColumnProps<Task>[] = [
-    {
-      title: '任务清单',
-      dataIndex: 'task_list',
-      width: 110,
-      ellipsis: true,
-      render: (_: unknown, row: Task) => row.task_list?.title || '-'
-    },
-    { title: '标题和描述', dataIndex: 'title', width: 420, render: (_: unknown, row: Task) => renderTitleCell(row) },
     {
       title: '任务状态',
       dataIndex: 'status',
-      width: 90,
-      render: (_: unknown, row: Task) => <StatusBadge status={row.status} />
-    },
-    {
-      title: '执行状态',
-      dataIndex: 'execution_status',
-      width: 90,
-      render: (_: unknown, row: Task) => <ExecutionStatusBadge status={row.execution_status} />
-    },
-    {
-      title: '优先级',
-      dataIndex: 'priority',
-      width: 80,
-      render: (_: unknown, row: Task) => <PriorityBadge priority={row.priority} />
-    },
-    {
-      title: '操作',
-      dataIndex: 'action',
-      // default 尺寸按钮,含状态操作 + 拷贝/复制/编辑/删除 +（管理员）AI终端
-      width: isAdmin ? 520 : 430,
+      width: 120,
       render: (_: unknown, row: Task) => (
-        <Space spacing={8}>
-          {hasStatusActions(row.status) && (
-            <StatusActions task={row} onStatusChange={(status) => handleStatusUpdate(row.id, status)} />
-          )}
-          <Button onClick={() => handleCopyTask(row)}>
-            拷贝
-          </Button>
-          <Button onClick={() => handleDuplicateTask(row)}>
-            复制
-          </Button>
-          <Button onClick={() => openEditDialog(row)}>
-            编辑
-          </Button>
-          <Button onClick={() => handleDeleteTask(row)}>
-            删除
-          </Button>
-          {isAdmin && (
-            <Button type="tertiary" onClick={() => openTerminal(row)}>
-              AI终端
-            </Button>
-          )}
-        </Space>
+        <StatusSelect status={row.status} onChange={(status) => handleStatusUpdate(row.id, status)} />
       )
     },
     {
-      title: '链接',
-      dataIndex: 'links',
-      width: 140,
-      render: (_: unknown, row: Task) => <TaskLinkList links={row.links} />
-    },
-    {
-      title: '截止时间',
-      dataIndex: 'due_date',
-      width: 110,
-      render: (v: string) => (v ? formatDate(v) : '-')
-    },
-    {
-      title: '创建者',
-      dataIndex: 'creator',
-      width: 90,
+      title: '任务清单',
+      dataIndex: 'task_list',
+      width: 160,
       ellipsis: true,
-      render: (_: unknown, row: Task) => <span className={styles.creatorInfo}>{row.creator?.username || '-'}</span>
+      render: (_: unknown, row: Task) => row.task_list?.title || '-'
     },
-    { title: '创建时间', dataIndex: 'created_at', width: 110, render: (v: string) => formatDate(v) },
-    { title: '更新时间', dataIndex: 'updated_at', width: 110, render: (v: string) => formatDate(v) }
+    { title: '标题&描述&链接', dataIndex: 'title', render: (_: unknown, row: Task) => renderTitleCell(row) },
+    {
+      title: '操作',
+      dataIndex: 'action',
+      // small 尺寸按钮:拷贝/编辑/工作,200px 内单行放下(需 ≥196px:3×52 按钮 + 2×4 间距 + 2×16 内边距)
+      width: 200,
+      render: (_: unknown, row: Task) => (
+        <Space spacing={4} wrap>
+          <Button size="small" onClick={() => handleCopyTask(row)}>
+            拷贝
+          </Button>
+          <Button size="small" onClick={() => openEditDialog(row)}>
+            编辑
+          </Button>
+          <Button size="small" onClick={() => useWorkbenchStore.getState().addTask(row)}>
+            工作
+          </Button>
+        </Space>
+      )
+    }
   ]
 
-  const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void) => (
-    <>
-      <Button onClick={onClose}>关闭</Button>
-      <Button onClick={() => handleCopyForm(formRef)}>拷贝</Button>
-      <Button type="primary" onClick={() => formRef.current?.save()}>
-        保存
-      </Button>
-      <Button theme="solid" type="primary" onClick={() => formRef.current?.submit()}>
-        确定
-      </Button>
-    </>
+  // 删除弹窗中的任务:二次确认后删除并关闭弹窗(成功/失败 Toast 由 store 的 deleteTask 负责)
+  const handleDeleteTask = (task: Task, onClose: () => void) => {
+    modal.confirm({
+      title: '确认删除',
+      content: `确定要删除任务 "${task.title}" 吗？`,
+      okText: '删除',
+      okButtonProps: { type: 'danger' },
+      cancelText: '取消',
+      onOk: async () => {
+        const success = await useTaskStore.getState().deleteTask(task.id)
+        if (success) {
+          onClose()
+          fetchTasks()
+        }
+      }
+    })
+  }
+
+  // footer 左右分布:左侧复制/删除(仅已入库任务:编辑弹窗/新建弹窗"保存"后),右侧为原有按钮组
+  const dialogFooter = (formRef: React.RefObject<TaskFormHandle | null>, onClose: () => void, task?: Task | null) => (
+    <div className={styles.dialogFooter}>
+      <div>
+        {task && (
+          <>
+            <Button
+              style={{ marginLeft: 0 }}
+              onClick={() => {
+                onClose()
+                handleDuplicateTask(task)
+              }}
+            >
+              复制
+            </Button>
+            <Button type="danger" onClick={() => handleDeleteTask(task, onClose)}>
+              删除
+            </Button>
+          </>
+        )}
+      </div>
+      <div>
+        <Button onClick={onClose}>关闭</Button>
+        {task && (
+          <Button onClick={() => useWorkbenchStore.getState().addTask(task)}>工作</Button>
+        )}
+        <Button onClick={() => handleCopyForm(formRef)}>拷贝</Button>
+        <Button type="primary" onClick={() => formRef.current?.save()}>
+          保存
+        </Button>
+        <Button theme="solid" type="primary" onClick={() => formRef.current?.submit()}>
+          确定
+        </Button>
+      </div>
+    </div>
   )
 
   return (
@@ -566,11 +603,20 @@ export default function TaskList() {
             onClear={clearSearch}
           />
           <Button onClick={handleResetFilter}>重置</Button>
+          <Tooltip content="刷新">
+            <Button
+              theme="borderless"
+              type="tertiary"
+              icon={<IconRefresh />}
+              aria-label="刷新"
+              onClick={handleRefresh}
+            />
+          </Tooltip>
         </div>
       </div>
 
       {/* Task Table */}
-      <div className={`${styles.tableContainer}${isAdmin ? ` ${styles.adminCols}` : ''}`} ref={containerRef}>
+      <div className={styles.tableContainer} ref={containerRef}>
         <Table
           dataSource={tasks}
           columns={columns}
@@ -605,10 +651,10 @@ export default function TaskList() {
         visible={showCreateDialog}
         title="新建任务"
         centered
-        width="min(92vw, 760px)"
+        width="60vw"
         className="task-form-dialog"
-        onCancel={() => setShowCreateDialog(false)}
-        footer={dialogFooter(createFormRef, () => setShowCreateDialog(false))}
+        onCancel={closeCreateDialog}
+        footer={dialogFooter(createFormRef, closeCreateDialog, createdTask)}
       >
         <TaskForm ref={createFormRef} defaultTaskListId={taskListId} onSubmit={handleCreateTask} />
       </Modal>
@@ -618,32 +664,12 @@ export default function TaskList() {
         visible={showEditDialog}
         title="编辑任务"
         centered
-        width="min(92vw, 760px)"
+        width="60vw"
         className="task-form-dialog"
         onCancel={closeEditDialog}
-        footer={dialogFooter(editFormRef, closeEditDialog)}
+        footer={dialogFooter(editFormRef, closeEditDialog, editingTask)}
       >
         <TaskForm key={editingTask?.id || 'edit'} ref={editFormRef} task={editingTask} onSubmit={handleUpdateTask} />
-      </Modal>
-
-      {/* AI Terminal Dialog（root PTY,仅管理员）。key 强制每次打开重挂载,关闭即卸载并断开连接 */}
-      <Modal
-        visible={showTerminal}
-        title={terminalTask ? `AI终端 · ${terminalTask.title}` : 'AI终端'}
-        centered
-        width="min(94vw, 960px)"
-        maskClosable={false}
-        onCancel={closeTerminal}
-        footer={
-          <>
-            <Button onClick={closeTerminal}>关闭</Button>
-            <Button type="danger" theme="solid" onClick={confirmTerminate}>
-              终止
-            </Button>
-          </>
-        }
-      >
-        {showTerminal && <TaskTerminal key={terminalTask?.id || 'terminal'} ref={terminalRef} />}
       </Modal>
     </div>
   )

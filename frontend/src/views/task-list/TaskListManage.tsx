@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Modal, Space, Table, Tag, Tooltip, Typography } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
-import { IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
+import { IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskListStore } from '@/stores/taskList'
 import type { CreateTaskListRequest, ListTaskListsRequest, TaskList, UpdateTaskListRequest } from '@/types'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { useRefreshShortcut } from '@/hooks/useRefreshShortcut'
 import TaskListForm, { type TaskListFormHandle } from '@/components/task-list/TaskListForm'
 import styles from './TaskListManage.module.css'
 
@@ -72,6 +73,12 @@ export default function TaskListManage() {
     fetchLists({ page: 1, keyword: '' })
   }
 
+  // 刷新:按当前搜索条件重拉当前页,并同步侧边栏清单子菜单及执行中任务数;
+  // 返回 Promise 供全局刷新快捷键等待完成
+  const handleRefresh = () =>
+    Promise.all([fetchLists(), useTaskListStore.getState().fetchAllLists()])
+  useRefreshShortcut(handleRefresh)
+
   // Create dialog
   const createFormRef = useRef<TaskListFormHandle>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -119,7 +126,7 @@ export default function TaskListManage() {
   }
 
   const columns: ColumnProps<TaskList>[] = [
-    { title: '序号', dataIndex: 'sort_order', width: 80 },
+    { title: '序号', dataIndex: 'sort_order', width: 120 },
     {
       title: 'ID',
       dataIndex: 'id',
@@ -146,6 +153,12 @@ export default function TaskListManage() {
       dataIndex: 'description',
       width: 300,
       render: (v: string) => <span className={styles.listDesc}>{v || '-'}</span>
+    },
+    {
+      title: '项目路径',
+      dataIndex: 'project_path',
+      width: 240,
+      render: (v: string) => <span className={styles.listPath}>{v || '-'}</span>
     },
     {
       title: '创建者',
@@ -202,6 +215,15 @@ export default function TaskListManage() {
           style={{ width: 300 }}
         />
         <Button onClick={clearSearch}>重置</Button>
+        <Tooltip content="刷新">
+          <Button
+            theme="borderless"
+            type="tertiary"
+            icon={<IconRefresh />}
+            aria-label="刷新"
+            onClick={handleRefresh}
+          />
+        </Tooltip>
       </div>
 
       {/* Task List Table */}

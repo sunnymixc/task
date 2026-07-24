@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { authAPI } from '@/api/auth'
 import type { LoginRequest, RegisterRequest, User } from '@/types'
 import { Toast } from '@douyinfe/semi-ui-19'
+import { useWorkbenchStore } from './workbench'
+import { destroyAllSessions } from '@/terminal/sessionRegistry'
 
 const TOKEN_KEY = 'task_token'
 const REFRESH_TOKEN_KEY = 'task_refresh_token'
@@ -119,6 +121,10 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    // 清空工作台,避免切换账号后残留上个用户的任务副本
+    useWorkbenchStore.getState().reset()
+    // 关闭所有常驻 AI 终端会话,避免换用户后残留 root shell
+    destroyAllSessions()
     Toast.success('已退出登录')
   },
 

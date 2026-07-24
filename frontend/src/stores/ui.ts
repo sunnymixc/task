@@ -3,7 +3,45 @@ import { settingsAPI } from '@/api/settings'
 import type { SystemSettings } from '@/types'
 
 const STORAGE_KEY = 'sidebar-collapsed'
+const RIGHT_STORAGE_KEY = 'right-sidebar-collapsed'
 const RADIUS_KEY = 'task_radius'
+const WORKBENCH_WIDTH_KEY = 'task_workbench_width'
+const WORKBENCH_PANEL_HEIGHT_KEY = 'task_workbench_panel_height'
+
+// 右侧工作台栏宽度(px):拖拽调整,浏览器端缓存;上限为当前窗口宽度
+export const WORKBENCH_WIDTH_MIN = 360
+export const WORKBENCH_WIDTH_DEFAULT = 520
+
+const clampWorkbenchWidth = (px: number): number =>
+  Math.min(window.innerWidth, Math.max(WORKBENCH_WIDTH_MIN, Math.round(px)))
+
+const loadWorkbenchWidth = (): number => {
+  const raw = localStorage.getItem(WORKBENCH_WIDTH_KEY)
+  if (raw === null) return WORKBENCH_WIDTH_DEFAULT
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return WORKBENCH_WIDTH_DEFAULT
+  return clampWorkbenchWidth(value)
+}
+
+// 工作台任务面板总高(px):拖拽面板底边调整,所有面板统一,浏览器端缓存;
+// null 表示未拖动过/已恢复默认,面板走 CSS 里视口相对的 45vh
+export const WORKBENCH_PANEL_HEIGHT_MIN = 160
+
+// 上限:窗口高扣除右栏头部 50px 与 stack 上下 padding 24px,面板最高时基本完整可见。
+// 与宽度拖拽一致,不监听 window resize 重新 clamp,仅在 load/set 时约束
+const clampWorkbenchPanelHeight = (px: number): number =>
+  Math.min(
+    Math.max(WORKBENCH_PANEL_HEIGHT_MIN, window.innerHeight - 74),
+    Math.max(WORKBENCH_PANEL_HEIGHT_MIN, Math.round(px))
+  )
+
+const loadWorkbenchPanelHeight = (): number | null => {
+  const raw = localStorage.getItem(WORKBENCH_PANEL_HEIGHT_KEY)
+  if (raw === null) return null
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return null
+  return clampWorkbenchPanelHeight(value)
+}
 
 // 圆角档位（px 值同时写入四个 --semi-border-radius-* 变量，全局统一）
 export const RADIUS_OPTIONS = [
@@ -54,9 +92,16 @@ const applyRadiusToDom = (px: number) => {
 
 interface UiState {
   sidebarCollapsed: boolean
+  rightSidebarCollapsed: boolean
+  workbenchWidth: number
+  workbenchPanelHeight: number | null
   radius: number
   setSidebarCollapsed: (value: boolean) => void
   toggleSidebar: () => void
+  setRightSidebarCollapsed: (value: boolean) => void
+  toggleRightSidebar: () => void
+  setWorkbenchWidth: (px: number) => void
+  setWorkbenchPanelHeight: (px: number | null) => void
   setRadius: (px: number) => void
   fetchSystemSettings: () => Promise<void>
   updateSystemSettings: (patch: Partial<SystemSettings>) => Promise<boolean>
@@ -68,6 +113,10 @@ applyRadiusToDom(initialRadius)
 
 export const useUiStore = create<UiState>()((set, get) => ({
   sidebarCollapsed: localStorage.getItem(STORAGE_KEY) === 'true',
+  // 右侧工作台栏默认收起,加入任务时自动展开
+  rightSidebarCollapsed: localStorage.getItem(RIGHT_STORAGE_KEY) !== 'false',
+  workbenchWidth: loadWorkbenchWidth(),
+  workbenchPanelHeight: loadWorkbenchPanelHeight(),
   radius: initialRadius,
 
   setSidebarCollapsed: (value) => {
@@ -77,6 +126,33 @@ export const useUiStore = create<UiState>()((set, get) => ({
 
   toggleSidebar: () => {
     get().setSidebarCollapsed(!get().sidebarCollapsed)
+  },
+
+  setRightSidebarCollapsed: (value) => {
+    set({ rightSidebarCollapsed: value })
+    localStorage.setItem(RIGHT_STORAGE_KEY, String(value))
+  },
+
+  toggleRightSidebar: () => {
+    get().setRightSidebarCollapsed(!get().rightSidebarCollapsed)
+  },
+
+  setWorkbenchWidth: (px) => {
+    const value = clampWorkbenchWidth(px)
+    set({ workbenchWidth: value })
+    localStorage.setItem(WORKBENCH_WIDTH_KEY, String(value))
+  },
+
+  // 传 null 恢复默认(移除缓存,面板回到 CSS 的 45vh)
+  setWorkbenchPanelHeight: (px) => {
+    if (px === null) {
+      set({ workbenchPanelHeight: null })
+      localStorage.removeItem(WORKBENCH_PANEL_HEIGHT_KEY)
+      return
+    }
+    const value = clampWorkbenchPanelHeight(px)
+    set({ workbenchPanelHeight: value })
+    localStorage.setItem(WORKBENCH_PANEL_HEIGHT_KEY, String(value))
   },
 
   setRadius: (px) => {

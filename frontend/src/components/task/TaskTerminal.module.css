@@ -1,7 +1,10 @@
+/* 高度由宿主决定:在 flex 列容器(TaskForm .terminalBody)内填满剩余空间 */
 .wrapper {
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: min(62vh, 640px);
+  flex: 1;
+  min-height: 0;
   background: #1e1e1e;
   border-radius: var(--semi-border-radius-medium, 6px);
   overflow: hidden;
@@ -40,6 +43,37 @@
 
 .statusText {
   user-select: none;
+}
+
+/* 自动应答器运行标识:琥珀色呼吸提示,提醒终端处于无人值守自动回车状态 */
+.autoTag {
+  color: #e6a23c;
+  user-select: none;
+  animation: autoTagPulse 2s ease-in-out infinite;
+}
+
+@keyframes autoTagPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 终端 DOM 被其他面板取走时的占位覆盖层 */
+.stolenHint {
+  position: absolute;
+  inset: 33px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #cfcfcf;
+  background: #1e1e1e;
 }
 
 /* xterm 挂载容器:占满剩余高度,FitAddon 依据此尺寸计算行列数 */

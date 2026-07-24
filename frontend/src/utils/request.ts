@@ -1,5 +1,15 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { Toast } from '@douyinfe/semi-ui-19'
+import { useAuthStore } from '../stores/auth'
+
+// 滑动续期：后端在 token 消耗过半时通过 X-New-Token 响应头下发新 token
+const applyRenewedToken = (headers?: Record<string, any>) => {
+  const newToken = headers?.['x-new-token']
+  if (newToken) {
+    localStorage.setItem('task_token', newToken)
+    useAuthStore.setState({ token: newToken })
+  }
+}
 
 // Create axios instance
 const request: AxiosInstance = axios.create({
@@ -45,9 +55,11 @@ request.interceptors.request.use(
 // Response interceptor - handle errors and token refresh
 request.interceptors.response.use(
   (response) => {
+    applyRenewedToken(response.headers)
     return response.data
   },
   async (error: AxiosError) => {
+    applyRenewedToken(error.response?.headers)
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
     const status = error.response?.status
     const message = (error.response?.data as any)?.message || '请求失败'
@@ -82,8 +94,10 @@ request.interceptors.response.use(
         if (response.data.success && response.data.token) {
           const newToken = response.data.token
           localStorage.setItem('task_token', newToken)
+          useAuthStore.setState({ token: newToken })
           if (response.data.refresh_token) {
             localStorage.setItem('task_refresh_token', response.data.refresh_token)
+            useAuthStore.setState({ refreshToken: response.data.refresh_token })
           }
 
           processQueue(null, newToken)

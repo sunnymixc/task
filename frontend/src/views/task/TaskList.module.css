@@ -49,6 +49,12 @@
   padding: 0;
 }
 
+/* 窄窗口下保住各定宽列(合计 480)并给标题列留 ≥300,此时允许横向滚动;
+   注意 semi-table 类就在 table 元素本身上,并需盖过 semi 的 .semi-table-fixed { min-width: 100% } */
+.tableContainer :global(table.semi-table) {
+  min-width: 780px;
+}
+
 .tableContainer :global(.semi-table-body) {
   scrollbar-width: thin;
   scrollbar-color: var(--app-gray-4) transparent;
@@ -84,17 +90,6 @@
   background: var(--app-bg-container);
 }
 
-/* 兜底：窄窗口下保住各列宽度，此时才允许出现横向滚动。
-   1730 = 各列固定宽合计（其余列 1310 + 标题列 420） */
-.tableContainer :global(.semi-table table) {
-  min-width: 1730px;
-}
-
-/* 管理员多一个 AI终端 按钮,操作列 +90(430→520),整表随之 +90 */
-.tableContainer.adminCols :global(.semi-table table) {
-  min-width: 1820px;
-}
-
 /* 行分隔线调浅:仅覆盖单元格下边框,不影响单元格内输入框等组件边框 */
 .tableContainer :global(.semi-table tbody td),
 .tableContainer :global(.semi-table thead th) {
@@ -118,6 +113,33 @@
   word-break: break-word;
 }
 
+/* 描述折叠态:限高裁剪,底部用 mask 让文字渐隐——透出行背景,行 hover 变色时无需匹配遮罩色 */
+.taskDescClamp {
+  max-height: 80px;
+  overflow: hidden;
+  cursor: pointer;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+}
+
+/* 展开/收起工具行:切换按钮始终可见(提示内容被截断),溢出时铅笔编辑按钮也挪到这里 */
+.taskDescToggleRow {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.taskDescToggleBtn {
+  font-size: 12px;
+  height: 20px;
+  padding: 0 4px;
+}
+
+/* 链接块并入标题单元格,与上方标题/描述留间距 */
+.taskLinks {
+  margin-top: 4px;
+}
+
 /* 原地编辑入口:默认隐藏,悬停所在行或获得焦点时显示;不参与 pre-line 排版 */
 .inlineEditBtn {
   white-space: nowrap;
@@ -125,6 +147,15 @@
   margin-left: 4px;
   opacity: 0;
   transition: opacity 0.2s;
+}
+
+/* 高度压进 20px 文本行框(双重选择器盖过 .semi-button 的 32px),vertical-align: top
+   让按钮与行框完全贴合——避免按钮撑高所在行,进入编辑态时文本才能零位移 */
+.taskTitle .inlineEditBtn,
+.taskDesc .inlineEditBtn {
+  height: 20px;
+  padding: 0 4px;
+  vertical-align: top;
 }
 
 .inlineAddDescBtn {
@@ -136,27 +167,18 @@
   opacity: 1;
 }
 
-/* 原地编辑态:标题为一行(输入框+按钮),描述为纵向(文本域在上、按钮行在下) */
+/* 原地编辑态:纵向布局(可编辑文本在上、保存/取消按钮行在下);
+   编辑文本复用阅读态排版类,零外边距保证进入编辑时文本不位移 */
 .inlineEditBox {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 4px 0;
-}
-
-.inlineEditBoxRow {
-  flex-direction: row;
-  align-items: center;
+  gap: 4px;
+  margin: 0;
 }
 
 .inlineEditActions {
   display: flex;
   gap: 8px;
-}
-
-.creatorInfo {
-  font-size: 13px;
-  color: var(--semi-color-text-0);
 }
 
 .emptyState {
@@ -171,4 +193,11 @@
 .emptyState p {
   margin: 16px 0;
   font-size: 14px;
+}
+
+/* 任务弹窗 footer:左侧删除按钮、右侧原有操作按钮组(按钮间距沿用 Semi 的 .semi-modal-footer .semi-button 规则) */
+.dialogFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }

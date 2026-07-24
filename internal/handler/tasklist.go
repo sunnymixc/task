@@ -27,6 +27,8 @@ func NewTaskListHandler(taskListService interfaces.TaskListService) *TaskListHan
 type CreateTaskListRequest struct {
 	Title       string `json:"title" binding:"required,min=1,max=255"`
 	Description string `json:"description" binding:"max=5000"`
+	// 项目路径：任务的 AI 终端初始化时默认进入该目录
+	ProjectPath string `json:"project_path" binding:"max=1024"`
 	// 序号（1-10000000），不填则自动取当前租户最大序号+1
 	SortOrder int `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
@@ -35,6 +37,7 @@ type CreateTaskListRequest struct {
 type UpdateTaskListRequest struct {
 	Title       *string `json:"title" binding:"omitempty,min=1,max=255"`
 	Description *string `json:"description" binding:"omitempty,max=5000"`
+	ProjectPath *string `json:"project_path" binding:"omitempty,max=1024"`
 	SortOrder   *int    `json:"sort_order" binding:"omitempty,min=1,max=10000000"`
 }
 
@@ -62,6 +65,7 @@ func (h *TaskListHandler) CreateTaskList(c *gin.Context) {
 	createReq := &types.CreateTaskListRequest{
 		Title:       req.Title,
 		Description: req.Description,
+		ProjectPath: req.ProjectPath,
 		SortOrder:   req.SortOrder,
 	}
 
@@ -189,6 +193,7 @@ func (h *TaskListHandler) UpdateTaskList(c *gin.Context) {
 	updateReq := &types.UpdateTaskListRequest{
 		Title:       req.Title,
 		Description: req.Description,
+		ProjectPath: req.ProjectPath,
 		SortOrder:   req.SortOrder,
 	}
 

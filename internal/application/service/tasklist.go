@@ -81,6 +81,7 @@ func (s *taskListService) CreateTaskList(ctx context.Context, req *types.CreateT
 		TenantID:    user.TenantID,
 		Title:       req.Title,
 		Description: req.Description,
+		ProjectPath: req.ProjectPath,
 		IsDefault:   false,
 		SortOrder:   sortOrder,
 		CreatorID:   user.ID,
@@ -177,6 +178,9 @@ func (s *taskListService) UpdateTaskList(ctx context.Context, id string, req *ty
 	}
 	if req.Description != nil {
 		list.Description = *req.Description
+	}
+	if req.ProjectPath != nil {
+		list.ProjectPath = *req.ProjectPath
 	}
 	if req.SortOrder != nil {
 		list.SortOrder = *req.SortOrder

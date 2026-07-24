@@ -97,6 +97,7 @@ type LoginResponse struct {
 	ActiveTenant *Tenant `json:"active_tenant,omitempty"`
 	Memberships  []Membership `json:"memberships,omitempty"`
 	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 // Membership represents a user's membership in a tenant

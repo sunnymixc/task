@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -42,6 +44,69 @@ type TerminalHandler struct {
 
 func NewTerminalHandler(cfg *config.Config) *TerminalHandler {
 	return &TerminalHandler{cfg: cfg}
+}
+
+// defaultShellFor 按服务器操作系统选择默认 shell。
+// macOS 默认 zsh —— oh-my-zsh 是 zsh 的配置框架,交互式 zsh 启动时经 ~/.zshrc 自动加载;
+// 找不到 zsh 时回退 bash。其余系统默认 bash。
+func defaultShellFor(goos string) string {
+	if goos == "darwin" {
+		if _, err := exec.LookPath("zsh"); err == nil {
+			return "zsh"
+		}
+	}
+	return "bash"
+}
+
+// shellArgsFor 决定 shell 的启动参数。darwin 且 shell 为 zsh/bash 时返回 ["-il"]，
+// 对齐 Terminal.app/iTerm2 的 login+interactive 惯例：保证 ~/.zprofile（Homebrew PATH 等）
+// 先加载，oh-my-zsh 的插件/主题才能完整初始化。其余平台/shell 不加参数。
+func shellArgsFor(goos, shell string) []string {
+	if goos != "darwin" {
+		return nil
+	}
+	switch filepath.Base(shell) {
+	case "zsh", "bash":
+		return []string{"-il"}
+	}
+	return nil
+}
+
+// initialCdInput 生成 shell 就绪后注入 pty 的 cd 命令。darwin 上 oh-my-zsh 初始化
+// （如 last-working-dir 插件、zshrc 里的 cd）可能覆盖 cmd.Dir 预设的目录，因此在
+// pty 启动后写入 " cd '<dir>'\r"——tty 会缓冲这些字节，zsh 加载完全部 rc 文件、出现
+// 首个提示符时才读取执行，天然保证「先 oh-my-zsh、后进入项目路径」。单引号包裹并
+// 转义内部单引号；行首空格配合 HIST_IGNORE_SPACE 尽量不污染历史。
+func initialCdInput(goos, workDir string) []byte {
+	if goos != "darwin" || workDir == "" {
+		return nil
+	}
+	escaped := strings.ReplaceAll(workDir, "'", `'\''`)
+	return []byte(" cd '" + escaped + "'\r")
+}
+
+// resolveWorkDir 决定 PTY 的初始工作目录，返回 (目录, 是否因目录无效回退主目录)。
+// cwdParam 为空（未传参）时沿用配置的 WorkDir（旧行为）；否则展开开头的 ~ 为主目录，
+// 目录有效则使用，不存在/无效则回退主目录 —— 对应「清单项目路径为空时进入 ~」的产品语义
+// （前端在路径为空时显式传 ~）。
+func resolveWorkDir(cwdParam, cfgWorkDir string) (string, bool) {
+	if cwdParam == "" {
+		return cfgWorkDir, false
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return cfgWorkDir, false
+	}
+	dir := cwdParam
+	if dir == "~" {
+		dir = home
+	} else if strings.HasPrefix(dir, "~/") {
+		dir = filepath.Join(home, dir[2:])
+	}
+	if info, err := os.Stat(dir); err == nil && info.IsDir() {
+		return dir, false
+	}
+	return home, true
 }
 
 // checkTerminalOrigin 收敛 WS 来源：同源、本地开发、以及可信生产域名。
@@ -90,18 +155,21 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	shell := "bash"
-	workDir := ""
+	shell := defaultShellFor(runtime.GOOS)
+	cfgWorkDir := ""
 	if h.cfg.Terminal != nil {
 		if h.cfg.Terminal.Shell != "" {
 			shell = h.cfg.Terminal.Shell
 		}
-		workDir = h.cfg.Terminal.WorkDir
+		cfgWorkDir = h.cfg.Terminal.WorkDir
 	}
+	// cwd 由前端传入（任务所属清单的项目路径，空则 ~）；优先于配置的 WorkDir
+	cwdParam := c.Query("cwd")
+	workDir, cwdFellBack := resolveWorkDir(cwdParam, cfgWorkDir)
 
 	// pty.Start 会为子进程设置 Setsid+Setctty（成为会话/进程组首进程），
 	// 因此后续可用 Kill(-pid) 回收整组。WorkDir 为空时继承服务器进程的 cwd（项目根目录）。
-	cmd := exec.Command(shell)
+	cmd := exec.Command(shell, shellArgsFor(runtime.GOOS, shell)...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	if workDir != "" {
 		cmd.Dir = workDir
@@ -114,9 +182,17 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 		return
 	}
 
+	// darwin 上注入 cd，纠正 oh-my-zsh 初始化可能改掉的工作目录（详见 initialCdInput）
+	if input := initialCdInput(runtime.GOOS, workDir); len(input) > 0 {
+		_, _ = ptmx.Write(input)
+	}
+
 	userID := c.GetString("user_id")
 	pid := cmd.Process.Pid
-	log.Printf("[terminal] session started user=%s pid=%d shell=%s", userID, pid, shell)
+	log.Printf("[terminal] session started user=%s pid=%d shell=%s workdir=%q", userID, pid, shell, workDir)
+	if cwdFellBack {
+		_ = conn.WriteMessage(websocket.BinaryMessage, []byte("\x1b[33m[项目路径 "+cwdParam+" 不存在，已进入主目录]\x1b[0m\r\n"))
+	}
 
 	// 统一收尾：杀掉整个进程组、关闭 pty、关闭连接。任一方向出错都触发，且只执行一次。
 	var closeOnce sync.Once

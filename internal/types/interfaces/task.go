@@ -11,6 +11,7 @@ type TaskRepository interface {
 	CreateTask(ctx context.Context, task *types.Task) error
 	GetTaskByID(ctx context.Context, id string) (*types.Task, error)
 	GetTasksByTenantID(ctx context.Context, tenantID uint64, offset, limit int) ([]*types.Task, int64, error)
+	GetTasksByIDs(ctx context.Context, tenantID uint64, ids []string) ([]*types.Task, error)
 	UpdateTask(ctx context.Context, task *types.Task) error
 	DeleteTask(ctx context.Context, id string) error
 	SearchTasks(ctx context.Context, tenantID uint64, query string, filters types.TaskFilters, offset, limit int) ([]*types.Task, int64, error)

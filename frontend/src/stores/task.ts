@@ -9,6 +9,8 @@ import type {
 } from '@/types'
 import { Toast } from '@douyinfe/semi-ui-19'
 import { useTaskListStore } from './taskList'
+import { useWorkbenchStore } from './workbench'
+import { destroySession } from '@/terminal/sessionRegistry'
 
 // 任务增删/状态变化会影响侧边栏清单的执行中数量,静默刷新(fetchAllLists 自行吞错)
 const refreshListCounts = () => {
@@ -82,6 +84,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       const updatedTask = await taskAPI.update(id, data)
       set({ tasks: get().tasks.map(t => (t.id === id ? updatedTask : t)) })
       refreshListCounts()
+      useWorkbenchStore.getState().applyTaskUpdate(updatedTask)
       Toast.success('任务更新成功')
       return updatedTask
     } catch (error) {
@@ -99,6 +102,9 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       await taskAPI.delete(id)
       set({ tasks: get().tasks.filter(t => t.id !== id), total: get().total - 1 })
       refreshListCounts()
+      useWorkbenchStore.getState().removeIfPresent(id)
+      // 任务已不可达,顺带结束其常驻 AI 终端会话,避免 root 进程泄漏
+      destroySession(id)
       Toast.success('任务删除成功')
       return true
     } catch (error) {
@@ -116,6 +122,7 @@ export const useTaskStore = create<TaskState>()((set, get) => ({
       const updatedTask = await taskAPI.updateStatus(id, { status })
       set({ tasks: get().tasks.map(t => (t.id === id ? updatedTask : t)) })
       refreshListCounts()
+      useWorkbenchStore.getState().applyTaskUpdate(updatedTask)
       Toast.success('状态更新成功')
       return updatedTask
     } catch (error) {

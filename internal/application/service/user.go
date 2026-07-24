@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/task-management/task/internal/config"
 	"github.com/task-management/task/internal/types"
 	"github.com/task-management/task/internal/types/interfaces"
+	"github.com/task-management/task/internal/util"
 )
 
 // userService implements interfaces.UserService
@@ -33,14 +33,6 @@ var (
 	// ErrUserExists is returned when a user already exists
 	ErrUserExists = errors.New("user already exists")
 )
-
-// JWTClaims represents JWT claims
-type JWTClaims struct {
-	UserID   string `json:"user_id"`
-	Email    string `json:"email"`
-	TenantID uint64 `json:"tenant_id"`
-	jwt.RegisteredClaims
-}
 
 // NewUserService creates a new user service
 func NewUserService(cfg *config.Config) interfaces.UserService {
@@ -126,6 +118,10 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
+	refreshToken, err := s.generateRefreshToken(user.ID, user.Email, tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
 
 	// Get memberships for response
 	memberships, err := s.getMemberships(ctx, user.ID)
@@ -140,6 +136,7 @@ func (s *userService) Register(ctx context.Context, req *types.RegisterRequest) 
 		ActiveTenant: tenant,
 		Memberships:  memberships,
 		Token:        token,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
@@ -178,6 +175,10 @@ func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*type
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
+	refreshToken, err := s.generateRefreshToken(user.ID, user.Email, tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
 
 	// Get memberships for response
 	memberships, err := s.getMemberships(ctx, user.ID)
@@ -192,13 +193,15 @@ func (s *userService) Login(ctx context.Context, req *types.LoginRequest) (*type
 		ActiveTenant: tenant,
 		Memberships:  memberships,
 		Token:        token,
+		RefreshToken: refreshToken,
 	}, nil
 }
 
-// RefreshToken refreshes a JWT token
+// RefreshToken exchanges a valid refresh token for a new access token,
+// rotating the refresh token as well (sliding window).
 func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*types.LoginResponse, error) {
-	// Parse and validate the token
-	claims, err := s.parseToken(refreshToken)
+	// Parse and validate the refresh token
+	claims, err := util.ParseRefreshToken(refreshToken, s.config.Auth.JWTSecret)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
@@ -211,6 +214,9 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*t
 	if user == nil {
 		return nil, ErrUserNotFound
 	}
+	if !user.IsActive {
+		return nil, errors.New("user account is inactive")
+	}
 
 	// Get tenant
 	tenant, err := s.tenantRepo.GetTenantByID(ctx, claims.TenantID)
@@ -221,10 +227,14 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*t
 		return nil, errors.New("tenant not found")
 	}
 
-	// Generate new token
+	// Generate new token pair
 	token, err := s.generateToken(user.ID, user.Email, tenant.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
+	}
+	newRefreshToken, err := s.generateRefreshToken(user.ID, user.Email, tenant.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
 	// Get memberships
@@ -240,6 +250,7 @@ func (s *userService) RefreshToken(ctx context.Context, refreshToken string) (*t
 		ActiveTenant: tenant,
 		Memberships:  memberships,
 		Token:        token,
+		RefreshToken: newRefreshToken,
 	}, nil
 }
 
@@ -335,40 +346,16 @@ func (s *userService) GetCurrentTenant(ctx context.Context) (*types.Tenant, erro
 	return nil, errors.New("not implemented")
 }
 
-// generateToken generates a JWT token for a user
+// generateToken generates an access JWT for a user
 func (s *userService) generateToken(userID, email string, tenantID uint64) (string, error) {
-	claims := &JWTClaims{
-		UserID:   userID,
-		Email:    email,
-		TenantID: tenantID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(s.config.Auth.JWTExpiration) * time.Minute)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(s.config.Auth.JWTSecret))
+	lifetime := time.Duration(s.config.Auth.JWTExpiration) * time.Minute
+	return util.GenerateToken(s.config.Auth.JWTSecret, lifetime, userID, email, tenantID)
 }
 
-// parseToken parses and validates a JWT token
-func (s *userService) parseToken(tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(s.config.Auth.JWTSecret), nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, errors.New("invalid token")
+// generateRefreshToken generates a long-lived refresh JWT for a user
+func (s *userService) generateRefreshToken(userID, email string, tenantID uint64) (string, error) {
+	lifetime := time.Duration(s.config.Auth.JWTRefreshExpiration) * time.Minute
+	return util.GenerateRefreshToken(s.config.Auth.JWTSecret, lifetime, userID, email, tenantID)
 }
 
 // getMemberships gets all memberships for a user

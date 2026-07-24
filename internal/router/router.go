@@ -21,12 +21,14 @@ func Setup(cfg *config.Config) *gin.Engine {
 	taskService := service.NewTaskService()
 	taskListService := service.NewTaskListService()
 	settingsService := service.NewSettingsService()
+	workbenchService := service.NewWorkbenchService()
 
 	// Create handlers
 	authHandler := handler.NewAuthHandler(userService)
 	taskHandler := handler.NewTaskHandler(taskService)
 	taskListHandler := handler.NewTaskListHandler(taskListService)
 	settingsHandler := handler.NewSettingsHandler(settingsService)
+	workbenchHandler := handler.NewWorkbenchHandler(workbenchService)
 	terminalHandler := handler.NewTerminalHandler(cfg)
 
 	// Create router
@@ -76,6 +78,15 @@ func Setup(cfg *config.Config) *gin.Engine {
 			taskLists.GET("/:id", taskListHandler.GetTaskList)
 			taskLists.PUT("/:id", taskListHandler.UpdateTaskList)
 			taskLists.DELETE("/:id", taskListHandler.DeleteTaskList)
+		}
+
+		// 任务工作台（按用户持久化的任务钉选清单）
+		workbench := v1.Group("/workbench")
+		{
+			workbench.GET("", workbenchHandler.ListTasks)
+			workbench.POST("", workbenchHandler.AddTask)
+			workbench.DELETE("/:taskId", workbenchHandler.RemoveTask)
+			workbench.PATCH("/:taskId/collapsed", workbenchHandler.SetCollapsed)
 		}
 
 		// System settings routes（读：登录即可；写：仅管理员）

@@ -77,6 +77,22 @@ func (r *taskRepository) GetTasksByTenantID(ctx context.Context, tenantID uint64
 	return tasks, total, err
 }
 
+// GetTasksByIDs retrieves tasks by IDs within a tenant (soft-deleted tasks excluded by GORM scope)
+func (r *taskRepository) GetTasksByIDs(ctx context.Context, tenantID uint64, ids []string) ([]*types.Task, error) {
+	var tasks []*types.Task
+	if len(ids) == 0 {
+		return tasks, nil
+	}
+	err := r.db.WithContext(ctx).
+		Preload("Creator").
+		Preload("TaskList").
+		Preload("Links", orderLinks).
+		Preload("Links.TargetTask").
+		Where("tenant_id = ? AND id IN ?", tenantID, ids).
+		Find(&tasks).Error
+	return tasks, err
+}
+
 // UpdateTask updates a task.
 // Omit associations: task 由 GetTaskByID 预加载了旧的 TaskList/Creator 等关联,
 // 若不忽略,GORM Save 会用旧关联的主键回写外键(如 task_list_id),覆盖服务层刚设置的新值。

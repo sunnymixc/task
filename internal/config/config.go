@@ -20,7 +20,7 @@ type Config struct {
 // TerminalConfig AI 终端(Web PTY)配置
 type TerminalConfig struct {
 	Enabled bool   // 是否启用终端功能
-	Shell   string // 启动的 shell，默认 bash
+	Shell   string // 启动的 shell，空则按服务器 OS 自动选择(macOS→zsh,其余→bash)
 	WorkDir string // 会话初始工作目录，空则继承服务器进程 cwd(项目根目录)
 }
 
@@ -47,8 +47,9 @@ type DatabaseConfig struct {
 
 // AuthConfig 认证配置
 type AuthConfig struct {
-	JWTSecret     string
-	JWTExpiration int // minutes
+	JWTSecret            string
+	JWTExpiration        int // access token 有效期(分钟)
+	JWTRefreshExpiration int // refresh token 有效期(分钟)
 }
 
 // Load 从环境变量加载配置
@@ -75,12 +76,13 @@ func Load() (*Config, error) {
 			ConnMaxLifetime: 1 * time.Hour,
 		},
 		Auth: &AuthConfig{
-			JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-this"),
-			JWTExpiration: getEnvAsInt("JWT_EXPIRATION", 1440), // 24 hours
+			JWTSecret:            getEnv("JWT_SECRET", "your-secret-key-change-this"),
+			JWTExpiration:        getEnvAsInt("JWT_EXPIRATION", 1440),          // 24 hours
+			JWTRefreshExpiration: getEnvAsInt("JWT_REFRESH_EXPIRATION", 10080), // 7 days
 		},
 		Terminal: &TerminalConfig{
 			Enabled: getEnvAsBool("TERMINAL_ENABLED", true),
-			Shell:   getEnv("TERMINAL_SHELL", "bash"),
+			Shell:   getEnv("TERMINAL_SHELL", ""),
 			WorkDir: getEnv("TERMINAL_WORKDIR", ""),
 		},
 	}

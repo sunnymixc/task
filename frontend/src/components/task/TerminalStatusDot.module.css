@@ -1,0 +1,61 @@
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+/* 连接中:橙色呼吸(与 TaskTerminal 状态栏的 connecting 配色一致) */
+.connecting {
+  background: #e6a23c;
+  animation: terminalDotBreath 1.2s ease-in-out infinite;
+}
+
+/* 输出中:绿色 + 脉冲光晕 */
+.running {
+  background: #2ecc71;
+  animation: terminalDotPulse 1.5s ease-out infinite;
+}
+
+/* 已连接 · 空闲:绿色常亮 */
+.idle {
+  background: #2ecc71;
+}
+
+/* 已断开(历史保留):灰色常亮 */
+.closed {
+  background: #999;
+}
+
+@keyframes terminalDotBreath {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes terminalDotPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 6px rgba(46, 204, 113, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .connecting,
+  .running {
+    animation: none;
+  }
+}
