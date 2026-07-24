@@ -26,6 +26,8 @@
 
 /* 每个任务占满一行(横向铺满) */
 .panel {
+  /* 面板总高 ≈ 40vh:tab 内容区 = 40vh 减标题栏(10+28+10+1=49px)与 body 上下 padding(4+12=16px) */
+  --taskform-tab-height: calc(40vh - 65px);
   flex-shrink: 0;
   width: 100%;
   background: var(--app-bg-container);
