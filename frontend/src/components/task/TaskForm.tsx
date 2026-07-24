@@ -18,7 +18,7 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import TaskLogList from './TaskLogList'
 import TaskTerminal, { type TaskTerminalHandle } from './TaskTerminal'
 import { hasSession } from '@/terminal/sessionRegistry'
-import { runStartTaskCommand } from '@/terminal/quickCommands'
+import { runStartTaskAutoCommand, runStartTaskCommand } from '@/terminal/quickCommands'
 import styles from './TaskForm.module.css'
 
 export interface TaskFormHandle {
@@ -254,8 +254,9 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
   // 快捷指令执行中:禁用入口防止重复触发(跨面板并发由 quickCommands 的 running 集合兜底)
   const [quickCmdRunning, setQuickCmdRunning] = useState(false)
 
-  // 快捷指令「启动任务」:cd 项目目录 → 启动 claude → /plan → 粘贴任务内容 → 回车提交
-  const handleStartTask = async () => {
+  // 快捷指令「启动任务」:cd 项目目录 → 启动 claude → /plan → 粘贴任务内容 → 回车提交;
+  // auto=true 时提交后再挂上自动应答器,计划确认与后续提问自动回车选推荐项
+  const handleStartTask = async (auto: boolean) => {
     if (!task?.id) return
     const taskText = buildCopyText()
     if (!taskText.trim()) {
@@ -264,12 +265,13 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     }
     setQuickCmdRunning(true)
     try {
-      await runStartTaskCommand(task.id, {
+      const run = auto ? runStartTaskAutoCommand : runStartTaskCommand
+      await run(task.id, {
         cwd: task.task_list?.project_path?.trim() || '~',
         projectPath: task.task_list?.project_path?.trim() || '',
         taskText
       })
-      Toast.success('「启动任务」指令已发送')
+      Toast.success(auto ? '「启动任务(自动)」已发送,提问将自动应答' : '「启动任务」指令已发送')
     } catch (e) {
       Toast.error(e instanceof Error ? e.message : '快捷指令执行失败')
     } finally {
@@ -488,8 +490,11 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                         position="bottomRight"
                         render={
                           <Dropdown.Menu>
-                            <Dropdown.Item onClick={() => void handleStartTask()} disabled={quickCmdRunning}>
+                            <Dropdown.Item onClick={() => void handleStartTask(false)} disabled={quickCmdRunning}>
                               启动任务
+                            </Dropdown.Item>
+                            <Dropdown.Item onClick={() => void handleStartTask(true)} disabled={quickCmdRunning}>
+                              启动任务(自动)
                             </Dropdown.Item>
                           </Dropdown.Menu>
                         }

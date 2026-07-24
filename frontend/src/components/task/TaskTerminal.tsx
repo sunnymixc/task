@@ -12,6 +12,11 @@ import {
   unmountSession,
   type TermConnState
 } from '@/terminal/sessionRegistry'
+import {
+  getAutoResponderSnapshot,
+  stopAutoResponder,
+  subscribeAutoResponder
+} from '@/terminal/autoResponder'
 import styles from './TaskTerminal.module.css'
 
 export interface TaskTerminalHandle {
@@ -43,6 +48,14 @@ export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
   const snapshot = useSyncExternalStore(subscribe, () => getSessionSnapshot(sessionKey))
   const state = snapshot.split('|')[0] as TermConnState
   const stolen = isStolenFrom(sessionKey, ownerRef.current)
+
+  // 自动应答器状态(module 级 per-key 单例,双面板同开时两处状态天然同步)
+  const autoSubscribe = useCallback(
+    (cb: () => void) => subscribeAutoResponder(sessionKey, cb),
+    [sessionKey]
+  )
+  const autoSnap = useSyncExternalStore(autoSubscribe, () => getAutoResponderSnapshot(sessionKey))
+  const [autoActive, answeredCount] = autoSnap.split('|')
 
   const attach = useCallback(() => {
     if (!containerRef.current) return
@@ -80,6 +93,16 @@ export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
           <Button size="small" theme="borderless" onClick={() => reconnectSession(sessionKey, cwd)}>
             重连
           </Button>
+        )}
+        {autoActive === 'true' && (
+          <>
+            <span className={styles.autoTag}>
+              自动执行中{Number(answeredCount) > 0 ? ` · 已应答 ${answeredCount}` : ''}
+            </span>
+            <Button size="small" theme="borderless" onClick={() => stopAutoResponder(sessionKey)}>
+              停止自动
+            </Button>
+          </>
         )}
       </div>
       <div className={styles.term} ref={containerRef} />

@@ -2,6 +2,7 @@
 // 只依赖 sessionRegistry 的原语,与 React 无关;以 sessionKey 为粒度做并发守卫
 // (同一任务可能同时出现在工作台面板与编辑弹窗,组件内状态不足以防止跨实例并发)。
 import { ensureSessionOpen, sendSessionText } from './sessionRegistry'
+import { startAutoResponder, stopAutoResponder } from './autoResponder'
 
 // 各步骤之间的延迟(ms),集中在此便于调参
 const DELAY_AFTER_OPEN = 400 // 连接就绪后等 shell 提示符
@@ -28,41 +29,63 @@ export interface StartTaskOptions {
   taskText: string
 }
 
-// 「启动任务」:cd 项目目录 → 启动 claude → /plan 切换 plan 模式 → 粘贴任务内容 → 回车提交。
+// 启动序列本体:cd 项目目录 → 启动 claude → /plan 切换 plan 模式 → 粘贴任务内容 → 回车提交。
 // 若会话中已有前台程序在运行,这些字节会被当作其输入照发不误——前端无法可靠探测
 // pty 内的前台进程,该风险由用户自担。
+async function runStartTaskSequence(key: string, opts: StartTaskOptions): Promise<void> {
+  // 序列中途断连时 fail-fast,避免向重连后的新会话发送残缺的后半段
+  const send = (text: string) => {
+    if (!sendSessionText(key, text)) throw new Error('终端连接已断开,指令中止')
+  }
+
+  await ensureSessionOpen(key, opts.cwd)
+  await sleep(DELAY_AFTER_OPEN)
+
+  if (opts.projectPath) {
+    // 转义与后端 initialCdInput 一致:' → '\'';行首空格配合 HIST_IGNORE_SPACE 不进历史
+    const escaped = opts.projectPath.replace(/'/g, "'\\''")
+    send(` cd '${escaped}'\r`)
+    await sleep(DELAY_AFTER_CD)
+  }
+
+  send('claude\r')
+  await sleep(DELAY_CLAUDE_STARTUP)
+
+  // 斜杠命令必须"像键入的"才会触发命令面板,不能走括号粘贴;回车单独一帧确认
+  send('/plan')
+  await sleep(DELAY_AFTER_SLASH)
+  send('\r')
+  await sleep(DELAY_AFTER_PLAN)
+
+  // 括号粘贴:内嵌换行被视作粘贴块的一部分,不会提前提交
+  send(`\x1b[200~${opts.taskText}\x1b[201~`)
+  await sleep(DELAY_AFTER_PASTE)
+  send('\r')
+}
+
+// 「启动任务」(手动版)
 export async function runStartTaskCommand(key: string, opts: StartTaskOptions): Promise<void> {
   if (running.has(key)) throw new Error('已有快捷指令在执行中')
   running.add(key)
   try {
-    // 序列中途断连时 fail-fast,避免向重连后的新会话发送残缺的后半段
-    const send = (text: string) => {
-      if (!sendSessionText(key, text)) throw new Error('终端连接已断开,指令中止')
-    }
+    // 手动启动意味着回到全手动:清掉可能残留的自动应答器
+    stopAutoResponder(key)
+    await runStartTaskSequence(key, opts)
+  } finally {
+    running.delete(key)
+  }
+}
 
-    await ensureSessionOpen(key, opts.cwd)
-    await sleep(DELAY_AFTER_OPEN)
-
-    if (opts.projectPath) {
-      // 转义与后端 initialCdInput 一致:' → '\'';行首空格配合 HIST_IGNORE_SPACE 不进历史
-      const escaped = opts.projectPath.replace(/'/g, "'\\''")
-      send(` cd '${escaped}'\r`)
-      await sleep(DELAY_AFTER_CD)
-    }
-
-    send('claude\r')
-    await sleep(DELAY_CLAUDE_STARTUP)
-
-    // 斜杠命令必须"像键入的"才会触发命令面板,不能走括号粘贴;回车单独一帧确认
-    send('/plan')
-    await sleep(DELAY_AFTER_SLASH)
-    send('\r')
-    await sleep(DELAY_AFTER_PLAN)
-
-    // 括号粘贴:内嵌换行被视作粘贴块的一部分,不会提前提交
-    send(`\x1b[200~${opts.taskText}\x1b[201~`)
-    await sleep(DELAY_AFTER_PASTE)
-    send('\r')
+// 「启动任务(自动)」:同一启动序列,提交后挂上自动应答器 ——
+// 计划确认框(可能数分钟后才出现)与后续一切 ❯ 编号选择提示均自动回车选推荐项
+export async function runStartTaskAutoCommand(key: string, opts: StartTaskOptions): Promise<void> {
+  if (running.has(key)) throw new Error('已有快捷指令在执行中')
+  running.add(key)
+  try {
+    // 重跑时先复位,避免旧计数/指纹残留
+    stopAutoResponder(key)
+    await runStartTaskSequence(key, opts)
+    startAutoResponder(key)
   } finally {
     running.delete(key)
   }

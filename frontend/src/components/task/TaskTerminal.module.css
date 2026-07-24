@@ -45,6 +45,23 @@
   user-select: none;
 }
 
+/* 自动应答器运行标识:琥珀色呼吸提示,提醒终端处于无人值守自动回车状态 */
+.autoTag {
+  color: #e6a23c;
+  user-select: none;
+  animation: autoTagPulse 2s ease-in-out infinite;
+}
+
+@keyframes autoTagPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 /* 终端 DOM 被其他面板取走时的占位覆盖层 */
 .stolenHint {
   position: absolute;

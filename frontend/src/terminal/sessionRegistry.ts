@@ -31,6 +31,11 @@ interface TerminalSession {
   // 所有权每变更一次自增,参与快照,使 useSyncExternalStore 能感知"被别处抢占"
   ownerSeq: number
   listeners: Set<() => void>
+  // 终端输出活动通知。与 listeners 分离:listeners 接 useSyncExternalStore,
+  // 高频输出事件走独立通道,避免每个 WS 帧触发 React 重渲染
+  outputListeners: Set<() => void>
+  // 最近一次真实键盘/粘贴输入时间(仅 term.onData 更新;sendSessionText 不算)
+  lastUserInputAt: number
 }
 
 const sessions = new Map<string, TerminalSession>()
@@ -76,6 +81,7 @@ const connect = (session: TerminalSession) => {
     } else {
       session.term.write(new Uint8Array(ev.data as ArrayBuffer))
     }
+    session.outputListeners.forEach((fn) => fn())
   }
   ws.onclose = () => {
     // 已被新连接替换时忽略旧连接的关闭事件
@@ -121,11 +127,14 @@ export function acquireSession(key: string, cwd?: string): TerminalSession {
     cwd,
     owner: null,
     ownerSeq: 0,
-    listeners: new Set()
+    listeners: new Set(),
+    outputListeners: new Set(),
+    lastUserInputAt: 0
   }
   sessions.set(key, session)
 
   term.onData((d) => {
+    session.lastUserInputAt = Date.now()
     const ws = session.ws
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(encoder.encode(d))
@@ -262,6 +271,35 @@ export function sendSessionText(key: string, text: string): boolean {
   if (!ws || ws.readyState !== WebSocket.OPEN) return false
   ws.send(encoder.encode(text))
   return true
+}
+
+// 订阅终端输出活动(每个 WS 帧写入 xterm 后触发一次)。
+// 会话不存在时返回 no-op:读操作不该创建会话
+export function subscribeSessionOutput(key: string, cb: () => void): () => void {
+  const session = sessions.get(key)
+  if (!session) return () => {}
+  session.outputListeners.add(cb)
+  return () => {
+    session.outputListeners.delete(cb)
+  }
+}
+
+// 读取活动屏(非滚动视口)的可视文本行:buffer.active 从 baseY 起取 term.rows 行。
+// 用 baseY 而非 viewportY:用户上滚查看历史时仍读底部活动屏。
+// xterm 已消化全部 ANSI 转义,这里拿到的是纯渲染文本(translateToString(true) 去尾部空白)
+export function getSessionScreenLines(key: string): string[] {
+  const session = sessions.get(key)
+  if (!session) return []
+  const buf = session.term.buffer.active
+  const lines: string[] = []
+  for (let i = 0; i < session.term.rows; i++) {
+    lines.push(buf.getLine(buf.baseY + i)?.translateToString(true) ?? '')
+  }
+  return lines
+}
+
+export function getSessionLastUserInputAt(key: string): number {
+  return sessions.get(key)?.lastUserInputAt ?? 0
 }
 
 // 确保会话就绪:closed 时经 reconnectSession 自动重连(保留滚动缓冲),等待进入 open;
