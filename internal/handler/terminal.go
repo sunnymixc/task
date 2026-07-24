@@ -58,6 +58,33 @@ func defaultShellFor(goos string) string {
 	return "bash"
 }
 
+// shellArgsFor 决定 shell 的启动参数。darwin 且 shell 为 zsh/bash 时返回 ["-il"]，
+// 对齐 Terminal.app/iTerm2 的 login+interactive 惯例：保证 ~/.zprofile（Homebrew PATH 等）
+// 先加载，oh-my-zsh 的插件/主题才能完整初始化。其余平台/shell 不加参数。
+func shellArgsFor(goos, shell string) []string {
+	if goos != "darwin" {
+		return nil
+	}
+	switch filepath.Base(shell) {
+	case "zsh", "bash":
+		return []string{"-il"}
+	}
+	return nil
+}
+
+// initialCdInput 生成 shell 就绪后注入 pty 的 cd 命令。darwin 上 oh-my-zsh 初始化
+// （如 last-working-dir 插件、zshrc 里的 cd）可能覆盖 cmd.Dir 预设的目录，因此在
+// pty 启动后写入 " cd '<dir>'\r"——tty 会缓冲这些字节，zsh 加载完全部 rc 文件、出现
+// 首个提示符时才读取执行，天然保证「先 oh-my-zsh、后进入项目路径」。单引号包裹并
+// 转义内部单引号；行首空格配合 HIST_IGNORE_SPACE 尽量不污染历史。
+func initialCdInput(goos, workDir string) []byte {
+	if goos != "darwin" || workDir == "" {
+		return nil
+	}
+	escaped := strings.ReplaceAll(workDir, "'", `'\''`)
+	return []byte(" cd '" + escaped + "'\r")
+}
+
 // resolveWorkDir 决定 PTY 的初始工作目录，返回 (目录, 是否因目录无效回退主目录)。
 // cwdParam 为空（未传参）时沿用配置的 WorkDir（旧行为）；否则展开开头的 ~ 为主目录，
 // 目录有效则使用，不存在/无效则回退主目录 —— 对应「清单项目路径为空时进入 ~」的产品语义
@@ -142,7 +169,7 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 
 	// pty.Start 会为子进程设置 Setsid+Setctty（成为会话/进程组首进程），
 	// 因此后续可用 Kill(-pid) 回收整组。WorkDir 为空时继承服务器进程的 cwd（项目根目录）。
-	cmd := exec.Command(shell)
+	cmd := exec.Command(shell, shellArgsFor(runtime.GOOS, shell)...)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	if workDir != "" {
 		cmd.Dir = workDir
@@ -153,6 +180,11 @@ func (h *TerminalHandler) HandleWS(c *gin.Context) {
 		log.Printf("[terminal] pty start failed: %v", err)
 		_ = conn.WriteMessage(websocket.TextMessage, []byte("\r\n无法启动终端: "+err.Error()+"\r\n"))
 		return
+	}
+
+	// darwin 上注入 cd，纠正 oh-my-zsh 初始化可能改掉的工作目录（详见 initialCdInput）
+	if input := initialCdInput(runtime.GOOS, workDir); len(input) > 0 {
+		_, _ = ptmx.Write(input)
 	}
 
 	userID := c.GetString("user_id")
