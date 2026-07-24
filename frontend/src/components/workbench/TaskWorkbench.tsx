@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { Button, Space, Spin, Tag, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import { IconChevronDown, IconChevronUp, IconInfoCircle } from '@douyinfe/semi-icons'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useTaskStore } from '@/stores/task'
+import { useUiStore } from '@/stores/ui'
 import type { Task, UpdateTaskRequest } from '@/types'
 import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
 import StatusSelect from '@/components/task/StatusSelect'
@@ -21,6 +22,45 @@ export default function TaskWorkbench() {
 
   // 已折叠面板的任务 id;按用户按任务落库,由 store 在 fetch 时初始化、toggle 时持久化
   const collapsedIds = useWorkbenchStore((s) => s.collapsedIds)
+
+  // 面板高度拖拽:所有面板统一高度(null = 默认走 CSS 的 40vh),偏好缓存在浏览器端
+  const panelHeight = useUiStore((s) => s.workbenchPanelHeight)
+  const [resizingId, setResizingId] = useState<string | null>(null)
+  const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null)
+
+  // 拖拽期间禁用全局文本选中;effect cleanup 兜底拖拽中途组件卸载
+  useEffect(() => {
+    if (resizingId === null) return
+    const prev = document.body.style.userSelect
+    document.body.style.userSelect = 'none'
+    return () => {
+      document.body.style.userSelect = prev
+    }
+  }, [resizingId])
+
+  // delta 方案:pointerdown 记录起始 clientY 与起始面板总高,move 时按位移增量设高。
+  // 不可 preventDefault:取消 pointerdown 会抑制兼容鼠标事件,双击恢复默认高将失效
+  const onResizePointerDown = (taskId: string) => (e: ReactPointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    // 首次拖动时 state 为 null,从面板 DOM 实测当前 40vh 折算高度作为起点
+    const startHeight =
+      useUiStore.getState().workbenchPanelHeight ??
+      panelRefs.current.get(taskId)?.getBoundingClientRect().height ??
+      0
+    dragStateRef.current = { startY: e.clientY, startHeight }
+    setResizingId(taskId)
+  }
+  const onResizePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragStateRef.current
+    if (resizingId === null || !drag) return
+    useUiStore.getState().setWorkbenchPanelHeight(drag.startHeight + (e.clientY - drag.startY))
+  }
+  const onResizePointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (resizingId === null) return
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    dragStateRef.current = null
+    setResizingId(null)
+  }
 
   // 加入任务后滚动到对应面板;延迟等待右栏 0.25s 展开动画结束后再测量位置
   useEffect(() => {
@@ -78,6 +118,8 @@ export default function TaskWorkbench() {
           <div
             key={task.id}
             className={styles.panel}
+            // 拖拽后覆写 tab 内容高 = 面板总高 - 67px(标题栏 49 + body 上下 padding 16 + 边框加宽补偿 2,与 CSS 注释一致)
+            style={panelHeight != null ? { ['--taskform-tab-height' as string]: `${panelHeight - 67}px` } : undefined}
             ref={(el) => {
               if (el) panelRefs.current.set(task.id, el)
               else panelRefs.current.delete(task.id)
@@ -136,6 +178,18 @@ export default function TaskWorkbench() {
                 onSubmit={(data) => handleSave(task.id, data as UpdateTaskRequest)}
               />
             </div>
+            {/* 底缘拖拽手柄:拖动统一调整所有面板高度,双击恢复默认;折叠态只剩标题栏,无可调空间不渲染 */}
+            {!collapsed && (
+              <div
+                className={
+                  resizingId === task.id ? `${styles.resizeHandle} ${styles.resizeHandleActive}` : styles.resizeHandle
+                }
+                onPointerDown={onResizePointerDown(task.id)}
+                onPointerMove={onResizePointerMove}
+                onPointerUp={onResizePointerUp}
+                onDoubleClick={() => useUiStore.getState().setWorkbenchPanelHeight(null)}
+              />
+            )}
           </div>
         )
       })}
