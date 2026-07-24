@@ -149,6 +149,15 @@
   transition: opacity 0.2s;
 }
 
+/* 高度压进 20px 文本行框(双重选择器盖过 .semi-button 的 32px),vertical-align: top
+   让按钮与行框完全贴合——避免按钮撑高所在行,进入编辑态时文本才能零位移 */
+.taskTitle .inlineEditBtn,
+.taskDesc .inlineEditBtn {
+  height: 20px;
+  padding: 0 4px;
+  vertical-align: top;
+}
+
 .inlineAddDescBtn {
   font-size: 12px;
 }
@@ -158,17 +167,13 @@
   opacity: 1;
 }
 
-/* 原地编辑态:标题为一行(输入框+按钮),描述为纵向(文本域在上、按钮行在下) */
+/* 原地编辑态:纵向布局(可编辑文本在上、保存/取消按钮行在下);
+   编辑文本复用阅读态排版类,零外边距保证进入编辑时文本不位移 */
 .inlineEditBox {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 4px 0;
-}
-
-.inlineEditBoxRow {
-  flex-direction: row;
-  align-items: center;
+  gap: 4px;
+  margin: 0;
 }
 
 .inlineEditActions {

@@ -1,0 +1,22 @@
+/* 编辑指示不改变文本位置:padding 被等值负 margin 抵消,描边用不占布局的 box-shadow;
+   排版(字号/字重/行高)完全来自调用方传入的阅读态类 */
+.editable {
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border-radius: var(--semi-border-radius-small);
+  background: var(--semi-color-fill-0);
+  box-shadow: inset 0 0 0 1px var(--semi-color-focus-border);
+  outline: none;
+  /* 保证 \n 可渲染,innerText 才能读回换行;Chrome 对 plaintext-only 会以 UA 样式
+     强制 pre-wrap(编辑中保留空格,体验更好),此处 pre-line 是降级模式的兜底 */
+  white-space: pre-line;
+  word-break: break-word;
+  cursor: text;
+  min-height: 1.4em; /* 空内容不塌陷 */
+}
+
+.editable:empty::before {
+  content: attr(data-placeholder);
+  color: var(--semi-color-text-3);
+  pointer-events: none;
+}

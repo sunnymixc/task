@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
-import { Button, Input, Modal, Select, Space, Table, TextArea, Toast, Tooltip } from '@douyinfe/semi-ui-19'
+import { Button, Input, Modal, Select, Space, Table, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
 import { IconChevronDown, IconChevronUp, IconEdit, IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskStore } from '@/stores/task'
@@ -14,6 +14,7 @@ import TaskForm, { type TaskFormHandle } from '@/components/task/TaskForm'
 import { useWorkbenchStore } from '@/stores/workbench'
 import StatusSelect from '@/components/task/StatusSelect'
 import TaskLinkList from '@/components/task/TaskLinkList'
+import InlineEditable from '@/components/common/InlineEditable'
 import styles from './TaskList.module.css'
 
 // Status filter options
@@ -382,24 +383,24 @@ export default function TaskList() {
           )}
         </div>
       ) : (
-        <div
-          className={`${styles.inlineEditBox} ${styles.inlineEditBoxRow}`}
-          onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}
-        >
-          <Input
-            value={inlineDraft}
+        <div className={styles.inlineEditBox} onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}>
+          <InlineEditable
+            defaultValue={inlineDraft}
+            className={styles.taskTitle}
             maxLength={255}
-            autoFocus
-            style={{ flex: 1 }}
-            onChange={setInlineDraft}
-            onEnterPress={() => saveInlineEdit(row)}
+            ariaLabel="编辑任务标题"
+            onInput={setInlineDraft}
+            onSubmit={() => saveInlineEdit(row)}
+            onCancel={cancelInlineEdit}
           />
-          <Button theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
-            保存
-          </Button>
-          <Button onClick={cancelInlineEdit}>
-            取消
-          </Button>
+          <div className={styles.inlineEditActions}>
+            <Button size="small" theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
+              保存
+            </Button>
+            <Button size="small" onClick={cancelInlineEdit}>
+              取消
+            </Button>
+          </div>
         </div>
       )}
 
@@ -417,18 +418,21 @@ export default function TaskList() {
         />
       ) : isInlineEditing(row, 'description') ? (
         <div className={styles.inlineEditBox} onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}>
-          <TextArea
-            value={inlineDraft}
+          <InlineEditable
+            defaultValue={inlineDraft}
+            multiline
+            className={styles.taskDesc}
             maxLength={5000}
-            autosize={{ minRows: 2 }}
-            autoFocus
-            onChange={setInlineDraft}
+            placeholder="添加描述"
+            ariaLabel="编辑任务描述"
+            onInput={setInlineDraft}
+            onCancel={cancelInlineEdit}
           />
           <div className={styles.inlineEditActions}>
-            <Button theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
+            <Button size="small" theme="solid" type="primary" loading={inlineSaving} onClick={() => saveInlineEdit(row)}>
               保存
             </Button>
-            <Button onClick={cancelInlineEdit}>
+            <Button size="small" onClick={cancelInlineEdit}>
               取消
             </Button>
           </div>
