@@ -254,3 +254,39 @@ export function getSessionSnapshot(key: string): string {
 export function getSessionState(key: string): TermConnState {
   return sessions.get(key)?.state ?? 'closed'
 }
+
+// 供快捷指令使用:把文本作为二进制帧写入 PTY(与键盘输入 term.onData 同通道,
+// 后端原样 ptmx.Write)。WS 未 OPEN 时返回 false,由调用方决定中止或重试。
+export function sendSessionText(key: string, text: string): boolean {
+  const ws = sessions.get(key)?.ws
+  if (!ws || ws.readyState !== WebSocket.OPEN) return false
+  ws.send(encoder.encode(text))
+  return true
+}
+
+// 确保会话就绪:closed 时经 reconnectSession 自动重连(保留滚动缓冲),等待进入 open;
+// 超时或连接再次失败则 reject。connecting 状态只等待落定,不重复建连。
+export function ensureSessionOpen(key: string, cwd?: string, timeoutMs = 10000): Promise<void> {
+  const session = acquireSession(key, cwd)
+  if (session.state === 'open') return Promise.resolve()
+  if (session.state === 'closed') reconnectSession(key, cwd)
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      unsub()
+      reject(new Error('终端连接超时'))
+    }, timeoutMs)
+    // notify 也会因 ownerSeq 变化触发,回调里必须重读状态而非假定发生了状态迁移
+    const unsub = subscribeSession(key, () => {
+      const state = getSessionState(key)
+      if (state === 'open') {
+        window.clearTimeout(timer)
+        unsub()
+        resolve()
+      } else if (state === 'closed') {
+        window.clearTimeout(timer)
+        unsub()
+        reject(new Error('终端连接失败'))
+      }
+    })
+  })
+}

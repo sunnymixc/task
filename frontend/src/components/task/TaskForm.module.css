@@ -21,6 +21,7 @@
 .terminalActions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   padding-bottom: 6px;
   flex: none;
 }

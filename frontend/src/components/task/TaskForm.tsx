@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react'
-import { Button, Form, Input, Modal, Radio, Select, Tabs, TabPane, Toast } from '@douyinfe/semi-ui-19'
+import { Button, Dropdown, Form, Input, Modal, Radio, Select, Tabs, TabPane, Toast } from '@douyinfe/semi-ui-19'
 import type { FormApi } from '@douyinfe/semi-ui-19/lib/es/form'
 import { IconDelete, IconPlus } from '@douyinfe/semi-icons'
 import type {
@@ -18,6 +18,7 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import TaskLogList from './TaskLogList'
 import TaskTerminal, { type TaskTerminalHandle } from './TaskTerminal'
 import { hasSession } from '@/terminal/sessionRegistry'
+import { runStartTaskCommand } from '@/terminal/quickCommands'
 import styles from './TaskForm.module.css'
 
 export interface TaskFormHandle {
@@ -244,6 +245,38 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     if (key === 'terminal') setTerminalMounted(true)
   }
 
+  // 表单当前标题+描述,「拷贝」与快捷指令「启动任务」共用同一份文案逻辑
+  const buildCopyText = () => {
+    const values = formApiRef.current?.getValues() || {}
+    return values.description ? `${values.title}\n\n${values.description}` : values.title || ''
+  }
+
+  // 快捷指令执行中:禁用入口防止重复触发(跨面板并发由 quickCommands 的 running 集合兜底)
+  const [quickCmdRunning, setQuickCmdRunning] = useState(false)
+
+  // 快捷指令「启动任务」:cd 项目目录 → 启动 claude → /plan → 粘贴任务内容 → 回车提交
+  const handleStartTask = async () => {
+    if (!task?.id) return
+    const taskText = buildCopyText()
+    if (!taskText.trim()) {
+      Toast.warning('请先填写任务标题')
+      return
+    }
+    setQuickCmdRunning(true)
+    try {
+      await runStartTaskCommand(task.id, {
+        cwd: task.task_list?.project_path?.trim() || '~',
+        projectPath: task.task_list?.project_path?.trim() || '',
+        taskText
+      })
+      Toast.success('「启动任务」指令已发送')
+    } catch (e) {
+      Toast.error(e instanceof Error ? e.message : '快捷指令执行失败')
+    } finally {
+      setQuickCmdRunning(false)
+    }
+  }
+
   // 终止:二次确认后通知后端结束终端会话(连接断开后面板显示"已断开",历史保留可重连)
   const confirmTerminate = () => {
     modal.confirm({
@@ -262,10 +295,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     focusTitle: () => {
       containerRef.current?.querySelector('input')?.focus()
     },
-    getCopyText: () => {
-      const values = formApiRef.current?.getValues() || {}
-      return values.description ? `${values.title}\n\n${values.description}` : values.title || ''
-    }
+    getCopyText: buildCopyText
   }))
 
   return (
@@ -453,6 +483,21 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 {terminalMounted && (
                   <>
                     <div className={styles.terminalActions}>
+                      <Dropdown
+                        trigger="click"
+                        position="bottomRight"
+                        render={
+                          <Dropdown.Menu>
+                            <Dropdown.Item onClick={() => void handleStartTask()} disabled={quickCmdRunning}>
+                              启动任务
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        }
+                      >
+                        <Button size="small" loading={quickCmdRunning}>
+                          快捷指令
+                        </Button>
+                      </Dropdown>
                       <Button type="danger" size="small" onClick={confirmTerminate}>
                         终止
                       </Button>
