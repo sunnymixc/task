@@ -26,12 +26,12 @@
 
 /* 每个任务占满一行(横向铺满) */
 .panel {
-  /* 面板总高 ≈ 40vh:tab 内容区 = 40vh 减标题栏(10+28+10+1=49px)与 body 上下 padding(4+12=16px),
+  /* 面板总高 ≈ 45vh:tab 内容区 = 45vh 减标题栏(10+28+10+1=49px)与 body 上下 padding(4+12=16px),
      再减 2px 补偿上下边框由 1px 加宽到 2px 的增量,共 67px。
      拖拽底边调高后由内联样式覆写(ui store workbenchPanelHeight,同样减 67px)。
      该高度在工作台仅是下限:max-height 放开为 none,内容(尤其无行数上限的任务描述)
      超过基线时面板随内容自动增高,基础信息完整可见,滚动交给外层 .stack */
-  --taskform-tab-height: calc(40vh - 67px);
+  --taskform-tab-height: calc(45vh - 67px);
   --taskform-tab-max-height: none;
   position: relative;
   flex-shrink: 0;

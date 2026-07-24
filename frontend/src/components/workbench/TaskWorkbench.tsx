@@ -23,7 +23,7 @@ export default function TaskWorkbench() {
   // 已折叠面板的任务 id;按用户按任务落库,由 store 在 fetch 时初始化、toggle 时持久化
   const collapsedIds = useWorkbenchStore((s) => s.collapsedIds)
 
-  // 面板高度拖拽:所有面板统一高度(null = 默认走 CSS 的 40vh),偏好缓存在浏览器端
+  // 面板高度拖拽:所有面板统一高度(null = 默认走 CSS 的 45vh),偏好缓存在浏览器端
   const panelHeight = useUiStore((s) => s.workbenchPanelHeight)
   const [resizingId, setResizingId] = useState<string | null>(null)
   const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null)
@@ -42,7 +42,7 @@ export default function TaskWorkbench() {
   // 不可 preventDefault:取消 pointerdown 会抑制兼容鼠标事件,双击恢复默认高将失效
   const onResizePointerDown = (taskId: string) => (e: ReactPointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
-    // 首次拖动时 state 为 null,从面板 DOM 实测当前 40vh 折算高度作为起点
+    // 首次拖动时 state 为 null,从面板 DOM 实测当前 45vh 折算高度作为起点
     const startHeight =
       useUiStore.getState().workbenchPanelHeight ??
       panelRefs.current.get(taskId)?.getBoundingClientRect().height ??

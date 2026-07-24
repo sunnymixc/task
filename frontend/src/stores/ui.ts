@@ -24,7 +24,7 @@ const loadWorkbenchWidth = (): number => {
 }
 
 // 工作台任务面板总高(px):拖拽面板底边调整,所有面板统一,浏览器端缓存;
-// null 表示未拖动过/已恢复默认,面板走 CSS 里视口相对的 40vh
+// null 表示未拖动过/已恢复默认,面板走 CSS 里视口相对的 45vh
 export const WORKBENCH_PANEL_HEIGHT_MIN = 160
 
 // 上限:窗口高扣除右栏头部 50px 与 stack 上下 padding 24px,面板最高时基本完整可见。
@@ -143,7 +143,7 @@ export const useUiStore = create<UiState>()((set, get) => ({
     localStorage.setItem(WORKBENCH_WIDTH_KEY, String(value))
   },
 
-  // 传 null 恢复默认(移除缓存,面板回到 CSS 的 40vh)
+  // 传 null 恢复默认(移除缓存,面板回到 CSS 的 45vh)
   setWorkbenchPanelHeight: (px) => {
     if (px === null) {
       set({ workbenchPanelHeight: null })
