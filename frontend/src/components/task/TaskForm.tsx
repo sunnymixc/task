@@ -351,6 +351,14 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
           {/* Semi Tabs 默认 keepDOM:切 tab 不销毁表单,未保存输入与命令式句柄均保持有效 */}
           <TabPane tab="基础" itemKey="basic">
             <div className={styles.tabBody}>
+              <Form.Select
+                field="task_list_id"
+                label="任务清单"
+                placeholder="请选择任务清单"
+                optionList={taskListOptions}
+                style={{ width: '100%' }}
+              />
+
               <Form.Input
                 field="title"
                 label="标题"
@@ -371,32 +379,10 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                 rules={[{ max: 5000, message: '描述最多5000个字符' }]}
               />
 
-              <Form.Select
-                field="task_list_id"
-                label="任务清单"
-                placeholder="请选择任务清单"
-                optionList={taskListOptions}
-                style={{ width: '100%' }}
-              />
-
-              <Form.RadioGroup field="priority" label="优先级">
-                <Radio value="high">高</Radio>
-                <Radio value="medium">中</Radio>
-                <Radio value="low">低</Radio>
-              </Form.RadioGroup>
-
               <Form.RadioGroup field="status" label="任务状态">
                 {statusSteps.map((step) => (
                   <Radio key={step.value} value={step.value}>
                     {step.title}
-                  </Radio>
-                ))}
-              </Form.RadioGroup>
-
-              <Form.RadioGroup field="execution_status" label="执行状态">
-                {executionStatusOptions.map((option) => (
-                  <Radio key={option.value} value={option.value}>
-                    {option.label}
                   </Radio>
                 ))}
               </Form.RadioGroup>
@@ -459,6 +445,20 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
           </TabPane>
           <TabPane tab="详情" itemKey="detail">
             <div className={styles.tabBody}>
+              <Form.RadioGroup field="priority" label="优先级">
+                <Radio value="high">高</Radio>
+                <Radio value="medium">中</Radio>
+                <Radio value="low">低</Radio>
+              </Form.RadioGroup>
+
+              <Form.RadioGroup field="execution_status" label="执行状态">
+                {executionStatusOptions.map((option) => (
+                  <Radio key={option.value} value={option.value}>
+                    {option.label}
+                  </Radio>
+                ))}
+              </Form.RadioGroup>
+
               <Form.TextArea
                 field="result"
                 label="结果"

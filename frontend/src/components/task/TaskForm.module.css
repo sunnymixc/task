@@ -45,14 +45,16 @@
   gap: 8px;
 }
 
+/* 宽度用 flex-basis 钉死:Semi 的 .semi-input-wrapper 自带 width:100%,
+   与模块类同优先级时按样式表顺序可能胜出;flex 布局下 basis 优先于 width,不受加载顺序影响 */
 .linkTypeSelect {
+  flex: 0 0 110px;
   width: 110px;
-  flex-shrink: 0;
 }
 
 .linkTitleInput {
+  flex: 0 0 180px;
   width: 180px;
-  flex-shrink: 0;
 }
 
 .linkFlex {
