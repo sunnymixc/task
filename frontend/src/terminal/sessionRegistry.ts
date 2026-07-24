@@ -237,6 +237,12 @@ export function isStolenFrom(key: string, owner: object): boolean {
   return !!current && current !== owner
 }
 
+// host 是否游离(会话存在但无任何面板持有):抢占方卸载后原面板由此显示「恢复」入口
+export function isSessionDetached(key: string): boolean {
+  const session = sessions.get(key)
+  return !!session && session.owner === null
+}
+
 export function fitSession(key: string) {
   const session = sessions.get(key)
   if (!session) return
@@ -256,6 +262,22 @@ export function reconnectSession(key: string, cwd?: string) {
   if (session.ws) return
   session.term.write('\r\n\x1b[36m[正在重连…]\x1b[0m\r\n')
   connect(session)
+}
+
+// 「重连」:强制断开当前连接(无论断开是否成功),复用同一 term(保留滚动缓冲)建立全新连接。
+// 经 terminateSession 产生的瞬时 closed 边沿是有意为之:
+//   - autoResponder 的状态订阅同步自停,无需调用方手动 stop
+//   - 挂起中的 ensureSessionOpen 同步 reject,中止还在等待连接的快捷指令序列
+export function forceReconnectSession(key: string, cwd?: string) {
+  const session = sessions.get(key)
+  if (!session) {
+    // 无会话:acquire 本身就会建连,不走"先杀再拨"
+    acquireSession(key, cwd)
+    return
+  }
+  if (cwd !== undefined) session.cwd = cwd
+  if (session.ws) terminateSession(key)
+  reconnectSession(key)
 }
 
 // 「终止」:通知后端结束 shell 并断开,但保留 term/host 与历史,可再「重连」

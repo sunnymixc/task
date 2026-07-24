@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useImperativeHandle, useRef, useSyncExternalStore, type Ref } from 'react'
+import { useCallback, useImperativeHandle, useLayoutEffect, useRef, useSyncExternalStore, type Ref } from 'react'
 import { Button } from '@douyinfe/semi-ui-19'
 import {
   acquireSession,
   fitSession,
+  forceReconnectSession,
   getSessionSnapshot,
+  isSessionDetached,
   isStolenFrom,
   mountSession,
-  reconnectSession,
   subscribeSession,
   terminateSession,
   unmountSession,
@@ -48,6 +49,8 @@ export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
   const snapshot = useSyncExternalStore(subscribe, () => getSessionSnapshot(sessionKey))
   const state = snapshot.split('|')[0] as TermConnState
   const stolen = isStolenFrom(sessionKey, ownerRef.current)
+  // 抢占方卸载后 host 游离(owner=null,与 stolen 互斥),显示「恢复」入口
+  const detached = isSessionDetached(sessionKey)
 
   // 自动应答器状态(module 级 per-key 单例,双面板同开时两处状态天然同步)
   const autoSubscribe = useCallback(
@@ -63,7 +66,9 @@ export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
     mountSession(sessionKey, containerRef.current, ownerRef.current, cwd)
   }, [sessionKey, cwd])
 
-  useEffect(() => {
+  // useLayoutEffect:attach 在浏览器绘制前完成,mountSession 的 notify 同步触发重渲染,
+  // 避免首帧(subscribe 已建会话但尚未挂载,owner=null)闪现假阳性的「恢复」覆盖层
+  useLayoutEffect(() => {
     const owner = ownerRef.current
     attach()
 
@@ -90,7 +95,7 @@ export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
           {state === 'connecting' ? '连接中…' : state === 'open' ? '已连接 (root)' : '已断开'}
         </span>
         {state === 'closed' && (
-          <Button size="small" theme="borderless" onClick={() => reconnectSession(sessionKey, cwd)}>
+          <Button size="small" theme="borderless" onClick={() => forceReconnectSession(sessionKey, cwd)}>
             重连
           </Button>
         )}
@@ -106,12 +111,13 @@ export default function TaskTerminal({ sessionKey, cwd, ref }: Props) {
         )}
       </div>
       <div className={styles.term} ref={containerRef} />
-      {/* host 被其他面板抢占时本处容器为空,覆盖提示与取回入口 */}
-      {stolen && (
+      {/* host 被其他面板抢占(stolen)或抢占方已卸载致 host 游离(detached)时,
+          本处容器为空,覆盖提示与取回/恢复入口;两态互斥,共用同一覆盖层 */}
+      {(stolen || detached) && (
         <div className={styles.stolenHint}>
-          <span>终端已在其他面板打开</span>
+          <span>{stolen ? '终端已在其他面板打开' : '终端已从此面板移出'}</span>
           <Button size="small" onClick={attach}>
-            移到此处
+            {stolen ? '移到此处' : '恢复'}
           </Button>
         </div>
       )}

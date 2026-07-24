@@ -17,8 +17,8 @@ import { taskAPI } from '@/api/task'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
 import TaskLogList from './TaskLogList'
 import TaskTerminal, { type TaskTerminalHandle } from './TaskTerminal'
-import { hasSession } from '@/terminal/sessionRegistry'
-import { runStartTaskAutoCommand, runStartTaskCommand } from '@/terminal/quickCommands'
+import { forceReconnectSession, getSessionState, hasSession } from '@/terminal/sessionRegistry'
+import { isQuickCommandRunning, runStartTaskAutoCommand, runStartTaskCommand } from '@/terminal/quickCommands'
 import styles from './TaskForm.module.css'
 
 export interface TaskFormHandle {
@@ -108,8 +108,11 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
   // useModal 渲染在组件树内,避免静态 Modal.confirm 在 React 19 下同步卸载 root 的告警
   const [modal, modalContextHolder] = Modal.useModal()
   const terminalRef = useRef<TaskTerminalHandle>(null)
-  // 首次激活终端 tab 才建连;已有常驻会话时(本组件被重挂载)立即恢复显示
-  const [terminalMounted, setTerminalMounted] = useState(() => !!task?.id && hasSession(task.id))
+  // 首次激活终端 tab 才建连;已有常驻会话时(本组件被重挂载)立即恢复显示。
+  // 初始 tab 已落在终端时也直接挂载:否则会话已被销毁(如登出)后重进,tab 体空白且无法再触发挂载
+  const [terminalMounted, setTerminalMounted] = useState(
+    () => !!task?.id && (hasSession(task.id) || lastActiveTab.get(task.id) === 'terminal')
+  )
 
   const [links, setLinks] = useState<LinkRow[]>(() => linksFromTask(task))
 
@@ -285,6 +288,30 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     } finally {
       setQuickCmdRunning(false)
     }
+  }
+
+  // 重连:强制断开当前连接(无论是否成功)并建立全新连接,滚动历史保留。
+  // 连接存活时二次确认(会结束当前 shell);已断开时直接执行,与状态栏免确认的「重连」一致
+  const confirmForceReconnect = () => {
+    if (!task?.id) return
+    const key = task.id
+    if (isQuickCommandRunning(key)) {
+      // 序列若已过 ensureSessionOpen 阶段,重连后剩余按键会打进新 shell,先行拦截
+      Toast.warning('快捷指令执行中，请稍后重连')
+      return
+    }
+    const cwd = task.task_list?.project_path?.trim() || '~'
+    if (getSessionState(key) === 'closed') {
+      forceReconnectSession(key, cwd)
+      return
+    }
+    modal.confirm({
+      title: '确认重连',
+      content: '重连将结束当前终端进程并建立新连接,历史输出保留,确定继续吗?',
+      okText: '重连',
+      cancelText: '取消',
+      onOk: () => forceReconnectSession(key, cwd)
+    })
   }
 
   // 终止:二次确认后通知后端结束终端会话(连接断开后面板显示"已断开",历史保留可重连)
@@ -512,6 +539,9 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
                           快捷指令
                         </Button>
                       </Dropdown>
+                      <Button size="small" onClick={confirmForceReconnect}>
+                        重连
+                      </Button>
                       <Button type="danger" size="small" onClick={confirmTerminate}>
                         终止
                       </Button>
