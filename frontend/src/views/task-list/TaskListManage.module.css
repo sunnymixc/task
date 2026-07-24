@@ -73,9 +73,9 @@
   background: var(--app-bg-container);
 }
 
-/* 窄窗口下保住各列宽度(合计 1680),此时允许横向滚动;操作列吸右保持可见 */
+/* 窄窗口下保住各列宽度(合计 1720),此时允许横向滚动;操作列吸右保持可见 */
 .tableContainer :global(.semi-table table) {
-  min-width: 1680px;
+  min-width: 1720px;
 }
 
 /* 选择器需压过 semi 的三类选择器(.semi-table-tbody>.semi-table-row>.semi-table-row-cell 的

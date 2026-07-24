@@ -119,7 +119,7 @@ export default function TaskListManage() {
   }
 
   const columns: ColumnProps<TaskList>[] = [
-    { title: '序号', dataIndex: 'sort_order', width: 80 },
+    { title: '序号', dataIndex: 'sort_order', width: 120 },
     {
       title: 'ID',
       dataIndex: 'id',
