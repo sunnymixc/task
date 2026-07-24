@@ -138,11 +138,14 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
     value: list.id
   }))
 
+  // 标题是容器内第一个 text input(状态 radio 是 input[type=radio]、清单 Select 无原生 input,均不会命中)
+  const focusTitleInput = () => {
+    containerRef.current?.querySelector<HTMLInputElement>('input[type="text"]')?.focus()
+  }
+
   // 弹窗打开(本组件挂载)后聚焦标题输入框;等一帧避开 Modal 自身的焦点管理
   useEffect(() => {
-    const timer = setTimeout(() => {
-      containerRef.current?.querySelector('input')?.focus()
-    }, 100)
+    const timer = setTimeout(focusTitleInput, 100)
     return () => clearTimeout(timer)
   }, [])
 
@@ -329,9 +332,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
   useImperativeHandle(ref, () => ({
     submit: () => handleSubmit(false),
     save: () => handleSubmit(true),
-    focusTitle: () => {
-      containerRef.current?.querySelector('input')?.focus()
-    },
+    focusTitle: focusTitleInput,
     getCopyText: buildCopyText,
     showTerminalTab: () => handleTabChange('terminal')
   }))
@@ -516,7 +517,7 @@ export default function TaskForm({ task, defaultTaskListId, onSubmit, ref }: Pro
           {/* AI 终端:仅管理员且任务已保存时显示(语义同旧任务列表的 AI终端 按钮,后端 RequireAdmin 兜底)。
               终端实例常驻 sessionRegistry:切 tab、保存、关弹窗、面板重挂载都不中断会话 */}
           {isAdmin && task?.id && (
-            <TabPane tab="AI终端" itemKey="terminal">
+            <TabPane tab="终端" itemKey="terminal">
               <div className={styles.terminalBody}>
                 {terminalMounted && (
                   <>
