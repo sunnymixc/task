@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams } from 'react-router'
 import { Button, Input, Modal, Select, Space, Table, TextArea, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
-import { IconEdit, IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
+import { IconChevronDown, IconChevronUp, IconEdit, IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskStore } from '@/stores/task'
 import { useTaskListStore } from '@/stores/taskList'
 import { useTaskFilterStore } from '@/stores/taskFilter'
@@ -25,6 +25,60 @@ const statusOptions = [
 ]
 
 const PAGE_SIZE = 100
+
+// 描述自动折叠阈值:超过 ON 折叠;铅笔按钮在"行内 ↔ 工具行"间移动会改变被测高度,
+// 用低于 ON 的 OFF 作退出阈值,避免临界高度时经 ResizeObserver 展开/折叠无限振荡
+const DESC_OVERFLOW_ON = 80
+const DESC_OVERFLOW_OFF = 64
+
+// 描述展示:超高自动折叠(点击文本或「展开」展开,「收起」按钮收起),不持久化展开状态。
+// 铅笔编辑按钮不溢出时留在文本行尾(与短描述一致),溢出时移到底部工具行以免被裁剪
+function CollapsibleDesc({ text, editButton }: { text: string; editButton: ReactNode }) {
+  const textRef = useRef<HTMLDivElement>(null)
+  const [overflowing, setOverflowing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const collapsed = overflowing && !expanded
+
+  useLayoutEffect(() => {
+    const el = textRef.current
+    if (!el) return
+    // scrollHeight 在 max-height + overflow:hidden 下仍是完整内容高度,折叠态也能正确测量
+    const check = () =>
+      setOverflowing((prev) => (prev ? el.scrollHeight > DESC_OVERFLOW_OFF : el.scrollHeight > DESC_OVERFLOW_ON))
+    check()
+    const ro = new ResizeObserver(check) // 列宽随窗口变化 → 换行数变化 → 重判
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [text])
+
+  return (
+    <div className={styles.taskDesc}>
+      <div
+        ref={textRef}
+        className={collapsed ? styles.taskDescClamp : undefined}
+        onClick={collapsed ? () => setExpanded(true) : undefined}
+      >
+        {text}
+        {!overflowing && editButton}
+      </div>
+      {overflowing && (
+        <div className={styles.taskDescToggleRow}>
+          <Button
+            size="small"
+            theme="borderless"
+            type="tertiary"
+            className={styles.taskDescToggleBtn}
+            icon={collapsed ? <IconChevronDown /> : <IconChevronUp />}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {collapsed ? '展开' : '收起'}
+          </Button>
+          {editButton}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function TaskList() {
   // 清单作用域模式:由路由 /task-lists/:listId/tasks 传入,只展示该清单下的任务
@@ -350,15 +404,17 @@ export default function TaskList() {
       )}
 
       {!isInlineEditing(row, 'description') && row.description ? (
-        <div className={styles.taskDesc}>
-          {row.description}
-          <Button
-            className={styles.inlineEditBtn}
-            theme="borderless"
-            icon={<IconEdit />}
-            onClick={() => startInlineEdit(row, 'description')}
-          />
-        </div>
+        <CollapsibleDesc
+          text={row.description}
+          editButton={
+            <Button
+              className={styles.inlineEditBtn}
+              theme="borderless"
+              icon={<IconEdit />}
+              onClick={() => startInlineEdit(row, 'description')}
+            />
+          }
+        />
       ) : isInlineEditing(row, 'description') ? (
         <div className={styles.inlineEditBox} onKeyDown={(e) => e.key === 'Escape' && cancelInlineEdit()}>
           <TextArea

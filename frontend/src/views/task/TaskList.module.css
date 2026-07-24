@@ -113,6 +113,28 @@
   word-break: break-word;
 }
 
+/* 描述折叠态:限高裁剪,底部用 mask 让文字渐隐——透出行背景,行 hover 变色时无需匹配遮罩色 */
+.taskDescClamp {
+  max-height: 80px;
+  overflow: hidden;
+  cursor: pointer;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
+}
+
+/* 展开/收起工具行:切换按钮始终可见(提示内容被截断),溢出时铅笔编辑按钮也挪到这里 */
+.taskDescToggleRow {
+  display: flex;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.taskDescToggleBtn {
+  font-size: 12px;
+  height: 20px;
+  padding: 0 4px;
+}
+
 /* 链接块并入标题单元格,与上方标题/描述留间距 */
 .taskLinks {
   margin-top: 4px;
