@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Input, Modal, Space, Table, Tag, Tooltip, Typography } from '@douyinfe/semi-ui-19'
 import type { ColumnProps } from '@douyinfe/semi-ui-19/lib/es/table'
-import { IconInfoCircle, IconPlus, IconSearch } from '@douyinfe/semi-icons'
+import { IconInfoCircle, IconPlus, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { useTaskListStore } from '@/stores/taskList'
 import type { CreateTaskListRequest, ListTaskListsRequest, TaskList, UpdateTaskListRequest } from '@/types'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
@@ -70,6 +70,12 @@ export default function TaskListManage() {
     setSearchQuery('')
     setPage(1)
     fetchLists({ page: 1, keyword: '' })
+  }
+
+  // 刷新:按当前搜索条件重拉当前页,并同步侧边栏清单子菜单及执行中任务数
+  const handleRefresh = () => {
+    fetchLists()
+    useTaskListStore.getState().fetchAllLists()
   }
 
   // Create dialog
@@ -208,6 +214,15 @@ export default function TaskListManage() {
           style={{ width: 300 }}
         />
         <Button onClick={clearSearch}>重置</Button>
+        <Tooltip content="刷新">
+          <Button
+            theme="borderless"
+            type="tertiary"
+            icon={<IconRefresh />}
+            aria-label="刷新"
+            onClick={handleRefresh}
+          />
+        </Tooltip>
       </div>
 
       {/* Task List Table */}
