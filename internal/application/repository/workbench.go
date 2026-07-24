@@ -42,6 +42,14 @@ func (r *workbenchRepository) AddItem(ctx context.Context, item *types.TaskWorkb
 		Create(item).Error
 }
 
+// UpdateCollapsed 更新折叠状态；任务不在工作台时更新 0 行，不报错（幂等）
+func (r *workbenchRepository) UpdateCollapsed(ctx context.Context, tenantID uint64, userID, taskID string, collapsed bool) error {
+	return r.db.WithContext(ctx).
+		Model(&types.TaskWorkbenchItem{}).
+		Where("tenant_id = ? AND user_id = ? AND task_id = ?", tenantID, userID, taskID).
+		Update("collapsed", collapsed).Error
+}
+
 // RemoveItem 从工作台移除任务；记录不存在时不报错（幂等）
 func (r *workbenchRepository) RemoveItem(ctx context.Context, tenantID uint64, userID, taskID string) error {
 	return r.db.WithContext(ctx).

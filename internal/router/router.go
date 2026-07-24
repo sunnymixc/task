@@ -86,6 +86,7 @@ func Setup(cfg *config.Config) *gin.Engine {
 			workbench.GET("", workbenchHandler.ListTasks)
 			workbench.POST("", workbenchHandler.AddTask)
 			workbench.DELETE("/:taskId", workbenchHandler.RemoveTask)
+			workbench.PATCH("/:taskId/collapsed", workbenchHandler.SetCollapsed)
 		}
 
 		// System settings routes（读：登录即可；写：仅管理员）

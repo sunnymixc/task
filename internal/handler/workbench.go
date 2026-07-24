@@ -94,6 +94,45 @@ func (h *WorkbenchHandler) AddTask(c *gin.Context) {
 	})
 }
 
+// SetCollapsedRequest represents the request to set a workbench panel's collapsed state
+type SetCollapsedRequest struct {
+	Collapsed *bool `json:"collapsed" binding:"required"` // 指针：required 校验下 false 才能通过
+}
+
+// SetCollapsed sets the collapsed state of a task panel in the workbench (idempotent)
+// @Summary Set workbench panel collapsed state
+// @Tags workbench
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param taskId path string true "Task ID"
+// @Param request body SetCollapsedRequest true "Collapsed state"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Router /api/v1/workbench/{taskId}/collapsed [patch]
+func (h *WorkbenchHandler) SetCollapsed(c *gin.Context) {
+	var req SetCollapsedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.workbenchService.SetTaskCollapsed(c.Request.Context(), c.Param("taskId"), *req.Collapsed); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to set workbench collapsed state: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+	})
+}
+
 // RemoveTask removes a task from the current user's workbench (idempotent)
 // @Summary Remove a task from the workbench
 // @Tags workbench

@@ -43,7 +43,7 @@ func (s *workbenchService) currentUser(ctx context.Context) (*types.User, error)
 }
 
 // ListWorkbenchTasks 按加入顺序返回工作台任务；软删任务被查询 scope 过滤后直接跳过
-func (s *workbenchService) ListWorkbenchTasks(ctx context.Context) ([]*types.TaskResponse, error) {
+func (s *workbenchService) ListWorkbenchTasks(ctx context.Context) ([]*types.WorkbenchTaskResponse, error) {
 	user, err := s.currentUser(ctx)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (s *workbenchService) ListWorkbenchTasks(ctx context.Context) ([]*types.Tas
 		return nil, fmt.Errorf("failed to list workbench items: %w", err)
 	}
 
-	responses := make([]*types.TaskResponse, 0, len(items))
+	responses := make([]*types.WorkbenchTaskResponse, 0, len(items))
 	if len(items) == 0 {
 		return responses, nil
 	}
@@ -74,7 +74,10 @@ func (s *workbenchService) ListWorkbenchTasks(ctx context.Context) ([]*types.Tas
 	}
 	for _, item := range items {
 		if task, ok := byID[item.TaskID]; ok {
-			responses = append(responses, task.ToResponse())
+			responses = append(responses, &types.WorkbenchTaskResponse{
+				TaskResponse: task.ToResponse(),
+				Collapsed:    item.Collapsed,
+			})
 		}
 	}
 	return responses, nil
@@ -105,6 +108,18 @@ func (s *workbenchService) AddTask(ctx context.Context, taskID string) (*types.T
 		return nil, fmt.Errorf("failed to add workbench item: %w", err)
 	}
 	return task.ToResponse(), nil
+}
+
+// SetTaskCollapsed 设置当前用户工作台中某任务面板的折叠状态（幂等；不在工作台时静默成功）
+func (s *workbenchService) SetTaskCollapsed(ctx context.Context, taskID string, collapsed bool) error {
+	user, err := s.currentUser(ctx)
+	if err != nil {
+		return err
+	}
+	if err := s.workbenchRepo.UpdateCollapsed(ctx, user.TenantID, user.ID, taskID, collapsed); err != nil {
+		return fmt.Errorf("failed to update workbench collapsed state: %w", err)
+	}
+	return nil
 }
 
 // RemoveTask 从当前用户的工作台移除任务（幂等）

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Button, Space, Spin, Tag, Toast, Tooltip } from '@douyinfe/semi-ui-19'
 import { IconChevronDown, IconChevronUp, IconInfoCircle } from '@douyinfe/semi-icons'
 import { useWorkbenchStore } from '@/stores/workbench'
@@ -18,28 +18,17 @@ export default function TaskWorkbench() {
   const panelRefs = useRef(new Map<string, HTMLDivElement>())
   const formRefs = useRef(new Map<string, TaskFormHandle>())
 
-  // 已折叠面板的任务 id;仅会话内有效(工作台任务来自服务端,折叠是轻量视图偏好,不持久化)
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
-
-  const toggleCollapsed = (taskId: string) => {
-    setCollapsedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(taskId)) next.delete(taskId)
-      else next.add(taskId)
-      return next
-    })
-  }
+  // 已折叠面板的任务 id;按用户按任务落库,由 store 在 fetch 时初始化、toggle 时持久化
+  const collapsedIds = useWorkbenchStore((s) => s.collapsedIds)
 
   // 加入任务后滚动到对应面板;延迟等待右栏 0.25s 展开动画结束后再测量位置
   useEffect(() => {
     if (!scrollTargetId) return
-    // 定位目标若处于折叠态则先展开,再滚动
-    setCollapsedIds((prev) => {
-      if (!prev.has(scrollTargetId)) return prev
-      const next = new Set(prev)
-      next.delete(scrollTargetId)
-      return next
-    })
+    // 定位目标若处于折叠态则先展开(同样持久化),再滚动
+    const store = useWorkbenchStore.getState()
+    if (store.collapsedIds.has(scrollTargetId)) {
+      store.setCollapsed(scrollTargetId, false)
+    }
     const timer = setTimeout(() => {
       panelRefs.current.get(scrollTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       // 滚动后清空目标,同一任务再次加入时 null → id 的变化能再次触发本效果
@@ -119,7 +108,7 @@ export default function TaskWorkbench() {
                   移除
                 </Button>
                 <Tooltip content={collapsed ? '展开' : '折叠'}>
-                  <div className={styles.panelToggle} onClick={() => toggleCollapsed(task.id)}>
+                  <div className={styles.panelToggle} onClick={() => useWorkbenchStore.getState().toggleCollapsed(task.id)}>
                     {collapsed ? <IconChevronDown /> : <IconChevronUp />}
                   </div>
                 </Tooltip>
