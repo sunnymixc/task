@@ -6,6 +6,7 @@ import { useTaskListStore } from '@/stores/taskList'
 import type { CreateTaskListRequest, ListTaskListsRequest, TaskList, UpdateTaskListRequest } from '@/types'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { useRefreshShortcut } from '@/hooks/useRefreshShortcut'
 import TaskListForm, { type TaskListFormHandle } from '@/components/task-list/TaskListForm'
 import styles from './TaskListManage.module.css'
 
@@ -72,11 +73,11 @@ export default function TaskListManage() {
     fetchLists({ page: 1, keyword: '' })
   }
 
-  // 刷新:按当前搜索条件重拉当前页,并同步侧边栏清单子菜单及执行中任务数
-  const handleRefresh = () => {
-    fetchLists()
-    useTaskListStore.getState().fetchAllLists()
-  }
+  // 刷新:按当前搜索条件重拉当前页,并同步侧边栏清单子菜单及执行中任务数;
+  // 返回 Promise 供全局刷新快捷键等待完成
+  const handleRefresh = () =>
+    Promise.all([fetchLists(), useTaskListStore.getState().fetchAllLists()])
+  useRefreshShortcut(handleRefresh)
 
   // Create dialog
   const createFormRef = useRef<TaskListFormHandle>(null)

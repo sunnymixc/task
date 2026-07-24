@@ -9,6 +9,7 @@ import { useTaskFilterStore } from '@/stores/taskFilter'
 import type { CreateTaskRequest, ListTasksRequest, Task, TaskStatus, UpdateTaskRequest } from '@/types'
 import { copyToClipboard } from '@/utils/clipboard'
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback'
+import { useRefreshShortcut } from '@/hooks/useRefreshShortcut'
 import { useTableScrollY } from '@/hooks/useTableScrollY'
 import TaskForm, { presetTaskFormTab, type TaskFormHandle } from '@/components/task/TaskForm'
 import TerminalStatusDot from '@/components/task/TerminalStatusDot'
@@ -173,15 +174,15 @@ export default function TaskList() {
     fetchTasks({ page: 1, statuses: def, lists: [] })
   }
 
-  // 刷新:按当前筛选/搜索条件重新拉取当前页
+  // 刷新:按当前筛选/搜索条件重新拉取当前页;返回 Promise 供全局刷新快捷键等待完成
   const handleRefresh = () => {
     const q = searchQuery.trim()
     if (q) {
-      useTaskStore.getState().searchTasks(q, page)
-    } else {
-      fetchTasks()
+      return useTaskStore.getState().searchTasks(q, page)
     }
+    return fetchTasks()
   }
+  useRefreshShortcut(handleRefresh)
 
   // Handle task list filter change
   const handleTaskListChange = (value: string[]) => {

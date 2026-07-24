@@ -3,6 +3,7 @@ import { Tooltip } from '@douyinfe/semi-ui-19'
 import { IconApps, IconChevronRight, IconRefresh } from '@douyinfe/semi-icons'
 import { useUiStore, WORKBENCH_WIDTH_DEFAULT } from '@/stores/ui'
 import { useWorkbenchStore } from '@/stores/workbench'
+import { useRefreshShortcut } from '@/hooks/useRefreshShortcut'
 import TaskWorkbench from '@/components/workbench/TaskWorkbench'
 import styles from './RightSidebar.module.css'
 
@@ -31,6 +32,9 @@ export default function RightSidebar() {
   const setCollapsed = useUiStore((s) => s.setRightSidebarCollapsed)
   const [activeKey, setActiveKey] = useState(panels[0].key)
   const [dragging, setDragging] = useState(false)
+
+  // 工作台注册进全局刷新快捷键;折叠时(仅 CSS 隐藏未卸载)不注册,不刷新隐藏面板
+  useRefreshShortcut(() => useWorkbenchStore.getState().fetchWorkbench(), !collapsed)
 
   // 拖拽期间禁用全局文本选中;effect cleanup 兜底拖拽中途组件卸载
   useEffect(() => {

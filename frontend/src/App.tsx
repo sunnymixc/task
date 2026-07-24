@@ -1,10 +1,14 @@
 import { useEffect } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
 import { useAuthStore } from '@/stores/auth'
+import { useRefreshShortcutListener } from '@/hooks/useRefreshShortcut'
 
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
+
+  // 全局拦截浏览器刷新快捷键(Cmd/Ctrl+R、F5),改为应用内刷新
+  useRefreshShortcutListener()
 
   useEffect(() => {
     // 检查登录状态：token 过期先用 refresh token 静默续期，续期失败才退出并跳转登录页
